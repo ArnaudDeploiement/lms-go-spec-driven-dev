@@ -4,7 +4,9 @@ package ent
 
 import (
 	"context"
+	"database/sql/driver"
 	"fmt"
+	"lms-go/internal/ent/enrollment"
 	"lms-go/internal/ent/organization"
 	"lms-go/internal/ent/predicate"
 	"lms-go/internal/ent/user"
@@ -24,6 +26,7 @@ type UserQuery struct {
 	inters           []Interceptor
 	predicates       []predicate.User
 	withOrganization *OrganizationQuery
+	withEnrollments  *EnrollmentQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -75,6 +78,28 @@ func (uq *UserQuery) QueryOrganization() *OrganizationQuery {
 			sqlgraph.From(user.Table, user.FieldID, selector),
 			sqlgraph.To(organization.Table, organization.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, user.OrganizationTable, user.OrganizationColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(uq.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryEnrollments chains the current query on the "enrollments" edge.
+func (uq *UserQuery) QueryEnrollments() *EnrollmentQuery {
+	query := (&EnrollmentClient{config: uq.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := uq.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := uq.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, selector),
+			sqlgraph.To(enrollment.Table, enrollment.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.EnrollmentsTable, user.EnrollmentsColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(uq.driver.Dialect(), step)
 		return fromU, nil
@@ -275,6 +300,7 @@ func (uq *UserQuery) Clone() *UserQuery {
 		inters:           append([]Interceptor{}, uq.inters...),
 		predicates:       append([]predicate.User{}, uq.predicates...),
 		withOrganization: uq.withOrganization.Clone(),
+		withEnrollments:  uq.withEnrollments.Clone(),
 		// clone intermediate query.
 		sql:  uq.sql.Clone(),
 		path: uq.path,
@@ -289,6 +315,17 @@ func (uq *UserQuery) WithOrganization(opts ...func(*OrganizationQuery)) *UserQue
 		opt(query)
 	}
 	uq.withOrganization = query
+	return uq
+}
+
+// WithEnrollments tells the query-builder to eager-load the nodes that are connected to
+// the "enrollments" edge. The optional arguments are used to configure the query builder of the edge.
+func (uq *UserQuery) WithEnrollments(opts ...func(*EnrollmentQuery)) *UserQuery {
+	query := (&EnrollmentClient{config: uq.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	uq.withEnrollments = query
 	return uq
 }
 
@@ -370,8 +407,9 @@ func (uq *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 	var (
 		nodes       = []*User{}
 		_spec       = uq.querySpec()
-		loadedTypes = [1]bool{
+		loadedTypes = [2]bool{
 			uq.withOrganization != nil,
+			uq.withEnrollments != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -395,6 +433,13 @@ func (uq *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 	if query := uq.withOrganization; query != nil {
 		if err := uq.loadOrganization(ctx, query, nodes, nil,
 			func(n *User, e *Organization) { n.Edges.Organization = e }); err != nil {
+			return nil, err
+		}
+	}
+	if query := uq.withEnrollments; query != nil {
+		if err := uq.loadEnrollments(ctx, query, nodes,
+			func(n *User) { n.Edges.Enrollments = []*Enrollment{} },
+			func(n *User, e *Enrollment) { n.Edges.Enrollments = append(n.Edges.Enrollments, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -427,6 +472,36 @@ func (uq *UserQuery) loadOrganization(ctx context.Context, query *OrganizationQu
 		for i := range nodes {
 			assign(nodes[i], n)
 		}
+	}
+	return nil
+}
+func (uq *UserQuery) loadEnrollments(ctx context.Context, query *EnrollmentQuery, nodes []*User, init func(*User), assign func(*User, *Enrollment)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[uuid.UUID]*User)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(enrollment.FieldUserID)
+	}
+	query.Where(predicate.Enrollment(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(user.EnrollmentsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.UserID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "user_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
 	}
 	return nil
 }

@@ -4,9 +4,11 @@ package ent
 
 import (
 	"context"
+	"database/sql/driver"
 	"fmt"
 	"lms-go/internal/ent/course"
 	"lms-go/internal/ent/module"
+	"lms-go/internal/ent/moduleprogress"
 	"lms-go/internal/ent/predicate"
 	"math"
 
@@ -19,11 +21,12 @@ import (
 // ModuleQuery is the builder for querying Module entities.
 type ModuleQuery struct {
 	config
-	ctx        *QueryContext
-	order      []module.OrderOption
-	inters     []Interceptor
-	predicates []predicate.Module
-	withCourse *CourseQuery
+	ctx                 *QueryContext
+	order               []module.OrderOption
+	inters              []Interceptor
+	predicates          []predicate.Module
+	withCourse          *CourseQuery
+	withProgressEntries *ModuleProgressQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -75,6 +78,28 @@ func (mq *ModuleQuery) QueryCourse() *CourseQuery {
 			sqlgraph.From(module.Table, module.FieldID, selector),
 			sqlgraph.To(course.Table, course.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, module.CourseTable, module.CourseColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(mq.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryProgressEntries chains the current query on the "progress_entries" edge.
+func (mq *ModuleQuery) QueryProgressEntries() *ModuleProgressQuery {
+	query := (&ModuleProgressClient{config: mq.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := mq.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := mq.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(module.Table, module.FieldID, selector),
+			sqlgraph.To(moduleprogress.Table, moduleprogress.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, module.ProgressEntriesTable, module.ProgressEntriesColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(mq.driver.Dialect(), step)
 		return fromU, nil
@@ -269,12 +294,13 @@ func (mq *ModuleQuery) Clone() *ModuleQuery {
 		return nil
 	}
 	return &ModuleQuery{
-		config:     mq.config,
-		ctx:        mq.ctx.Clone(),
-		order:      append([]module.OrderOption{}, mq.order...),
-		inters:     append([]Interceptor{}, mq.inters...),
-		predicates: append([]predicate.Module{}, mq.predicates...),
-		withCourse: mq.withCourse.Clone(),
+		config:              mq.config,
+		ctx:                 mq.ctx.Clone(),
+		order:               append([]module.OrderOption{}, mq.order...),
+		inters:              append([]Interceptor{}, mq.inters...),
+		predicates:          append([]predicate.Module{}, mq.predicates...),
+		withCourse:          mq.withCourse.Clone(),
+		withProgressEntries: mq.withProgressEntries.Clone(),
 		// clone intermediate query.
 		sql:  mq.sql.Clone(),
 		path: mq.path,
@@ -289,6 +315,17 @@ func (mq *ModuleQuery) WithCourse(opts ...func(*CourseQuery)) *ModuleQuery {
 		opt(query)
 	}
 	mq.withCourse = query
+	return mq
+}
+
+// WithProgressEntries tells the query-builder to eager-load the nodes that are connected to
+// the "progress_entries" edge. The optional arguments are used to configure the query builder of the edge.
+func (mq *ModuleQuery) WithProgressEntries(opts ...func(*ModuleProgressQuery)) *ModuleQuery {
+	query := (&ModuleProgressClient{config: mq.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	mq.withProgressEntries = query
 	return mq
 }
 
@@ -370,8 +407,9 @@ func (mq *ModuleQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Modul
 	var (
 		nodes       = []*Module{}
 		_spec       = mq.querySpec()
-		loadedTypes = [1]bool{
+		loadedTypes = [2]bool{
 			mq.withCourse != nil,
+			mq.withProgressEntries != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -395,6 +433,13 @@ func (mq *ModuleQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Modul
 	if query := mq.withCourse; query != nil {
 		if err := mq.loadCourse(ctx, query, nodes, nil,
 			func(n *Module, e *Course) { n.Edges.Course = e }); err != nil {
+			return nil, err
+		}
+	}
+	if query := mq.withProgressEntries; query != nil {
+		if err := mq.loadProgressEntries(ctx, query, nodes,
+			func(n *Module) { n.Edges.ProgressEntries = []*ModuleProgress{} },
+			func(n *Module, e *ModuleProgress) { n.Edges.ProgressEntries = append(n.Edges.ProgressEntries, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -427,6 +472,36 @@ func (mq *ModuleQuery) loadCourse(ctx context.Context, query *CourseQuery, nodes
 		for i := range nodes {
 			assign(nodes[i], n)
 		}
+	}
+	return nil
+}
+func (mq *ModuleQuery) loadProgressEntries(ctx context.Context, query *ModuleProgressQuery, nodes []*Module, init func(*Module), assign func(*Module, *ModuleProgress)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[uuid.UUID]*Module)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(moduleprogress.FieldModuleID)
+	}
+	query.Where(predicate.ModuleProgress(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(module.ProgressEntriesColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.ModuleID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "module_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
 	}
 	return nil
 }

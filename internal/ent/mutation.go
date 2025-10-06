@@ -8,7 +8,10 @@ import (
 	"fmt"
 	"lms-go/internal/ent/content"
 	"lms-go/internal/ent/course"
+	"lms-go/internal/ent/enrollment"
+	"lms-go/internal/ent/group"
 	"lms-go/internal/ent/module"
+	"lms-go/internal/ent/moduleprogress"
 	"lms-go/internal/ent/organization"
 	"lms-go/internal/ent/predicate"
 	"lms-go/internal/ent/user"
@@ -29,11 +32,14 @@ const (
 	OpUpdateOne = ent.OpUpdateOne
 
 	// Node types.
-	TypeContent      = "Content"
-	TypeCourse       = "Course"
-	TypeModule       = "Module"
-	TypeOrganization = "Organization"
-	TypeUser         = "User"
+	TypeContent        = "Content"
+	TypeCourse         = "Course"
+	TypeEnrollment     = "Enrollment"
+	TypeGroup          = "Group"
+	TypeModule         = "Module"
+	TypeModuleProgress = "ModuleProgress"
+	TypeOrganization   = "Organization"
+	TypeUser           = "User"
 )
 
 // ContentMutation represents an operation that mutates the Content nodes in the graph.
@@ -954,6 +960,12 @@ type CourseMutation struct {
 	modules             map[uuid.UUID]struct{}
 	removedmodules      map[uuid.UUID]struct{}
 	clearedmodules      bool
+	enrollments         map[uuid.UUID]struct{}
+	removedenrollments  map[uuid.UUID]struct{}
+	clearedenrollments  bool
+	groups              map[uuid.UUID]struct{}
+	removedgroups       map[uuid.UUID]struct{}
+	clearedgroups       bool
 	done                bool
 	oldValue            func(context.Context) (*Course, error)
 	predicates          []predicate.Course
@@ -1563,6 +1575,114 @@ func (m *CourseMutation) ResetModules() {
 	m.removedmodules = nil
 }
 
+// AddEnrollmentIDs adds the "enrollments" edge to the Enrollment entity by ids.
+func (m *CourseMutation) AddEnrollmentIDs(ids ...uuid.UUID) {
+	if m.enrollments == nil {
+		m.enrollments = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.enrollments[ids[i]] = struct{}{}
+	}
+}
+
+// ClearEnrollments clears the "enrollments" edge to the Enrollment entity.
+func (m *CourseMutation) ClearEnrollments() {
+	m.clearedenrollments = true
+}
+
+// EnrollmentsCleared reports if the "enrollments" edge to the Enrollment entity was cleared.
+func (m *CourseMutation) EnrollmentsCleared() bool {
+	return m.clearedenrollments
+}
+
+// RemoveEnrollmentIDs removes the "enrollments" edge to the Enrollment entity by IDs.
+func (m *CourseMutation) RemoveEnrollmentIDs(ids ...uuid.UUID) {
+	if m.removedenrollments == nil {
+		m.removedenrollments = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.enrollments, ids[i])
+		m.removedenrollments[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedEnrollments returns the removed IDs of the "enrollments" edge to the Enrollment entity.
+func (m *CourseMutation) RemovedEnrollmentsIDs() (ids []uuid.UUID) {
+	for id := range m.removedenrollments {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// EnrollmentsIDs returns the "enrollments" edge IDs in the mutation.
+func (m *CourseMutation) EnrollmentsIDs() (ids []uuid.UUID) {
+	for id := range m.enrollments {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetEnrollments resets all changes to the "enrollments" edge.
+func (m *CourseMutation) ResetEnrollments() {
+	m.enrollments = nil
+	m.clearedenrollments = false
+	m.removedenrollments = nil
+}
+
+// AddGroupIDs adds the "groups" edge to the Group entity by ids.
+func (m *CourseMutation) AddGroupIDs(ids ...uuid.UUID) {
+	if m.groups == nil {
+		m.groups = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.groups[ids[i]] = struct{}{}
+	}
+}
+
+// ClearGroups clears the "groups" edge to the Group entity.
+func (m *CourseMutation) ClearGroups() {
+	m.clearedgroups = true
+}
+
+// GroupsCleared reports if the "groups" edge to the Group entity was cleared.
+func (m *CourseMutation) GroupsCleared() bool {
+	return m.clearedgroups
+}
+
+// RemoveGroupIDs removes the "groups" edge to the Group entity by IDs.
+func (m *CourseMutation) RemoveGroupIDs(ids ...uuid.UUID) {
+	if m.removedgroups == nil {
+		m.removedgroups = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.groups, ids[i])
+		m.removedgroups[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedGroups returns the removed IDs of the "groups" edge to the Group entity.
+func (m *CourseMutation) RemovedGroupsIDs() (ids []uuid.UUID) {
+	for id := range m.removedgroups {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// GroupsIDs returns the "groups" edge IDs in the mutation.
+func (m *CourseMutation) GroupsIDs() (ids []uuid.UUID) {
+	for id := range m.groups {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetGroups resets all changes to the "groups" edge.
+func (m *CourseMutation) ResetGroups() {
+	m.groups = nil
+	m.clearedgroups = false
+	m.removedgroups = nil
+}
+
 // Where appends a list predicates to the CourseMutation builder.
 func (m *CourseMutation) Where(ps ...predicate.Course) {
 	m.predicates = append(m.predicates, ps...)
@@ -1885,12 +2005,18 @@ func (m *CourseMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *CourseMutation) AddedEdges() []string {
-	edges := make([]string, 0, 2)
+	edges := make([]string, 0, 4)
 	if m.organization != nil {
 		edges = append(edges, course.EdgeOrganization)
 	}
 	if m.modules != nil {
 		edges = append(edges, course.EdgeModules)
+	}
+	if m.enrollments != nil {
+		edges = append(edges, course.EdgeEnrollments)
+	}
+	if m.groups != nil {
+		edges = append(edges, course.EdgeGroups)
 	}
 	return edges
 }
@@ -1909,15 +2035,33 @@ func (m *CourseMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case course.EdgeEnrollments:
+		ids := make([]ent.Value, 0, len(m.enrollments))
+		for id := range m.enrollments {
+			ids = append(ids, id)
+		}
+		return ids
+	case course.EdgeGroups:
+		ids := make([]ent.Value, 0, len(m.groups))
+		for id := range m.groups {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *CourseMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 2)
+	edges := make([]string, 0, 4)
 	if m.removedmodules != nil {
 		edges = append(edges, course.EdgeModules)
+	}
+	if m.removedenrollments != nil {
+		edges = append(edges, course.EdgeEnrollments)
+	}
+	if m.removedgroups != nil {
+		edges = append(edges, course.EdgeGroups)
 	}
 	return edges
 }
@@ -1932,18 +2076,36 @@ func (m *CourseMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case course.EdgeEnrollments:
+		ids := make([]ent.Value, 0, len(m.removedenrollments))
+		for id := range m.removedenrollments {
+			ids = append(ids, id)
+		}
+		return ids
+	case course.EdgeGroups:
+		ids := make([]ent.Value, 0, len(m.removedgroups))
+		for id := range m.removedgroups {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *CourseMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 2)
+	edges := make([]string, 0, 4)
 	if m.clearedorganization {
 		edges = append(edges, course.EdgeOrganization)
 	}
 	if m.clearedmodules {
 		edges = append(edges, course.EdgeModules)
+	}
+	if m.clearedenrollments {
+		edges = append(edges, course.EdgeEnrollments)
+	}
+	if m.clearedgroups {
+		edges = append(edges, course.EdgeGroups)
 	}
 	return edges
 }
@@ -1956,6 +2118,10 @@ func (m *CourseMutation) EdgeCleared(name string) bool {
 		return m.clearedorganization
 	case course.EdgeModules:
 		return m.clearedmodules
+	case course.EdgeEnrollments:
+		return m.clearedenrollments
+	case course.EdgeGroups:
+		return m.clearedgroups
 	}
 	return false
 }
@@ -1981,33 +2147,2317 @@ func (m *CourseMutation) ResetEdge(name string) error {
 	case course.EdgeModules:
 		m.ResetModules()
 		return nil
+	case course.EdgeEnrollments:
+		m.ResetEnrollments()
+		return nil
+	case course.EdgeGroups:
+		m.ResetGroups()
+		return nil
 	}
 	return fmt.Errorf("unknown Course edge %s", name)
+}
+
+// EnrollmentMutation represents an operation that mutates the Enrollment nodes in the graph.
+type EnrollmentMutation struct {
+	config
+	op                      Op
+	typ                     string
+	id                      *uuid.UUID
+	status                  *string
+	progress                *float32
+	addprogress             *float32
+	started_at              *time.Time
+	completed_at            *time.Time
+	metadata                *map[string]interface{}
+	created_at              *time.Time
+	updated_at              *time.Time
+	clearedFields           map[string]struct{}
+	organization            *uuid.UUID
+	clearedorganization     bool
+	course                  *uuid.UUID
+	clearedcourse           bool
+	user                    *uuid.UUID
+	cleareduser             bool
+	group                   *uuid.UUID
+	clearedgroup            bool
+	progress_entries        map[uuid.UUID]struct{}
+	removedprogress_entries map[uuid.UUID]struct{}
+	clearedprogress_entries bool
+	done                    bool
+	oldValue                func(context.Context) (*Enrollment, error)
+	predicates              []predicate.Enrollment
+}
+
+var _ ent.Mutation = (*EnrollmentMutation)(nil)
+
+// enrollmentOption allows management of the mutation configuration using functional options.
+type enrollmentOption func(*EnrollmentMutation)
+
+// newEnrollmentMutation creates new mutation for the Enrollment entity.
+func newEnrollmentMutation(c config, op Op, opts ...enrollmentOption) *EnrollmentMutation {
+	m := &EnrollmentMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeEnrollment,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withEnrollmentID sets the ID field of the mutation.
+func withEnrollmentID(id uuid.UUID) enrollmentOption {
+	return func(m *EnrollmentMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *Enrollment
+		)
+		m.oldValue = func(ctx context.Context) (*Enrollment, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().Enrollment.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withEnrollment sets the old Enrollment of the mutation.
+func withEnrollment(node *Enrollment) enrollmentOption {
+	return func(m *EnrollmentMutation) {
+		m.oldValue = func(context.Context) (*Enrollment, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m EnrollmentMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m EnrollmentMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of Enrollment entities.
+func (m *EnrollmentMutation) SetID(id uuid.UUID) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *EnrollmentMutation) ID() (id uuid.UUID, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *EnrollmentMutation) IDs(ctx context.Context) ([]uuid.UUID, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []uuid.UUID{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().Enrollment.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetOrganizationID sets the "organization_id" field.
+func (m *EnrollmentMutation) SetOrganizationID(u uuid.UUID) {
+	m.organization = &u
+}
+
+// OrganizationID returns the value of the "organization_id" field in the mutation.
+func (m *EnrollmentMutation) OrganizationID() (r uuid.UUID, exists bool) {
+	v := m.organization
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldOrganizationID returns the old "organization_id" field's value of the Enrollment entity.
+// If the Enrollment object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *EnrollmentMutation) OldOrganizationID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldOrganizationID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldOrganizationID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldOrganizationID: %w", err)
+	}
+	return oldValue.OrganizationID, nil
+}
+
+// ResetOrganizationID resets all changes to the "organization_id" field.
+func (m *EnrollmentMutation) ResetOrganizationID() {
+	m.organization = nil
+}
+
+// SetCourseID sets the "course_id" field.
+func (m *EnrollmentMutation) SetCourseID(u uuid.UUID) {
+	m.course = &u
+}
+
+// CourseID returns the value of the "course_id" field in the mutation.
+func (m *EnrollmentMutation) CourseID() (r uuid.UUID, exists bool) {
+	v := m.course
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCourseID returns the old "course_id" field's value of the Enrollment entity.
+// If the Enrollment object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *EnrollmentMutation) OldCourseID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCourseID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCourseID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCourseID: %w", err)
+	}
+	return oldValue.CourseID, nil
+}
+
+// ResetCourseID resets all changes to the "course_id" field.
+func (m *EnrollmentMutation) ResetCourseID() {
+	m.course = nil
+}
+
+// SetUserID sets the "user_id" field.
+func (m *EnrollmentMutation) SetUserID(u uuid.UUID) {
+	m.user = &u
+}
+
+// UserID returns the value of the "user_id" field in the mutation.
+func (m *EnrollmentMutation) UserID() (r uuid.UUID, exists bool) {
+	v := m.user
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUserID returns the old "user_id" field's value of the Enrollment entity.
+// If the Enrollment object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *EnrollmentMutation) OldUserID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUserID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUserID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUserID: %w", err)
+	}
+	return oldValue.UserID, nil
+}
+
+// ResetUserID resets all changes to the "user_id" field.
+func (m *EnrollmentMutation) ResetUserID() {
+	m.user = nil
+}
+
+// SetGroupID sets the "group_id" field.
+func (m *EnrollmentMutation) SetGroupID(u uuid.UUID) {
+	m.group = &u
+}
+
+// GroupID returns the value of the "group_id" field in the mutation.
+func (m *EnrollmentMutation) GroupID() (r uuid.UUID, exists bool) {
+	v := m.group
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldGroupID returns the old "group_id" field's value of the Enrollment entity.
+// If the Enrollment object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *EnrollmentMutation) OldGroupID(ctx context.Context) (v *uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldGroupID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldGroupID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldGroupID: %w", err)
+	}
+	return oldValue.GroupID, nil
+}
+
+// ClearGroupID clears the value of the "group_id" field.
+func (m *EnrollmentMutation) ClearGroupID() {
+	m.group = nil
+	m.clearedFields[enrollment.FieldGroupID] = struct{}{}
+}
+
+// GroupIDCleared returns if the "group_id" field was cleared in this mutation.
+func (m *EnrollmentMutation) GroupIDCleared() bool {
+	_, ok := m.clearedFields[enrollment.FieldGroupID]
+	return ok
+}
+
+// ResetGroupID resets all changes to the "group_id" field.
+func (m *EnrollmentMutation) ResetGroupID() {
+	m.group = nil
+	delete(m.clearedFields, enrollment.FieldGroupID)
+}
+
+// SetStatus sets the "status" field.
+func (m *EnrollmentMutation) SetStatus(s string) {
+	m.status = &s
+}
+
+// Status returns the value of the "status" field in the mutation.
+func (m *EnrollmentMutation) Status() (r string, exists bool) {
+	v := m.status
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldStatus returns the old "status" field's value of the Enrollment entity.
+// If the Enrollment object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *EnrollmentMutation) OldStatus(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldStatus is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldStatus requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldStatus: %w", err)
+	}
+	return oldValue.Status, nil
+}
+
+// ResetStatus resets all changes to the "status" field.
+func (m *EnrollmentMutation) ResetStatus() {
+	m.status = nil
+}
+
+// SetProgress sets the "progress" field.
+func (m *EnrollmentMutation) SetProgress(f float32) {
+	m.progress = &f
+	m.addprogress = nil
+}
+
+// Progress returns the value of the "progress" field in the mutation.
+func (m *EnrollmentMutation) Progress() (r float32, exists bool) {
+	v := m.progress
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldProgress returns the old "progress" field's value of the Enrollment entity.
+// If the Enrollment object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *EnrollmentMutation) OldProgress(ctx context.Context) (v float32, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldProgress is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldProgress requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldProgress: %w", err)
+	}
+	return oldValue.Progress, nil
+}
+
+// AddProgress adds f to the "progress" field.
+func (m *EnrollmentMutation) AddProgress(f float32) {
+	if m.addprogress != nil {
+		*m.addprogress += f
+	} else {
+		m.addprogress = &f
+	}
+}
+
+// AddedProgress returns the value that was added to the "progress" field in this mutation.
+func (m *EnrollmentMutation) AddedProgress() (r float32, exists bool) {
+	v := m.addprogress
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetProgress resets all changes to the "progress" field.
+func (m *EnrollmentMutation) ResetProgress() {
+	m.progress = nil
+	m.addprogress = nil
+}
+
+// SetStartedAt sets the "started_at" field.
+func (m *EnrollmentMutation) SetStartedAt(t time.Time) {
+	m.started_at = &t
+}
+
+// StartedAt returns the value of the "started_at" field in the mutation.
+func (m *EnrollmentMutation) StartedAt() (r time.Time, exists bool) {
+	v := m.started_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldStartedAt returns the old "started_at" field's value of the Enrollment entity.
+// If the Enrollment object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *EnrollmentMutation) OldStartedAt(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldStartedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldStartedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldStartedAt: %w", err)
+	}
+	return oldValue.StartedAt, nil
+}
+
+// ClearStartedAt clears the value of the "started_at" field.
+func (m *EnrollmentMutation) ClearStartedAt() {
+	m.started_at = nil
+	m.clearedFields[enrollment.FieldStartedAt] = struct{}{}
+}
+
+// StartedAtCleared returns if the "started_at" field was cleared in this mutation.
+func (m *EnrollmentMutation) StartedAtCleared() bool {
+	_, ok := m.clearedFields[enrollment.FieldStartedAt]
+	return ok
+}
+
+// ResetStartedAt resets all changes to the "started_at" field.
+func (m *EnrollmentMutation) ResetStartedAt() {
+	m.started_at = nil
+	delete(m.clearedFields, enrollment.FieldStartedAt)
+}
+
+// SetCompletedAt sets the "completed_at" field.
+func (m *EnrollmentMutation) SetCompletedAt(t time.Time) {
+	m.completed_at = &t
+}
+
+// CompletedAt returns the value of the "completed_at" field in the mutation.
+func (m *EnrollmentMutation) CompletedAt() (r time.Time, exists bool) {
+	v := m.completed_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCompletedAt returns the old "completed_at" field's value of the Enrollment entity.
+// If the Enrollment object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *EnrollmentMutation) OldCompletedAt(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCompletedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCompletedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCompletedAt: %w", err)
+	}
+	return oldValue.CompletedAt, nil
+}
+
+// ClearCompletedAt clears the value of the "completed_at" field.
+func (m *EnrollmentMutation) ClearCompletedAt() {
+	m.completed_at = nil
+	m.clearedFields[enrollment.FieldCompletedAt] = struct{}{}
+}
+
+// CompletedAtCleared returns if the "completed_at" field was cleared in this mutation.
+func (m *EnrollmentMutation) CompletedAtCleared() bool {
+	_, ok := m.clearedFields[enrollment.FieldCompletedAt]
+	return ok
+}
+
+// ResetCompletedAt resets all changes to the "completed_at" field.
+func (m *EnrollmentMutation) ResetCompletedAt() {
+	m.completed_at = nil
+	delete(m.clearedFields, enrollment.FieldCompletedAt)
+}
+
+// SetMetadata sets the "metadata" field.
+func (m *EnrollmentMutation) SetMetadata(value map[string]interface{}) {
+	m.metadata = &value
+}
+
+// Metadata returns the value of the "metadata" field in the mutation.
+func (m *EnrollmentMutation) Metadata() (r map[string]interface{}, exists bool) {
+	v := m.metadata
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldMetadata returns the old "metadata" field's value of the Enrollment entity.
+// If the Enrollment object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *EnrollmentMutation) OldMetadata(ctx context.Context) (v map[string]interface{}, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldMetadata is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldMetadata requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldMetadata: %w", err)
+	}
+	return oldValue.Metadata, nil
+}
+
+// ClearMetadata clears the value of the "metadata" field.
+func (m *EnrollmentMutation) ClearMetadata() {
+	m.metadata = nil
+	m.clearedFields[enrollment.FieldMetadata] = struct{}{}
+}
+
+// MetadataCleared returns if the "metadata" field was cleared in this mutation.
+func (m *EnrollmentMutation) MetadataCleared() bool {
+	_, ok := m.clearedFields[enrollment.FieldMetadata]
+	return ok
+}
+
+// ResetMetadata resets all changes to the "metadata" field.
+func (m *EnrollmentMutation) ResetMetadata() {
+	m.metadata = nil
+	delete(m.clearedFields, enrollment.FieldMetadata)
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *EnrollmentMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *EnrollmentMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the Enrollment entity.
+// If the Enrollment object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *EnrollmentMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *EnrollmentMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *EnrollmentMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *EnrollmentMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the Enrollment entity.
+// If the Enrollment object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *EnrollmentMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *EnrollmentMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
+// ClearOrganization clears the "organization" edge to the Organization entity.
+func (m *EnrollmentMutation) ClearOrganization() {
+	m.clearedorganization = true
+	m.clearedFields[enrollment.FieldOrganizationID] = struct{}{}
+}
+
+// OrganizationCleared reports if the "organization" edge to the Organization entity was cleared.
+func (m *EnrollmentMutation) OrganizationCleared() bool {
+	return m.clearedorganization
+}
+
+// OrganizationIDs returns the "organization" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// OrganizationID instead. It exists only for internal usage by the builders.
+func (m *EnrollmentMutation) OrganizationIDs() (ids []uuid.UUID) {
+	if id := m.organization; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetOrganization resets all changes to the "organization" edge.
+func (m *EnrollmentMutation) ResetOrganization() {
+	m.organization = nil
+	m.clearedorganization = false
+}
+
+// ClearCourse clears the "course" edge to the Course entity.
+func (m *EnrollmentMutation) ClearCourse() {
+	m.clearedcourse = true
+	m.clearedFields[enrollment.FieldCourseID] = struct{}{}
+}
+
+// CourseCleared reports if the "course" edge to the Course entity was cleared.
+func (m *EnrollmentMutation) CourseCleared() bool {
+	return m.clearedcourse
+}
+
+// CourseIDs returns the "course" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// CourseID instead. It exists only for internal usage by the builders.
+func (m *EnrollmentMutation) CourseIDs() (ids []uuid.UUID) {
+	if id := m.course; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetCourse resets all changes to the "course" edge.
+func (m *EnrollmentMutation) ResetCourse() {
+	m.course = nil
+	m.clearedcourse = false
+}
+
+// ClearUser clears the "user" edge to the User entity.
+func (m *EnrollmentMutation) ClearUser() {
+	m.cleareduser = true
+	m.clearedFields[enrollment.FieldUserID] = struct{}{}
+}
+
+// UserCleared reports if the "user" edge to the User entity was cleared.
+func (m *EnrollmentMutation) UserCleared() bool {
+	return m.cleareduser
+}
+
+// UserIDs returns the "user" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// UserID instead. It exists only for internal usage by the builders.
+func (m *EnrollmentMutation) UserIDs() (ids []uuid.UUID) {
+	if id := m.user; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetUser resets all changes to the "user" edge.
+func (m *EnrollmentMutation) ResetUser() {
+	m.user = nil
+	m.cleareduser = false
+}
+
+// ClearGroup clears the "group" edge to the Group entity.
+func (m *EnrollmentMutation) ClearGroup() {
+	m.clearedgroup = true
+	m.clearedFields[enrollment.FieldGroupID] = struct{}{}
+}
+
+// GroupCleared reports if the "group" edge to the Group entity was cleared.
+func (m *EnrollmentMutation) GroupCleared() bool {
+	return m.GroupIDCleared() || m.clearedgroup
+}
+
+// GroupIDs returns the "group" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// GroupID instead. It exists only for internal usage by the builders.
+func (m *EnrollmentMutation) GroupIDs() (ids []uuid.UUID) {
+	if id := m.group; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetGroup resets all changes to the "group" edge.
+func (m *EnrollmentMutation) ResetGroup() {
+	m.group = nil
+	m.clearedgroup = false
+}
+
+// AddProgressEntryIDs adds the "progress_entries" edge to the ModuleProgress entity by ids.
+func (m *EnrollmentMutation) AddProgressEntryIDs(ids ...uuid.UUID) {
+	if m.progress_entries == nil {
+		m.progress_entries = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.progress_entries[ids[i]] = struct{}{}
+	}
+}
+
+// ClearProgressEntries clears the "progress_entries" edge to the ModuleProgress entity.
+func (m *EnrollmentMutation) ClearProgressEntries() {
+	m.clearedprogress_entries = true
+}
+
+// ProgressEntriesCleared reports if the "progress_entries" edge to the ModuleProgress entity was cleared.
+func (m *EnrollmentMutation) ProgressEntriesCleared() bool {
+	return m.clearedprogress_entries
+}
+
+// RemoveProgressEntryIDs removes the "progress_entries" edge to the ModuleProgress entity by IDs.
+func (m *EnrollmentMutation) RemoveProgressEntryIDs(ids ...uuid.UUID) {
+	if m.removedprogress_entries == nil {
+		m.removedprogress_entries = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.progress_entries, ids[i])
+		m.removedprogress_entries[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedProgressEntries returns the removed IDs of the "progress_entries" edge to the ModuleProgress entity.
+func (m *EnrollmentMutation) RemovedProgressEntriesIDs() (ids []uuid.UUID) {
+	for id := range m.removedprogress_entries {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ProgressEntriesIDs returns the "progress_entries" edge IDs in the mutation.
+func (m *EnrollmentMutation) ProgressEntriesIDs() (ids []uuid.UUID) {
+	for id := range m.progress_entries {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetProgressEntries resets all changes to the "progress_entries" edge.
+func (m *EnrollmentMutation) ResetProgressEntries() {
+	m.progress_entries = nil
+	m.clearedprogress_entries = false
+	m.removedprogress_entries = nil
+}
+
+// Where appends a list predicates to the EnrollmentMutation builder.
+func (m *EnrollmentMutation) Where(ps ...predicate.Enrollment) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the EnrollmentMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *EnrollmentMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.Enrollment, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *EnrollmentMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *EnrollmentMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (Enrollment).
+func (m *EnrollmentMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *EnrollmentMutation) Fields() []string {
+	fields := make([]string, 0, 11)
+	if m.organization != nil {
+		fields = append(fields, enrollment.FieldOrganizationID)
+	}
+	if m.course != nil {
+		fields = append(fields, enrollment.FieldCourseID)
+	}
+	if m.user != nil {
+		fields = append(fields, enrollment.FieldUserID)
+	}
+	if m.group != nil {
+		fields = append(fields, enrollment.FieldGroupID)
+	}
+	if m.status != nil {
+		fields = append(fields, enrollment.FieldStatus)
+	}
+	if m.progress != nil {
+		fields = append(fields, enrollment.FieldProgress)
+	}
+	if m.started_at != nil {
+		fields = append(fields, enrollment.FieldStartedAt)
+	}
+	if m.completed_at != nil {
+		fields = append(fields, enrollment.FieldCompletedAt)
+	}
+	if m.metadata != nil {
+		fields = append(fields, enrollment.FieldMetadata)
+	}
+	if m.created_at != nil {
+		fields = append(fields, enrollment.FieldCreatedAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, enrollment.FieldUpdatedAt)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *EnrollmentMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case enrollment.FieldOrganizationID:
+		return m.OrganizationID()
+	case enrollment.FieldCourseID:
+		return m.CourseID()
+	case enrollment.FieldUserID:
+		return m.UserID()
+	case enrollment.FieldGroupID:
+		return m.GroupID()
+	case enrollment.FieldStatus:
+		return m.Status()
+	case enrollment.FieldProgress:
+		return m.Progress()
+	case enrollment.FieldStartedAt:
+		return m.StartedAt()
+	case enrollment.FieldCompletedAt:
+		return m.CompletedAt()
+	case enrollment.FieldMetadata:
+		return m.Metadata()
+	case enrollment.FieldCreatedAt:
+		return m.CreatedAt()
+	case enrollment.FieldUpdatedAt:
+		return m.UpdatedAt()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *EnrollmentMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case enrollment.FieldOrganizationID:
+		return m.OldOrganizationID(ctx)
+	case enrollment.FieldCourseID:
+		return m.OldCourseID(ctx)
+	case enrollment.FieldUserID:
+		return m.OldUserID(ctx)
+	case enrollment.FieldGroupID:
+		return m.OldGroupID(ctx)
+	case enrollment.FieldStatus:
+		return m.OldStatus(ctx)
+	case enrollment.FieldProgress:
+		return m.OldProgress(ctx)
+	case enrollment.FieldStartedAt:
+		return m.OldStartedAt(ctx)
+	case enrollment.FieldCompletedAt:
+		return m.OldCompletedAt(ctx)
+	case enrollment.FieldMetadata:
+		return m.OldMetadata(ctx)
+	case enrollment.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case enrollment.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
+	}
+	return nil, fmt.Errorf("unknown Enrollment field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *EnrollmentMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case enrollment.FieldOrganizationID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetOrganizationID(v)
+		return nil
+	case enrollment.FieldCourseID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCourseID(v)
+		return nil
+	case enrollment.FieldUserID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUserID(v)
+		return nil
+	case enrollment.FieldGroupID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetGroupID(v)
+		return nil
+	case enrollment.FieldStatus:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetStatus(v)
+		return nil
+	case enrollment.FieldProgress:
+		v, ok := value.(float32)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetProgress(v)
+		return nil
+	case enrollment.FieldStartedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetStartedAt(v)
+		return nil
+	case enrollment.FieldCompletedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCompletedAt(v)
+		return nil
+	case enrollment.FieldMetadata:
+		v, ok := value.(map[string]interface{})
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetMetadata(v)
+		return nil
+	case enrollment.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case enrollment.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown Enrollment field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *EnrollmentMutation) AddedFields() []string {
+	var fields []string
+	if m.addprogress != nil {
+		fields = append(fields, enrollment.FieldProgress)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *EnrollmentMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case enrollment.FieldProgress:
+		return m.AddedProgress()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *EnrollmentMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case enrollment.FieldProgress:
+		v, ok := value.(float32)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddProgress(v)
+		return nil
+	}
+	return fmt.Errorf("unknown Enrollment numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *EnrollmentMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(enrollment.FieldGroupID) {
+		fields = append(fields, enrollment.FieldGroupID)
+	}
+	if m.FieldCleared(enrollment.FieldStartedAt) {
+		fields = append(fields, enrollment.FieldStartedAt)
+	}
+	if m.FieldCleared(enrollment.FieldCompletedAt) {
+		fields = append(fields, enrollment.FieldCompletedAt)
+	}
+	if m.FieldCleared(enrollment.FieldMetadata) {
+		fields = append(fields, enrollment.FieldMetadata)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *EnrollmentMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *EnrollmentMutation) ClearField(name string) error {
+	switch name {
+	case enrollment.FieldGroupID:
+		m.ClearGroupID()
+		return nil
+	case enrollment.FieldStartedAt:
+		m.ClearStartedAt()
+		return nil
+	case enrollment.FieldCompletedAt:
+		m.ClearCompletedAt()
+		return nil
+	case enrollment.FieldMetadata:
+		m.ClearMetadata()
+		return nil
+	}
+	return fmt.Errorf("unknown Enrollment nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *EnrollmentMutation) ResetField(name string) error {
+	switch name {
+	case enrollment.FieldOrganizationID:
+		m.ResetOrganizationID()
+		return nil
+	case enrollment.FieldCourseID:
+		m.ResetCourseID()
+		return nil
+	case enrollment.FieldUserID:
+		m.ResetUserID()
+		return nil
+	case enrollment.FieldGroupID:
+		m.ResetGroupID()
+		return nil
+	case enrollment.FieldStatus:
+		m.ResetStatus()
+		return nil
+	case enrollment.FieldProgress:
+		m.ResetProgress()
+		return nil
+	case enrollment.FieldStartedAt:
+		m.ResetStartedAt()
+		return nil
+	case enrollment.FieldCompletedAt:
+		m.ResetCompletedAt()
+		return nil
+	case enrollment.FieldMetadata:
+		m.ResetMetadata()
+		return nil
+	case enrollment.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case enrollment.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown Enrollment field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *EnrollmentMutation) AddedEdges() []string {
+	edges := make([]string, 0, 5)
+	if m.organization != nil {
+		edges = append(edges, enrollment.EdgeOrganization)
+	}
+	if m.course != nil {
+		edges = append(edges, enrollment.EdgeCourse)
+	}
+	if m.user != nil {
+		edges = append(edges, enrollment.EdgeUser)
+	}
+	if m.group != nil {
+		edges = append(edges, enrollment.EdgeGroup)
+	}
+	if m.progress_entries != nil {
+		edges = append(edges, enrollment.EdgeProgressEntries)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *EnrollmentMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case enrollment.EdgeOrganization:
+		if id := m.organization; id != nil {
+			return []ent.Value{*id}
+		}
+	case enrollment.EdgeCourse:
+		if id := m.course; id != nil {
+			return []ent.Value{*id}
+		}
+	case enrollment.EdgeUser:
+		if id := m.user; id != nil {
+			return []ent.Value{*id}
+		}
+	case enrollment.EdgeGroup:
+		if id := m.group; id != nil {
+			return []ent.Value{*id}
+		}
+	case enrollment.EdgeProgressEntries:
+		ids := make([]ent.Value, 0, len(m.progress_entries))
+		for id := range m.progress_entries {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *EnrollmentMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 5)
+	if m.removedprogress_entries != nil {
+		edges = append(edges, enrollment.EdgeProgressEntries)
+	}
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *EnrollmentMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	case enrollment.EdgeProgressEntries:
+		ids := make([]ent.Value, 0, len(m.removedprogress_entries))
+		for id := range m.removedprogress_entries {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *EnrollmentMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 5)
+	if m.clearedorganization {
+		edges = append(edges, enrollment.EdgeOrganization)
+	}
+	if m.clearedcourse {
+		edges = append(edges, enrollment.EdgeCourse)
+	}
+	if m.cleareduser {
+		edges = append(edges, enrollment.EdgeUser)
+	}
+	if m.clearedgroup {
+		edges = append(edges, enrollment.EdgeGroup)
+	}
+	if m.clearedprogress_entries {
+		edges = append(edges, enrollment.EdgeProgressEntries)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *EnrollmentMutation) EdgeCleared(name string) bool {
+	switch name {
+	case enrollment.EdgeOrganization:
+		return m.clearedorganization
+	case enrollment.EdgeCourse:
+		return m.clearedcourse
+	case enrollment.EdgeUser:
+		return m.cleareduser
+	case enrollment.EdgeGroup:
+		return m.clearedgroup
+	case enrollment.EdgeProgressEntries:
+		return m.clearedprogress_entries
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *EnrollmentMutation) ClearEdge(name string) error {
+	switch name {
+	case enrollment.EdgeOrganization:
+		m.ClearOrganization()
+		return nil
+	case enrollment.EdgeCourse:
+		m.ClearCourse()
+		return nil
+	case enrollment.EdgeUser:
+		m.ClearUser()
+		return nil
+	case enrollment.EdgeGroup:
+		m.ClearGroup()
+		return nil
+	}
+	return fmt.Errorf("unknown Enrollment unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *EnrollmentMutation) ResetEdge(name string) error {
+	switch name {
+	case enrollment.EdgeOrganization:
+		m.ResetOrganization()
+		return nil
+	case enrollment.EdgeCourse:
+		m.ResetCourse()
+		return nil
+	case enrollment.EdgeUser:
+		m.ResetUser()
+		return nil
+	case enrollment.EdgeGroup:
+		m.ResetGroup()
+		return nil
+	case enrollment.EdgeProgressEntries:
+		m.ResetProgressEntries()
+		return nil
+	}
+	return fmt.Errorf("unknown Enrollment edge %s", name)
+}
+
+// GroupMutation represents an operation that mutates the Group nodes in the graph.
+type GroupMutation struct {
+	config
+	op                  Op
+	typ                 string
+	id                  *uuid.UUID
+	name                *string
+	description         *string
+	capacity            *int
+	addcapacity         *int
+	metadata            *map[string]interface{}
+	created_at          *time.Time
+	updated_at          *time.Time
+	clearedFields       map[string]struct{}
+	organization        *uuid.UUID
+	clearedorganization bool
+	course              *uuid.UUID
+	clearedcourse       bool
+	enrollments         map[uuid.UUID]struct{}
+	removedenrollments  map[uuid.UUID]struct{}
+	clearedenrollments  bool
+	done                bool
+	oldValue            func(context.Context) (*Group, error)
+	predicates          []predicate.Group
+}
+
+var _ ent.Mutation = (*GroupMutation)(nil)
+
+// groupOption allows management of the mutation configuration using functional options.
+type groupOption func(*GroupMutation)
+
+// newGroupMutation creates new mutation for the Group entity.
+func newGroupMutation(c config, op Op, opts ...groupOption) *GroupMutation {
+	m := &GroupMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeGroup,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withGroupID sets the ID field of the mutation.
+func withGroupID(id uuid.UUID) groupOption {
+	return func(m *GroupMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *Group
+		)
+		m.oldValue = func(ctx context.Context) (*Group, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().Group.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withGroup sets the old Group of the mutation.
+func withGroup(node *Group) groupOption {
+	return func(m *GroupMutation) {
+		m.oldValue = func(context.Context) (*Group, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m GroupMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m GroupMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of Group entities.
+func (m *GroupMutation) SetID(id uuid.UUID) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *GroupMutation) ID() (id uuid.UUID, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *GroupMutation) IDs(ctx context.Context) ([]uuid.UUID, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []uuid.UUID{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().Group.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetOrganizationID sets the "organization_id" field.
+func (m *GroupMutation) SetOrganizationID(u uuid.UUID) {
+	m.organization = &u
+}
+
+// OrganizationID returns the value of the "organization_id" field in the mutation.
+func (m *GroupMutation) OrganizationID() (r uuid.UUID, exists bool) {
+	v := m.organization
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldOrganizationID returns the old "organization_id" field's value of the Group entity.
+// If the Group object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *GroupMutation) OldOrganizationID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldOrganizationID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldOrganizationID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldOrganizationID: %w", err)
+	}
+	return oldValue.OrganizationID, nil
+}
+
+// ResetOrganizationID resets all changes to the "organization_id" field.
+func (m *GroupMutation) ResetOrganizationID() {
+	m.organization = nil
+}
+
+// SetCourseID sets the "course_id" field.
+func (m *GroupMutation) SetCourseID(u uuid.UUID) {
+	m.course = &u
+}
+
+// CourseID returns the value of the "course_id" field in the mutation.
+func (m *GroupMutation) CourseID() (r uuid.UUID, exists bool) {
+	v := m.course
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCourseID returns the old "course_id" field's value of the Group entity.
+// If the Group object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *GroupMutation) OldCourseID(ctx context.Context) (v *uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCourseID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCourseID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCourseID: %w", err)
+	}
+	return oldValue.CourseID, nil
+}
+
+// ClearCourseID clears the value of the "course_id" field.
+func (m *GroupMutation) ClearCourseID() {
+	m.course = nil
+	m.clearedFields[group.FieldCourseID] = struct{}{}
+}
+
+// CourseIDCleared returns if the "course_id" field was cleared in this mutation.
+func (m *GroupMutation) CourseIDCleared() bool {
+	_, ok := m.clearedFields[group.FieldCourseID]
+	return ok
+}
+
+// ResetCourseID resets all changes to the "course_id" field.
+func (m *GroupMutation) ResetCourseID() {
+	m.course = nil
+	delete(m.clearedFields, group.FieldCourseID)
+}
+
+// SetName sets the "name" field.
+func (m *GroupMutation) SetName(s string) {
+	m.name = &s
+}
+
+// Name returns the value of the "name" field in the mutation.
+func (m *GroupMutation) Name() (r string, exists bool) {
+	v := m.name
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldName returns the old "name" field's value of the Group entity.
+// If the Group object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *GroupMutation) OldName(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldName is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldName requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldName: %w", err)
+	}
+	return oldValue.Name, nil
+}
+
+// ResetName resets all changes to the "name" field.
+func (m *GroupMutation) ResetName() {
+	m.name = nil
+}
+
+// SetDescription sets the "description" field.
+func (m *GroupMutation) SetDescription(s string) {
+	m.description = &s
+}
+
+// Description returns the value of the "description" field in the mutation.
+func (m *GroupMutation) Description() (r string, exists bool) {
+	v := m.description
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDescription returns the old "description" field's value of the Group entity.
+// If the Group object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *GroupMutation) OldDescription(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDescription is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDescription requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDescription: %w", err)
+	}
+	return oldValue.Description, nil
+}
+
+// ClearDescription clears the value of the "description" field.
+func (m *GroupMutation) ClearDescription() {
+	m.description = nil
+	m.clearedFields[group.FieldDescription] = struct{}{}
+}
+
+// DescriptionCleared returns if the "description" field was cleared in this mutation.
+func (m *GroupMutation) DescriptionCleared() bool {
+	_, ok := m.clearedFields[group.FieldDescription]
+	return ok
+}
+
+// ResetDescription resets all changes to the "description" field.
+func (m *GroupMutation) ResetDescription() {
+	m.description = nil
+	delete(m.clearedFields, group.FieldDescription)
+}
+
+// SetCapacity sets the "capacity" field.
+func (m *GroupMutation) SetCapacity(i int) {
+	m.capacity = &i
+	m.addcapacity = nil
+}
+
+// Capacity returns the value of the "capacity" field in the mutation.
+func (m *GroupMutation) Capacity() (r int, exists bool) {
+	v := m.capacity
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCapacity returns the old "capacity" field's value of the Group entity.
+// If the Group object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *GroupMutation) OldCapacity(ctx context.Context) (v *int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCapacity is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCapacity requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCapacity: %w", err)
+	}
+	return oldValue.Capacity, nil
+}
+
+// AddCapacity adds i to the "capacity" field.
+func (m *GroupMutation) AddCapacity(i int) {
+	if m.addcapacity != nil {
+		*m.addcapacity += i
+	} else {
+		m.addcapacity = &i
+	}
+}
+
+// AddedCapacity returns the value that was added to the "capacity" field in this mutation.
+func (m *GroupMutation) AddedCapacity() (r int, exists bool) {
+	v := m.addcapacity
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearCapacity clears the value of the "capacity" field.
+func (m *GroupMutation) ClearCapacity() {
+	m.capacity = nil
+	m.addcapacity = nil
+	m.clearedFields[group.FieldCapacity] = struct{}{}
+}
+
+// CapacityCleared returns if the "capacity" field was cleared in this mutation.
+func (m *GroupMutation) CapacityCleared() bool {
+	_, ok := m.clearedFields[group.FieldCapacity]
+	return ok
+}
+
+// ResetCapacity resets all changes to the "capacity" field.
+func (m *GroupMutation) ResetCapacity() {
+	m.capacity = nil
+	m.addcapacity = nil
+	delete(m.clearedFields, group.FieldCapacity)
+}
+
+// SetMetadata sets the "metadata" field.
+func (m *GroupMutation) SetMetadata(value map[string]interface{}) {
+	m.metadata = &value
+}
+
+// Metadata returns the value of the "metadata" field in the mutation.
+func (m *GroupMutation) Metadata() (r map[string]interface{}, exists bool) {
+	v := m.metadata
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldMetadata returns the old "metadata" field's value of the Group entity.
+// If the Group object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *GroupMutation) OldMetadata(ctx context.Context) (v map[string]interface{}, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldMetadata is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldMetadata requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldMetadata: %w", err)
+	}
+	return oldValue.Metadata, nil
+}
+
+// ClearMetadata clears the value of the "metadata" field.
+func (m *GroupMutation) ClearMetadata() {
+	m.metadata = nil
+	m.clearedFields[group.FieldMetadata] = struct{}{}
+}
+
+// MetadataCleared returns if the "metadata" field was cleared in this mutation.
+func (m *GroupMutation) MetadataCleared() bool {
+	_, ok := m.clearedFields[group.FieldMetadata]
+	return ok
+}
+
+// ResetMetadata resets all changes to the "metadata" field.
+func (m *GroupMutation) ResetMetadata() {
+	m.metadata = nil
+	delete(m.clearedFields, group.FieldMetadata)
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *GroupMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *GroupMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the Group entity.
+// If the Group object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *GroupMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *GroupMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *GroupMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *GroupMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the Group entity.
+// If the Group object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *GroupMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *GroupMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
+// ClearOrganization clears the "organization" edge to the Organization entity.
+func (m *GroupMutation) ClearOrganization() {
+	m.clearedorganization = true
+	m.clearedFields[group.FieldOrganizationID] = struct{}{}
+}
+
+// OrganizationCleared reports if the "organization" edge to the Organization entity was cleared.
+func (m *GroupMutation) OrganizationCleared() bool {
+	return m.clearedorganization
+}
+
+// OrganizationIDs returns the "organization" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// OrganizationID instead. It exists only for internal usage by the builders.
+func (m *GroupMutation) OrganizationIDs() (ids []uuid.UUID) {
+	if id := m.organization; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetOrganization resets all changes to the "organization" edge.
+func (m *GroupMutation) ResetOrganization() {
+	m.organization = nil
+	m.clearedorganization = false
+}
+
+// ClearCourse clears the "course" edge to the Course entity.
+func (m *GroupMutation) ClearCourse() {
+	m.clearedcourse = true
+	m.clearedFields[group.FieldCourseID] = struct{}{}
+}
+
+// CourseCleared reports if the "course" edge to the Course entity was cleared.
+func (m *GroupMutation) CourseCleared() bool {
+	return m.CourseIDCleared() || m.clearedcourse
+}
+
+// CourseIDs returns the "course" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// CourseID instead. It exists only for internal usage by the builders.
+func (m *GroupMutation) CourseIDs() (ids []uuid.UUID) {
+	if id := m.course; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetCourse resets all changes to the "course" edge.
+func (m *GroupMutation) ResetCourse() {
+	m.course = nil
+	m.clearedcourse = false
+}
+
+// AddEnrollmentIDs adds the "enrollments" edge to the Enrollment entity by ids.
+func (m *GroupMutation) AddEnrollmentIDs(ids ...uuid.UUID) {
+	if m.enrollments == nil {
+		m.enrollments = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.enrollments[ids[i]] = struct{}{}
+	}
+}
+
+// ClearEnrollments clears the "enrollments" edge to the Enrollment entity.
+func (m *GroupMutation) ClearEnrollments() {
+	m.clearedenrollments = true
+}
+
+// EnrollmentsCleared reports if the "enrollments" edge to the Enrollment entity was cleared.
+func (m *GroupMutation) EnrollmentsCleared() bool {
+	return m.clearedenrollments
+}
+
+// RemoveEnrollmentIDs removes the "enrollments" edge to the Enrollment entity by IDs.
+func (m *GroupMutation) RemoveEnrollmentIDs(ids ...uuid.UUID) {
+	if m.removedenrollments == nil {
+		m.removedenrollments = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.enrollments, ids[i])
+		m.removedenrollments[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedEnrollments returns the removed IDs of the "enrollments" edge to the Enrollment entity.
+func (m *GroupMutation) RemovedEnrollmentsIDs() (ids []uuid.UUID) {
+	for id := range m.removedenrollments {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// EnrollmentsIDs returns the "enrollments" edge IDs in the mutation.
+func (m *GroupMutation) EnrollmentsIDs() (ids []uuid.UUID) {
+	for id := range m.enrollments {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetEnrollments resets all changes to the "enrollments" edge.
+func (m *GroupMutation) ResetEnrollments() {
+	m.enrollments = nil
+	m.clearedenrollments = false
+	m.removedenrollments = nil
+}
+
+// Where appends a list predicates to the GroupMutation builder.
+func (m *GroupMutation) Where(ps ...predicate.Group) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the GroupMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *GroupMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.Group, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *GroupMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *GroupMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (Group).
+func (m *GroupMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *GroupMutation) Fields() []string {
+	fields := make([]string, 0, 8)
+	if m.organization != nil {
+		fields = append(fields, group.FieldOrganizationID)
+	}
+	if m.course != nil {
+		fields = append(fields, group.FieldCourseID)
+	}
+	if m.name != nil {
+		fields = append(fields, group.FieldName)
+	}
+	if m.description != nil {
+		fields = append(fields, group.FieldDescription)
+	}
+	if m.capacity != nil {
+		fields = append(fields, group.FieldCapacity)
+	}
+	if m.metadata != nil {
+		fields = append(fields, group.FieldMetadata)
+	}
+	if m.created_at != nil {
+		fields = append(fields, group.FieldCreatedAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, group.FieldUpdatedAt)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *GroupMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case group.FieldOrganizationID:
+		return m.OrganizationID()
+	case group.FieldCourseID:
+		return m.CourseID()
+	case group.FieldName:
+		return m.Name()
+	case group.FieldDescription:
+		return m.Description()
+	case group.FieldCapacity:
+		return m.Capacity()
+	case group.FieldMetadata:
+		return m.Metadata()
+	case group.FieldCreatedAt:
+		return m.CreatedAt()
+	case group.FieldUpdatedAt:
+		return m.UpdatedAt()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *GroupMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case group.FieldOrganizationID:
+		return m.OldOrganizationID(ctx)
+	case group.FieldCourseID:
+		return m.OldCourseID(ctx)
+	case group.FieldName:
+		return m.OldName(ctx)
+	case group.FieldDescription:
+		return m.OldDescription(ctx)
+	case group.FieldCapacity:
+		return m.OldCapacity(ctx)
+	case group.FieldMetadata:
+		return m.OldMetadata(ctx)
+	case group.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case group.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
+	}
+	return nil, fmt.Errorf("unknown Group field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *GroupMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case group.FieldOrganizationID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetOrganizationID(v)
+		return nil
+	case group.FieldCourseID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCourseID(v)
+		return nil
+	case group.FieldName:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetName(v)
+		return nil
+	case group.FieldDescription:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDescription(v)
+		return nil
+	case group.FieldCapacity:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCapacity(v)
+		return nil
+	case group.FieldMetadata:
+		v, ok := value.(map[string]interface{})
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetMetadata(v)
+		return nil
+	case group.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case group.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown Group field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *GroupMutation) AddedFields() []string {
+	var fields []string
+	if m.addcapacity != nil {
+		fields = append(fields, group.FieldCapacity)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *GroupMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case group.FieldCapacity:
+		return m.AddedCapacity()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *GroupMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case group.FieldCapacity:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddCapacity(v)
+		return nil
+	}
+	return fmt.Errorf("unknown Group numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *GroupMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(group.FieldCourseID) {
+		fields = append(fields, group.FieldCourseID)
+	}
+	if m.FieldCleared(group.FieldDescription) {
+		fields = append(fields, group.FieldDescription)
+	}
+	if m.FieldCleared(group.FieldCapacity) {
+		fields = append(fields, group.FieldCapacity)
+	}
+	if m.FieldCleared(group.FieldMetadata) {
+		fields = append(fields, group.FieldMetadata)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *GroupMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *GroupMutation) ClearField(name string) error {
+	switch name {
+	case group.FieldCourseID:
+		m.ClearCourseID()
+		return nil
+	case group.FieldDescription:
+		m.ClearDescription()
+		return nil
+	case group.FieldCapacity:
+		m.ClearCapacity()
+		return nil
+	case group.FieldMetadata:
+		m.ClearMetadata()
+		return nil
+	}
+	return fmt.Errorf("unknown Group nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *GroupMutation) ResetField(name string) error {
+	switch name {
+	case group.FieldOrganizationID:
+		m.ResetOrganizationID()
+		return nil
+	case group.FieldCourseID:
+		m.ResetCourseID()
+		return nil
+	case group.FieldName:
+		m.ResetName()
+		return nil
+	case group.FieldDescription:
+		m.ResetDescription()
+		return nil
+	case group.FieldCapacity:
+		m.ResetCapacity()
+		return nil
+	case group.FieldMetadata:
+		m.ResetMetadata()
+		return nil
+	case group.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case group.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown Group field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *GroupMutation) AddedEdges() []string {
+	edges := make([]string, 0, 3)
+	if m.organization != nil {
+		edges = append(edges, group.EdgeOrganization)
+	}
+	if m.course != nil {
+		edges = append(edges, group.EdgeCourse)
+	}
+	if m.enrollments != nil {
+		edges = append(edges, group.EdgeEnrollments)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *GroupMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case group.EdgeOrganization:
+		if id := m.organization; id != nil {
+			return []ent.Value{*id}
+		}
+	case group.EdgeCourse:
+		if id := m.course; id != nil {
+			return []ent.Value{*id}
+		}
+	case group.EdgeEnrollments:
+		ids := make([]ent.Value, 0, len(m.enrollments))
+		for id := range m.enrollments {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *GroupMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 3)
+	if m.removedenrollments != nil {
+		edges = append(edges, group.EdgeEnrollments)
+	}
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *GroupMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	case group.EdgeEnrollments:
+		ids := make([]ent.Value, 0, len(m.removedenrollments))
+		for id := range m.removedenrollments {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *GroupMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 3)
+	if m.clearedorganization {
+		edges = append(edges, group.EdgeOrganization)
+	}
+	if m.clearedcourse {
+		edges = append(edges, group.EdgeCourse)
+	}
+	if m.clearedenrollments {
+		edges = append(edges, group.EdgeEnrollments)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *GroupMutation) EdgeCleared(name string) bool {
+	switch name {
+	case group.EdgeOrganization:
+		return m.clearedorganization
+	case group.EdgeCourse:
+		return m.clearedcourse
+	case group.EdgeEnrollments:
+		return m.clearedenrollments
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *GroupMutation) ClearEdge(name string) error {
+	switch name {
+	case group.EdgeOrganization:
+		m.ClearOrganization()
+		return nil
+	case group.EdgeCourse:
+		m.ClearCourse()
+		return nil
+	}
+	return fmt.Errorf("unknown Group unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *GroupMutation) ResetEdge(name string) error {
+	switch name {
+	case group.EdgeOrganization:
+		m.ResetOrganization()
+		return nil
+	case group.EdgeCourse:
+		m.ResetCourse()
+		return nil
+	case group.EdgeEnrollments:
+		m.ResetEnrollments()
+		return nil
+	}
+	return fmt.Errorf("unknown Group edge %s", name)
 }
 
 // ModuleMutation represents an operation that mutates the Module nodes in the graph.
 type ModuleMutation struct {
 	config
-	op                  Op
-	typ                 string
-	id                  *uuid.UUID
-	content_id          *uuid.UUID
-	title               *string
-	module_type         *string
-	position            *int
-	addposition         *int
-	duration_seconds    *int
-	addduration_seconds *int
-	status              *string
-	data                *map[string]interface{}
-	created_at          *time.Time
-	updated_at          *time.Time
-	clearedFields       map[string]struct{}
-	course              *uuid.UUID
-	clearedcourse       bool
-	done                bool
-	oldValue            func(context.Context) (*Module, error)
-	predicates          []predicate.Module
+	op                      Op
+	typ                     string
+	id                      *uuid.UUID
+	content_id              *uuid.UUID
+	title                   *string
+	module_type             *string
+	position                *int
+	addposition             *int
+	duration_seconds        *int
+	addduration_seconds     *int
+	status                  *string
+	data                    *map[string]interface{}
+	created_at              *time.Time
+	updated_at              *time.Time
+	clearedFields           map[string]struct{}
+	course                  *uuid.UUID
+	clearedcourse           bool
+	progress_entries        map[uuid.UUID]struct{}
+	removedprogress_entries map[uuid.UUID]struct{}
+	clearedprogress_entries bool
+	done                    bool
+	oldValue                func(context.Context) (*Module, error)
+	predicates              []predicate.Module
 }
 
 var _ ent.Mutation = (*ModuleMutation)(nil)
@@ -2581,6 +5031,60 @@ func (m *ModuleMutation) ResetCourse() {
 	m.clearedcourse = false
 }
 
+// AddProgressEntryIDs adds the "progress_entries" edge to the ModuleProgress entity by ids.
+func (m *ModuleMutation) AddProgressEntryIDs(ids ...uuid.UUID) {
+	if m.progress_entries == nil {
+		m.progress_entries = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.progress_entries[ids[i]] = struct{}{}
+	}
+}
+
+// ClearProgressEntries clears the "progress_entries" edge to the ModuleProgress entity.
+func (m *ModuleMutation) ClearProgressEntries() {
+	m.clearedprogress_entries = true
+}
+
+// ProgressEntriesCleared reports if the "progress_entries" edge to the ModuleProgress entity was cleared.
+func (m *ModuleMutation) ProgressEntriesCleared() bool {
+	return m.clearedprogress_entries
+}
+
+// RemoveProgressEntryIDs removes the "progress_entries" edge to the ModuleProgress entity by IDs.
+func (m *ModuleMutation) RemoveProgressEntryIDs(ids ...uuid.UUID) {
+	if m.removedprogress_entries == nil {
+		m.removedprogress_entries = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.progress_entries, ids[i])
+		m.removedprogress_entries[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedProgressEntries returns the removed IDs of the "progress_entries" edge to the ModuleProgress entity.
+func (m *ModuleMutation) RemovedProgressEntriesIDs() (ids []uuid.UUID) {
+	for id := range m.removedprogress_entries {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ProgressEntriesIDs returns the "progress_entries" edge IDs in the mutation.
+func (m *ModuleMutation) ProgressEntriesIDs() (ids []uuid.UUID) {
+	for id := range m.progress_entries {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetProgressEntries resets all changes to the "progress_entries" edge.
+func (m *ModuleMutation) ResetProgressEntries() {
+	m.progress_entries = nil
+	m.clearedprogress_entries = false
+	m.removedprogress_entries = nil
+}
+
 // Where appends a list predicates to the ModuleMutation builder.
 func (m *ModuleMutation) Where(ps ...predicate.Module) {
 	m.predicates = append(m.predicates, ps...)
@@ -2915,9 +5419,12 @@ func (m *ModuleMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *ModuleMutation) AddedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	if m.course != nil {
 		edges = append(edges, module.EdgeCourse)
+	}
+	if m.progress_entries != nil {
+		edges = append(edges, module.EdgeProgressEntries)
 	}
 	return edges
 }
@@ -2930,27 +5437,47 @@ func (m *ModuleMutation) AddedIDs(name string) []ent.Value {
 		if id := m.course; id != nil {
 			return []ent.Value{*id}
 		}
+	case module.EdgeProgressEntries:
+		ids := make([]ent.Value, 0, len(m.progress_entries))
+		for id := range m.progress_entries {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *ModuleMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
+	if m.removedprogress_entries != nil {
+		edges = append(edges, module.EdgeProgressEntries)
+	}
 	return edges
 }
 
 // RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
 // the given name in this mutation.
 func (m *ModuleMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	case module.EdgeProgressEntries:
+		ids := make([]ent.Value, 0, len(m.removedprogress_entries))
+		for id := range m.removedprogress_entries {
+			ids = append(ids, id)
+		}
+		return ids
+	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *ModuleMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	if m.clearedcourse {
 		edges = append(edges, module.EdgeCourse)
+	}
+	if m.clearedprogress_entries {
+		edges = append(edges, module.EdgeProgressEntries)
 	}
 	return edges
 }
@@ -2961,6 +5488,8 @@ func (m *ModuleMutation) EdgeCleared(name string) bool {
 	switch name {
 	case module.EdgeCourse:
 		return m.clearedcourse
+	case module.EdgeProgressEntries:
+		return m.clearedprogress_entries
 	}
 	return false
 }
@@ -2983,35 +5512,1038 @@ func (m *ModuleMutation) ResetEdge(name string) error {
 	case module.EdgeCourse:
 		m.ResetCourse()
 		return nil
+	case module.EdgeProgressEntries:
+		m.ResetProgressEntries()
+		return nil
 	}
 	return fmt.Errorf("unknown Module edge %s", name)
+}
+
+// ModuleProgressMutation represents an operation that mutates the ModuleProgress nodes in the graph.
+type ModuleProgressMutation struct {
+	config
+	op                Op
+	typ               string
+	id                *uuid.UUID
+	status            *string
+	score             *float32
+	addscore          *float32
+	attempts          *int
+	addattempts       *int
+	started_at        *time.Time
+	completed_at      *time.Time
+	created_at        *time.Time
+	updated_at        *time.Time
+	clearedFields     map[string]struct{}
+	enrollment        *uuid.UUID
+	clearedenrollment bool
+	module            *uuid.UUID
+	clearedmodule     bool
+	done              bool
+	oldValue          func(context.Context) (*ModuleProgress, error)
+	predicates        []predicate.ModuleProgress
+}
+
+var _ ent.Mutation = (*ModuleProgressMutation)(nil)
+
+// moduleprogressOption allows management of the mutation configuration using functional options.
+type moduleprogressOption func(*ModuleProgressMutation)
+
+// newModuleProgressMutation creates new mutation for the ModuleProgress entity.
+func newModuleProgressMutation(c config, op Op, opts ...moduleprogressOption) *ModuleProgressMutation {
+	m := &ModuleProgressMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeModuleProgress,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withModuleProgressID sets the ID field of the mutation.
+func withModuleProgressID(id uuid.UUID) moduleprogressOption {
+	return func(m *ModuleProgressMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *ModuleProgress
+		)
+		m.oldValue = func(ctx context.Context) (*ModuleProgress, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().ModuleProgress.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withModuleProgress sets the old ModuleProgress of the mutation.
+func withModuleProgress(node *ModuleProgress) moduleprogressOption {
+	return func(m *ModuleProgressMutation) {
+		m.oldValue = func(context.Context) (*ModuleProgress, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m ModuleProgressMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m ModuleProgressMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of ModuleProgress entities.
+func (m *ModuleProgressMutation) SetID(id uuid.UUID) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *ModuleProgressMutation) ID() (id uuid.UUID, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *ModuleProgressMutation) IDs(ctx context.Context) ([]uuid.UUID, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []uuid.UUID{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().ModuleProgress.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetEnrollmentID sets the "enrollment_id" field.
+func (m *ModuleProgressMutation) SetEnrollmentID(u uuid.UUID) {
+	m.enrollment = &u
+}
+
+// EnrollmentID returns the value of the "enrollment_id" field in the mutation.
+func (m *ModuleProgressMutation) EnrollmentID() (r uuid.UUID, exists bool) {
+	v := m.enrollment
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldEnrollmentID returns the old "enrollment_id" field's value of the ModuleProgress entity.
+// If the ModuleProgress object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ModuleProgressMutation) OldEnrollmentID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldEnrollmentID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldEnrollmentID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldEnrollmentID: %w", err)
+	}
+	return oldValue.EnrollmentID, nil
+}
+
+// ResetEnrollmentID resets all changes to the "enrollment_id" field.
+func (m *ModuleProgressMutation) ResetEnrollmentID() {
+	m.enrollment = nil
+}
+
+// SetModuleID sets the "module_id" field.
+func (m *ModuleProgressMutation) SetModuleID(u uuid.UUID) {
+	m.module = &u
+}
+
+// ModuleID returns the value of the "module_id" field in the mutation.
+func (m *ModuleProgressMutation) ModuleID() (r uuid.UUID, exists bool) {
+	v := m.module
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldModuleID returns the old "module_id" field's value of the ModuleProgress entity.
+// If the ModuleProgress object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ModuleProgressMutation) OldModuleID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldModuleID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldModuleID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldModuleID: %w", err)
+	}
+	return oldValue.ModuleID, nil
+}
+
+// ResetModuleID resets all changes to the "module_id" field.
+func (m *ModuleProgressMutation) ResetModuleID() {
+	m.module = nil
+}
+
+// SetStatus sets the "status" field.
+func (m *ModuleProgressMutation) SetStatus(s string) {
+	m.status = &s
+}
+
+// Status returns the value of the "status" field in the mutation.
+func (m *ModuleProgressMutation) Status() (r string, exists bool) {
+	v := m.status
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldStatus returns the old "status" field's value of the ModuleProgress entity.
+// If the ModuleProgress object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ModuleProgressMutation) OldStatus(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldStatus is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldStatus requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldStatus: %w", err)
+	}
+	return oldValue.Status, nil
+}
+
+// ResetStatus resets all changes to the "status" field.
+func (m *ModuleProgressMutation) ResetStatus() {
+	m.status = nil
+}
+
+// SetScore sets the "score" field.
+func (m *ModuleProgressMutation) SetScore(f float32) {
+	m.score = &f
+	m.addscore = nil
+}
+
+// Score returns the value of the "score" field in the mutation.
+func (m *ModuleProgressMutation) Score() (r float32, exists bool) {
+	v := m.score
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldScore returns the old "score" field's value of the ModuleProgress entity.
+// If the ModuleProgress object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ModuleProgressMutation) OldScore(ctx context.Context) (v float32, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldScore is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldScore requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldScore: %w", err)
+	}
+	return oldValue.Score, nil
+}
+
+// AddScore adds f to the "score" field.
+func (m *ModuleProgressMutation) AddScore(f float32) {
+	if m.addscore != nil {
+		*m.addscore += f
+	} else {
+		m.addscore = &f
+	}
+}
+
+// AddedScore returns the value that was added to the "score" field in this mutation.
+func (m *ModuleProgressMutation) AddedScore() (r float32, exists bool) {
+	v := m.addscore
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearScore clears the value of the "score" field.
+func (m *ModuleProgressMutation) ClearScore() {
+	m.score = nil
+	m.addscore = nil
+	m.clearedFields[moduleprogress.FieldScore] = struct{}{}
+}
+
+// ScoreCleared returns if the "score" field was cleared in this mutation.
+func (m *ModuleProgressMutation) ScoreCleared() bool {
+	_, ok := m.clearedFields[moduleprogress.FieldScore]
+	return ok
+}
+
+// ResetScore resets all changes to the "score" field.
+func (m *ModuleProgressMutation) ResetScore() {
+	m.score = nil
+	m.addscore = nil
+	delete(m.clearedFields, moduleprogress.FieldScore)
+}
+
+// SetAttempts sets the "attempts" field.
+func (m *ModuleProgressMutation) SetAttempts(i int) {
+	m.attempts = &i
+	m.addattempts = nil
+}
+
+// Attempts returns the value of the "attempts" field in the mutation.
+func (m *ModuleProgressMutation) Attempts() (r int, exists bool) {
+	v := m.attempts
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAttempts returns the old "attempts" field's value of the ModuleProgress entity.
+// If the ModuleProgress object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ModuleProgressMutation) OldAttempts(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAttempts is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAttempts requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAttempts: %w", err)
+	}
+	return oldValue.Attempts, nil
+}
+
+// AddAttempts adds i to the "attempts" field.
+func (m *ModuleProgressMutation) AddAttempts(i int) {
+	if m.addattempts != nil {
+		*m.addattempts += i
+	} else {
+		m.addattempts = &i
+	}
+}
+
+// AddedAttempts returns the value that was added to the "attempts" field in this mutation.
+func (m *ModuleProgressMutation) AddedAttempts() (r int, exists bool) {
+	v := m.addattempts
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetAttempts resets all changes to the "attempts" field.
+func (m *ModuleProgressMutation) ResetAttempts() {
+	m.attempts = nil
+	m.addattempts = nil
+}
+
+// SetStartedAt sets the "started_at" field.
+func (m *ModuleProgressMutation) SetStartedAt(t time.Time) {
+	m.started_at = &t
+}
+
+// StartedAt returns the value of the "started_at" field in the mutation.
+func (m *ModuleProgressMutation) StartedAt() (r time.Time, exists bool) {
+	v := m.started_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldStartedAt returns the old "started_at" field's value of the ModuleProgress entity.
+// If the ModuleProgress object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ModuleProgressMutation) OldStartedAt(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldStartedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldStartedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldStartedAt: %w", err)
+	}
+	return oldValue.StartedAt, nil
+}
+
+// ClearStartedAt clears the value of the "started_at" field.
+func (m *ModuleProgressMutation) ClearStartedAt() {
+	m.started_at = nil
+	m.clearedFields[moduleprogress.FieldStartedAt] = struct{}{}
+}
+
+// StartedAtCleared returns if the "started_at" field was cleared in this mutation.
+func (m *ModuleProgressMutation) StartedAtCleared() bool {
+	_, ok := m.clearedFields[moduleprogress.FieldStartedAt]
+	return ok
+}
+
+// ResetStartedAt resets all changes to the "started_at" field.
+func (m *ModuleProgressMutation) ResetStartedAt() {
+	m.started_at = nil
+	delete(m.clearedFields, moduleprogress.FieldStartedAt)
+}
+
+// SetCompletedAt sets the "completed_at" field.
+func (m *ModuleProgressMutation) SetCompletedAt(t time.Time) {
+	m.completed_at = &t
+}
+
+// CompletedAt returns the value of the "completed_at" field in the mutation.
+func (m *ModuleProgressMutation) CompletedAt() (r time.Time, exists bool) {
+	v := m.completed_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCompletedAt returns the old "completed_at" field's value of the ModuleProgress entity.
+// If the ModuleProgress object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ModuleProgressMutation) OldCompletedAt(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCompletedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCompletedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCompletedAt: %w", err)
+	}
+	return oldValue.CompletedAt, nil
+}
+
+// ClearCompletedAt clears the value of the "completed_at" field.
+func (m *ModuleProgressMutation) ClearCompletedAt() {
+	m.completed_at = nil
+	m.clearedFields[moduleprogress.FieldCompletedAt] = struct{}{}
+}
+
+// CompletedAtCleared returns if the "completed_at" field was cleared in this mutation.
+func (m *ModuleProgressMutation) CompletedAtCleared() bool {
+	_, ok := m.clearedFields[moduleprogress.FieldCompletedAt]
+	return ok
+}
+
+// ResetCompletedAt resets all changes to the "completed_at" field.
+func (m *ModuleProgressMutation) ResetCompletedAt() {
+	m.completed_at = nil
+	delete(m.clearedFields, moduleprogress.FieldCompletedAt)
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *ModuleProgressMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *ModuleProgressMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the ModuleProgress entity.
+// If the ModuleProgress object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ModuleProgressMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *ModuleProgressMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *ModuleProgressMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *ModuleProgressMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the ModuleProgress entity.
+// If the ModuleProgress object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ModuleProgressMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *ModuleProgressMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
+// ClearEnrollment clears the "enrollment" edge to the Enrollment entity.
+func (m *ModuleProgressMutation) ClearEnrollment() {
+	m.clearedenrollment = true
+	m.clearedFields[moduleprogress.FieldEnrollmentID] = struct{}{}
+}
+
+// EnrollmentCleared reports if the "enrollment" edge to the Enrollment entity was cleared.
+func (m *ModuleProgressMutation) EnrollmentCleared() bool {
+	return m.clearedenrollment
+}
+
+// EnrollmentIDs returns the "enrollment" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// EnrollmentID instead. It exists only for internal usage by the builders.
+func (m *ModuleProgressMutation) EnrollmentIDs() (ids []uuid.UUID) {
+	if id := m.enrollment; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetEnrollment resets all changes to the "enrollment" edge.
+func (m *ModuleProgressMutation) ResetEnrollment() {
+	m.enrollment = nil
+	m.clearedenrollment = false
+}
+
+// ClearModule clears the "module" edge to the Module entity.
+func (m *ModuleProgressMutation) ClearModule() {
+	m.clearedmodule = true
+	m.clearedFields[moduleprogress.FieldModuleID] = struct{}{}
+}
+
+// ModuleCleared reports if the "module" edge to the Module entity was cleared.
+func (m *ModuleProgressMutation) ModuleCleared() bool {
+	return m.clearedmodule
+}
+
+// ModuleIDs returns the "module" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// ModuleID instead. It exists only for internal usage by the builders.
+func (m *ModuleProgressMutation) ModuleIDs() (ids []uuid.UUID) {
+	if id := m.module; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetModule resets all changes to the "module" edge.
+func (m *ModuleProgressMutation) ResetModule() {
+	m.module = nil
+	m.clearedmodule = false
+}
+
+// Where appends a list predicates to the ModuleProgressMutation builder.
+func (m *ModuleProgressMutation) Where(ps ...predicate.ModuleProgress) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the ModuleProgressMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *ModuleProgressMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.ModuleProgress, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *ModuleProgressMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *ModuleProgressMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (ModuleProgress).
+func (m *ModuleProgressMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *ModuleProgressMutation) Fields() []string {
+	fields := make([]string, 0, 9)
+	if m.enrollment != nil {
+		fields = append(fields, moduleprogress.FieldEnrollmentID)
+	}
+	if m.module != nil {
+		fields = append(fields, moduleprogress.FieldModuleID)
+	}
+	if m.status != nil {
+		fields = append(fields, moduleprogress.FieldStatus)
+	}
+	if m.score != nil {
+		fields = append(fields, moduleprogress.FieldScore)
+	}
+	if m.attempts != nil {
+		fields = append(fields, moduleprogress.FieldAttempts)
+	}
+	if m.started_at != nil {
+		fields = append(fields, moduleprogress.FieldStartedAt)
+	}
+	if m.completed_at != nil {
+		fields = append(fields, moduleprogress.FieldCompletedAt)
+	}
+	if m.created_at != nil {
+		fields = append(fields, moduleprogress.FieldCreatedAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, moduleprogress.FieldUpdatedAt)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *ModuleProgressMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case moduleprogress.FieldEnrollmentID:
+		return m.EnrollmentID()
+	case moduleprogress.FieldModuleID:
+		return m.ModuleID()
+	case moduleprogress.FieldStatus:
+		return m.Status()
+	case moduleprogress.FieldScore:
+		return m.Score()
+	case moduleprogress.FieldAttempts:
+		return m.Attempts()
+	case moduleprogress.FieldStartedAt:
+		return m.StartedAt()
+	case moduleprogress.FieldCompletedAt:
+		return m.CompletedAt()
+	case moduleprogress.FieldCreatedAt:
+		return m.CreatedAt()
+	case moduleprogress.FieldUpdatedAt:
+		return m.UpdatedAt()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *ModuleProgressMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case moduleprogress.FieldEnrollmentID:
+		return m.OldEnrollmentID(ctx)
+	case moduleprogress.FieldModuleID:
+		return m.OldModuleID(ctx)
+	case moduleprogress.FieldStatus:
+		return m.OldStatus(ctx)
+	case moduleprogress.FieldScore:
+		return m.OldScore(ctx)
+	case moduleprogress.FieldAttempts:
+		return m.OldAttempts(ctx)
+	case moduleprogress.FieldStartedAt:
+		return m.OldStartedAt(ctx)
+	case moduleprogress.FieldCompletedAt:
+		return m.OldCompletedAt(ctx)
+	case moduleprogress.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case moduleprogress.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
+	}
+	return nil, fmt.Errorf("unknown ModuleProgress field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ModuleProgressMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case moduleprogress.FieldEnrollmentID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetEnrollmentID(v)
+		return nil
+	case moduleprogress.FieldModuleID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetModuleID(v)
+		return nil
+	case moduleprogress.FieldStatus:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetStatus(v)
+		return nil
+	case moduleprogress.FieldScore:
+		v, ok := value.(float32)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetScore(v)
+		return nil
+	case moduleprogress.FieldAttempts:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAttempts(v)
+		return nil
+	case moduleprogress.FieldStartedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetStartedAt(v)
+		return nil
+	case moduleprogress.FieldCompletedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCompletedAt(v)
+		return nil
+	case moduleprogress.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case moduleprogress.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown ModuleProgress field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *ModuleProgressMutation) AddedFields() []string {
+	var fields []string
+	if m.addscore != nil {
+		fields = append(fields, moduleprogress.FieldScore)
+	}
+	if m.addattempts != nil {
+		fields = append(fields, moduleprogress.FieldAttempts)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *ModuleProgressMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case moduleprogress.FieldScore:
+		return m.AddedScore()
+	case moduleprogress.FieldAttempts:
+		return m.AddedAttempts()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *ModuleProgressMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case moduleprogress.FieldScore:
+		v, ok := value.(float32)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddScore(v)
+		return nil
+	case moduleprogress.FieldAttempts:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddAttempts(v)
+		return nil
+	}
+	return fmt.Errorf("unknown ModuleProgress numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *ModuleProgressMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(moduleprogress.FieldScore) {
+		fields = append(fields, moduleprogress.FieldScore)
+	}
+	if m.FieldCleared(moduleprogress.FieldStartedAt) {
+		fields = append(fields, moduleprogress.FieldStartedAt)
+	}
+	if m.FieldCleared(moduleprogress.FieldCompletedAt) {
+		fields = append(fields, moduleprogress.FieldCompletedAt)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *ModuleProgressMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *ModuleProgressMutation) ClearField(name string) error {
+	switch name {
+	case moduleprogress.FieldScore:
+		m.ClearScore()
+		return nil
+	case moduleprogress.FieldStartedAt:
+		m.ClearStartedAt()
+		return nil
+	case moduleprogress.FieldCompletedAt:
+		m.ClearCompletedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown ModuleProgress nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *ModuleProgressMutation) ResetField(name string) error {
+	switch name {
+	case moduleprogress.FieldEnrollmentID:
+		m.ResetEnrollmentID()
+		return nil
+	case moduleprogress.FieldModuleID:
+		m.ResetModuleID()
+		return nil
+	case moduleprogress.FieldStatus:
+		m.ResetStatus()
+		return nil
+	case moduleprogress.FieldScore:
+		m.ResetScore()
+		return nil
+	case moduleprogress.FieldAttempts:
+		m.ResetAttempts()
+		return nil
+	case moduleprogress.FieldStartedAt:
+		m.ResetStartedAt()
+		return nil
+	case moduleprogress.FieldCompletedAt:
+		m.ResetCompletedAt()
+		return nil
+	case moduleprogress.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case moduleprogress.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown ModuleProgress field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *ModuleProgressMutation) AddedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.enrollment != nil {
+		edges = append(edges, moduleprogress.EdgeEnrollment)
+	}
+	if m.module != nil {
+		edges = append(edges, moduleprogress.EdgeModule)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *ModuleProgressMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case moduleprogress.EdgeEnrollment:
+		if id := m.enrollment; id != nil {
+			return []ent.Value{*id}
+		}
+	case moduleprogress.EdgeModule:
+		if id := m.module; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *ModuleProgressMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 2)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *ModuleProgressMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *ModuleProgressMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.clearedenrollment {
+		edges = append(edges, moduleprogress.EdgeEnrollment)
+	}
+	if m.clearedmodule {
+		edges = append(edges, moduleprogress.EdgeModule)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *ModuleProgressMutation) EdgeCleared(name string) bool {
+	switch name {
+	case moduleprogress.EdgeEnrollment:
+		return m.clearedenrollment
+	case moduleprogress.EdgeModule:
+		return m.clearedmodule
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *ModuleProgressMutation) ClearEdge(name string) error {
+	switch name {
+	case moduleprogress.EdgeEnrollment:
+		m.ClearEnrollment()
+		return nil
+	case moduleprogress.EdgeModule:
+		m.ClearModule()
+		return nil
+	}
+	return fmt.Errorf("unknown ModuleProgress unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *ModuleProgressMutation) ResetEdge(name string) error {
+	switch name {
+	case moduleprogress.EdgeEnrollment:
+		m.ResetEnrollment()
+		return nil
+	case moduleprogress.EdgeModule:
+		m.ResetModule()
+		return nil
+	}
+	return fmt.Errorf("unknown ModuleProgress edge %s", name)
 }
 
 // OrganizationMutation represents an operation that mutates the Organization nodes in the graph.
 type OrganizationMutation struct {
 	config
-	op              Op
-	typ             string
-	id              *uuid.UUID
-	name            *string
-	slug            *string
-	status          *string
-	settings        *map[string]interface{}
-	created_at      *time.Time
-	updated_at      *time.Time
-	clearedFields   map[string]struct{}
-	users           map[uuid.UUID]struct{}
-	removedusers    map[uuid.UUID]struct{}
-	clearedusers    bool
-	contents        map[uuid.UUID]struct{}
-	removedcontents map[uuid.UUID]struct{}
-	clearedcontents bool
-	courses         map[uuid.UUID]struct{}
-	removedcourses  map[uuid.UUID]struct{}
-	clearedcourses  bool
-	done            bool
-	oldValue        func(context.Context) (*Organization, error)
-	predicates      []predicate.Organization
+	op                 Op
+	typ                string
+	id                 *uuid.UUID
+	name               *string
+	slug               *string
+	status             *string
+	settings           *map[string]interface{}
+	created_at         *time.Time
+	updated_at         *time.Time
+	clearedFields      map[string]struct{}
+	users              map[uuid.UUID]struct{}
+	removedusers       map[uuid.UUID]struct{}
+	clearedusers       bool
+	contents           map[uuid.UUID]struct{}
+	removedcontents    map[uuid.UUID]struct{}
+	clearedcontents    bool
+	courses            map[uuid.UUID]struct{}
+	removedcourses     map[uuid.UUID]struct{}
+	clearedcourses     bool
+	groups             map[uuid.UUID]struct{}
+	removedgroups      map[uuid.UUID]struct{}
+	clearedgroups      bool
+	enrollments        map[uuid.UUID]struct{}
+	removedenrollments map[uuid.UUID]struct{}
+	clearedenrollments bool
+	done               bool
+	oldValue           func(context.Context) (*Organization, error)
+	predicates         []predicate.Organization
 }
 
 var _ ent.Mutation = (*OrganizationMutation)(nil)
@@ -3509,6 +7041,114 @@ func (m *OrganizationMutation) ResetCourses() {
 	m.removedcourses = nil
 }
 
+// AddGroupIDs adds the "groups" edge to the Group entity by ids.
+func (m *OrganizationMutation) AddGroupIDs(ids ...uuid.UUID) {
+	if m.groups == nil {
+		m.groups = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.groups[ids[i]] = struct{}{}
+	}
+}
+
+// ClearGroups clears the "groups" edge to the Group entity.
+func (m *OrganizationMutation) ClearGroups() {
+	m.clearedgroups = true
+}
+
+// GroupsCleared reports if the "groups" edge to the Group entity was cleared.
+func (m *OrganizationMutation) GroupsCleared() bool {
+	return m.clearedgroups
+}
+
+// RemoveGroupIDs removes the "groups" edge to the Group entity by IDs.
+func (m *OrganizationMutation) RemoveGroupIDs(ids ...uuid.UUID) {
+	if m.removedgroups == nil {
+		m.removedgroups = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.groups, ids[i])
+		m.removedgroups[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedGroups returns the removed IDs of the "groups" edge to the Group entity.
+func (m *OrganizationMutation) RemovedGroupsIDs() (ids []uuid.UUID) {
+	for id := range m.removedgroups {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// GroupsIDs returns the "groups" edge IDs in the mutation.
+func (m *OrganizationMutation) GroupsIDs() (ids []uuid.UUID) {
+	for id := range m.groups {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetGroups resets all changes to the "groups" edge.
+func (m *OrganizationMutation) ResetGroups() {
+	m.groups = nil
+	m.clearedgroups = false
+	m.removedgroups = nil
+}
+
+// AddEnrollmentIDs adds the "enrollments" edge to the Enrollment entity by ids.
+func (m *OrganizationMutation) AddEnrollmentIDs(ids ...uuid.UUID) {
+	if m.enrollments == nil {
+		m.enrollments = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.enrollments[ids[i]] = struct{}{}
+	}
+}
+
+// ClearEnrollments clears the "enrollments" edge to the Enrollment entity.
+func (m *OrganizationMutation) ClearEnrollments() {
+	m.clearedenrollments = true
+}
+
+// EnrollmentsCleared reports if the "enrollments" edge to the Enrollment entity was cleared.
+func (m *OrganizationMutation) EnrollmentsCleared() bool {
+	return m.clearedenrollments
+}
+
+// RemoveEnrollmentIDs removes the "enrollments" edge to the Enrollment entity by IDs.
+func (m *OrganizationMutation) RemoveEnrollmentIDs(ids ...uuid.UUID) {
+	if m.removedenrollments == nil {
+		m.removedenrollments = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.enrollments, ids[i])
+		m.removedenrollments[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedEnrollments returns the removed IDs of the "enrollments" edge to the Enrollment entity.
+func (m *OrganizationMutation) RemovedEnrollmentsIDs() (ids []uuid.UUID) {
+	for id := range m.removedenrollments {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// EnrollmentsIDs returns the "enrollments" edge IDs in the mutation.
+func (m *OrganizationMutation) EnrollmentsIDs() (ids []uuid.UUID) {
+	for id := range m.enrollments {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetEnrollments resets all changes to the "enrollments" edge.
+func (m *OrganizationMutation) ResetEnrollments() {
+	m.enrollments = nil
+	m.clearedenrollments = false
+	m.removedenrollments = nil
+}
+
 // Where appends a list predicates to the OrganizationMutation builder.
 func (m *OrganizationMutation) Where(ps ...predicate.Organization) {
 	m.predicates = append(m.predicates, ps...)
@@ -3736,7 +7376,7 @@ func (m *OrganizationMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *OrganizationMutation) AddedEdges() []string {
-	edges := make([]string, 0, 3)
+	edges := make([]string, 0, 5)
 	if m.users != nil {
 		edges = append(edges, organization.EdgeUsers)
 	}
@@ -3745,6 +7385,12 @@ func (m *OrganizationMutation) AddedEdges() []string {
 	}
 	if m.courses != nil {
 		edges = append(edges, organization.EdgeCourses)
+	}
+	if m.groups != nil {
+		edges = append(edges, organization.EdgeGroups)
+	}
+	if m.enrollments != nil {
+		edges = append(edges, organization.EdgeEnrollments)
 	}
 	return edges
 }
@@ -3771,13 +7417,25 @@ func (m *OrganizationMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case organization.EdgeGroups:
+		ids := make([]ent.Value, 0, len(m.groups))
+		for id := range m.groups {
+			ids = append(ids, id)
+		}
+		return ids
+	case organization.EdgeEnrollments:
+		ids := make([]ent.Value, 0, len(m.enrollments))
+		for id := range m.enrollments {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *OrganizationMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 3)
+	edges := make([]string, 0, 5)
 	if m.removedusers != nil {
 		edges = append(edges, organization.EdgeUsers)
 	}
@@ -3786,6 +7444,12 @@ func (m *OrganizationMutation) RemovedEdges() []string {
 	}
 	if m.removedcourses != nil {
 		edges = append(edges, organization.EdgeCourses)
+	}
+	if m.removedgroups != nil {
+		edges = append(edges, organization.EdgeGroups)
+	}
+	if m.removedenrollments != nil {
+		edges = append(edges, organization.EdgeEnrollments)
 	}
 	return edges
 }
@@ -3812,13 +7476,25 @@ func (m *OrganizationMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case organization.EdgeGroups:
+		ids := make([]ent.Value, 0, len(m.removedgroups))
+		for id := range m.removedgroups {
+			ids = append(ids, id)
+		}
+		return ids
+	case organization.EdgeEnrollments:
+		ids := make([]ent.Value, 0, len(m.removedenrollments))
+		for id := range m.removedenrollments {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *OrganizationMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 3)
+	edges := make([]string, 0, 5)
 	if m.clearedusers {
 		edges = append(edges, organization.EdgeUsers)
 	}
@@ -3827,6 +7503,12 @@ func (m *OrganizationMutation) ClearedEdges() []string {
 	}
 	if m.clearedcourses {
 		edges = append(edges, organization.EdgeCourses)
+	}
+	if m.clearedgroups {
+		edges = append(edges, organization.EdgeGroups)
+	}
+	if m.clearedenrollments {
+		edges = append(edges, organization.EdgeEnrollments)
 	}
 	return edges
 }
@@ -3841,6 +7523,10 @@ func (m *OrganizationMutation) EdgeCleared(name string) bool {
 		return m.clearedcontents
 	case organization.EdgeCourses:
 		return m.clearedcourses
+	case organization.EdgeGroups:
+		return m.clearedgroups
+	case organization.EdgeEnrollments:
+		return m.clearedenrollments
 	}
 	return false
 }
@@ -3866,6 +7552,12 @@ func (m *OrganizationMutation) ResetEdge(name string) error {
 	case organization.EdgeCourses:
 		m.ResetCourses()
 		return nil
+	case organization.EdgeGroups:
+		m.ResetGroups()
+		return nil
+	case organization.EdgeEnrollments:
+		m.ResetEnrollments()
+		return nil
 	}
 	return fmt.Errorf("unknown Organization edge %s", name)
 }
@@ -3888,6 +7580,9 @@ type UserMutation struct {
 	clearedFields       map[string]struct{}
 	organization        *uuid.UUID
 	clearedorganization bool
+	enrollments         map[uuid.UUID]struct{}
+	removedenrollments  map[uuid.UUID]struct{}
+	clearedenrollments  bool
 	done                bool
 	oldValue            func(context.Context) (*User, error)
 	predicates          []predicate.User
@@ -4423,6 +8118,60 @@ func (m *UserMutation) ResetOrganization() {
 	m.clearedorganization = false
 }
 
+// AddEnrollmentIDs adds the "enrollments" edge to the Enrollment entity by ids.
+func (m *UserMutation) AddEnrollmentIDs(ids ...uuid.UUID) {
+	if m.enrollments == nil {
+		m.enrollments = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.enrollments[ids[i]] = struct{}{}
+	}
+}
+
+// ClearEnrollments clears the "enrollments" edge to the Enrollment entity.
+func (m *UserMutation) ClearEnrollments() {
+	m.clearedenrollments = true
+}
+
+// EnrollmentsCleared reports if the "enrollments" edge to the Enrollment entity was cleared.
+func (m *UserMutation) EnrollmentsCleared() bool {
+	return m.clearedenrollments
+}
+
+// RemoveEnrollmentIDs removes the "enrollments" edge to the Enrollment entity by IDs.
+func (m *UserMutation) RemoveEnrollmentIDs(ids ...uuid.UUID) {
+	if m.removedenrollments == nil {
+		m.removedenrollments = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.enrollments, ids[i])
+		m.removedenrollments[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedEnrollments returns the removed IDs of the "enrollments" edge to the Enrollment entity.
+func (m *UserMutation) RemovedEnrollmentsIDs() (ids []uuid.UUID) {
+	for id := range m.removedenrollments {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// EnrollmentsIDs returns the "enrollments" edge IDs in the mutation.
+func (m *UserMutation) EnrollmentsIDs() (ids []uuid.UUID) {
+	for id := range m.enrollments {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetEnrollments resets all changes to the "enrollments" edge.
+func (m *UserMutation) ResetEnrollments() {
+	m.enrollments = nil
+	m.clearedenrollments = false
+	m.removedenrollments = nil
+}
+
 // Where appends a list predicates to the UserMutation builder.
 func (m *UserMutation) Where(ps ...predicate.User) {
 	m.predicates = append(m.predicates, ps...)
@@ -4730,9 +8479,12 @@ func (m *UserMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *UserMutation) AddedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	if m.organization != nil {
 		edges = append(edges, user.EdgeOrganization)
+	}
+	if m.enrollments != nil {
+		edges = append(edges, user.EdgeEnrollments)
 	}
 	return edges
 }
@@ -4745,27 +8497,47 @@ func (m *UserMutation) AddedIDs(name string) []ent.Value {
 		if id := m.organization; id != nil {
 			return []ent.Value{*id}
 		}
+	case user.EdgeEnrollments:
+		ids := make([]ent.Value, 0, len(m.enrollments))
+		for id := range m.enrollments {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *UserMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
+	if m.removedenrollments != nil {
+		edges = append(edges, user.EdgeEnrollments)
+	}
 	return edges
 }
 
 // RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
 // the given name in this mutation.
 func (m *UserMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	case user.EdgeEnrollments:
+		ids := make([]ent.Value, 0, len(m.removedenrollments))
+		for id := range m.removedenrollments {
+			ids = append(ids, id)
+		}
+		return ids
+	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *UserMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	if m.clearedorganization {
 		edges = append(edges, user.EdgeOrganization)
+	}
+	if m.clearedenrollments {
+		edges = append(edges, user.EdgeEnrollments)
 	}
 	return edges
 }
@@ -4776,6 +8548,8 @@ func (m *UserMutation) EdgeCleared(name string) bool {
 	switch name {
 	case user.EdgeOrganization:
 		return m.clearedorganization
+	case user.EdgeEnrollments:
+		return m.clearedenrollments
 	}
 	return false
 }
@@ -4797,6 +8571,9 @@ func (m *UserMutation) ResetEdge(name string) error {
 	switch name {
 	case user.EdgeOrganization:
 		m.ResetOrganization()
+		return nil
+	case user.EdgeEnrollments:
+		m.ResetEnrollments()
 		return nil
 	}
 	return fmt.Errorf("unknown User edge %s", name)

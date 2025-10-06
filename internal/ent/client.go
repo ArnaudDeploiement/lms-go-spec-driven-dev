@@ -13,7 +13,10 @@ import (
 
 	"lms-go/internal/ent/content"
 	"lms-go/internal/ent/course"
+	"lms-go/internal/ent/enrollment"
+	"lms-go/internal/ent/group"
 	"lms-go/internal/ent/module"
+	"lms-go/internal/ent/moduleprogress"
 	"lms-go/internal/ent/organization"
 	"lms-go/internal/ent/user"
 
@@ -33,8 +36,14 @@ type Client struct {
 	Content *ContentClient
 	// Course is the client for interacting with the Course builders.
 	Course *CourseClient
+	// Enrollment is the client for interacting with the Enrollment builders.
+	Enrollment *EnrollmentClient
+	// Group is the client for interacting with the Group builders.
+	Group *GroupClient
 	// Module is the client for interacting with the Module builders.
 	Module *ModuleClient
+	// ModuleProgress is the client for interacting with the ModuleProgress builders.
+	ModuleProgress *ModuleProgressClient
 	// Organization is the client for interacting with the Organization builders.
 	Organization *OrganizationClient
 	// User is the client for interacting with the User builders.
@@ -52,7 +61,10 @@ func (c *Client) init() {
 	c.Schema = migrate.NewSchema(c.driver)
 	c.Content = NewContentClient(c.config)
 	c.Course = NewCourseClient(c.config)
+	c.Enrollment = NewEnrollmentClient(c.config)
+	c.Group = NewGroupClient(c.config)
 	c.Module = NewModuleClient(c.config)
+	c.ModuleProgress = NewModuleProgressClient(c.config)
 	c.Organization = NewOrganizationClient(c.config)
 	c.User = NewUserClient(c.config)
 }
@@ -145,13 +157,16 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 	cfg := c.config
 	cfg.driver = tx
 	return &Tx{
-		ctx:          ctx,
-		config:       cfg,
-		Content:      NewContentClient(cfg),
-		Course:       NewCourseClient(cfg),
-		Module:       NewModuleClient(cfg),
-		Organization: NewOrganizationClient(cfg),
-		User:         NewUserClient(cfg),
+		ctx:            ctx,
+		config:         cfg,
+		Content:        NewContentClient(cfg),
+		Course:         NewCourseClient(cfg),
+		Enrollment:     NewEnrollmentClient(cfg),
+		Group:          NewGroupClient(cfg),
+		Module:         NewModuleClient(cfg),
+		ModuleProgress: NewModuleProgressClient(cfg),
+		Organization:   NewOrganizationClient(cfg),
+		User:           NewUserClient(cfg),
 	}, nil
 }
 
@@ -169,13 +184,16 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 	cfg := c.config
 	cfg.driver = &txDriver{tx: tx, drv: c.driver}
 	return &Tx{
-		ctx:          ctx,
-		config:       cfg,
-		Content:      NewContentClient(cfg),
-		Course:       NewCourseClient(cfg),
-		Module:       NewModuleClient(cfg),
-		Organization: NewOrganizationClient(cfg),
-		User:         NewUserClient(cfg),
+		ctx:            ctx,
+		config:         cfg,
+		Content:        NewContentClient(cfg),
+		Course:         NewCourseClient(cfg),
+		Enrollment:     NewEnrollmentClient(cfg),
+		Group:          NewGroupClient(cfg),
+		Module:         NewModuleClient(cfg),
+		ModuleProgress: NewModuleProgressClient(cfg),
+		Organization:   NewOrganizationClient(cfg),
+		User:           NewUserClient(cfg),
 	}, nil
 }
 
@@ -204,21 +222,23 @@ func (c *Client) Close() error {
 // Use adds the mutation hooks to all the entity clients.
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
-	c.Content.Use(hooks...)
-	c.Course.Use(hooks...)
-	c.Module.Use(hooks...)
-	c.Organization.Use(hooks...)
-	c.User.Use(hooks...)
+	for _, n := range []interface{ Use(...Hook) }{
+		c.Content, c.Course, c.Enrollment, c.Group, c.Module, c.ModuleProgress,
+		c.Organization, c.User,
+	} {
+		n.Use(hooks...)
+	}
 }
 
 // Intercept adds the query interceptors to all the entity clients.
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
-	c.Content.Intercept(interceptors...)
-	c.Course.Intercept(interceptors...)
-	c.Module.Intercept(interceptors...)
-	c.Organization.Intercept(interceptors...)
-	c.User.Intercept(interceptors...)
+	for _, n := range []interface{ Intercept(...Interceptor) }{
+		c.Content, c.Course, c.Enrollment, c.Group, c.Module, c.ModuleProgress,
+		c.Organization, c.User,
+	} {
+		n.Intercept(interceptors...)
+	}
 }
 
 // Mutate implements the ent.Mutator interface.
@@ -228,8 +248,14 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.Content.mutate(ctx, m)
 	case *CourseMutation:
 		return c.Course.mutate(ctx, m)
+	case *EnrollmentMutation:
+		return c.Enrollment.mutate(ctx, m)
+	case *GroupMutation:
+		return c.Group.mutate(ctx, m)
 	case *ModuleMutation:
 		return c.Module.mutate(ctx, m)
+	case *ModuleProgressMutation:
+		return c.ModuleProgress.mutate(ctx, m)
 	case *OrganizationMutation:
 		return c.Organization.mutate(ctx, m)
 	case *UserMutation:
@@ -528,6 +554,38 @@ func (c *CourseClient) QueryModules(co *Course) *ModuleQuery {
 	return query
 }
 
+// QueryEnrollments queries the enrollments edge of a Course.
+func (c *CourseClient) QueryEnrollments(co *Course) *EnrollmentQuery {
+	query := (&EnrollmentClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := co.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(course.Table, course.FieldID, id),
+			sqlgraph.To(enrollment.Table, enrollment.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, course.EnrollmentsTable, course.EnrollmentsColumn),
+		)
+		fromV = sqlgraph.Neighbors(co.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryGroups queries the groups edge of a Course.
+func (c *CourseClient) QueryGroups(co *Course) *GroupQuery {
+	query := (&GroupClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := co.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(course.Table, course.FieldID, id),
+			sqlgraph.To(group.Table, group.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, course.GroupsTable, course.GroupsColumn),
+		)
+		fromV = sqlgraph.Neighbors(co.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *CourseClient) Hooks() []Hook {
 	return c.hooks.Course
@@ -550,6 +608,400 @@ func (c *CourseClient) mutate(ctx context.Context, m *CourseMutation) (Value, er
 		return (&CourseDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown Course mutation op: %q", m.Op())
+	}
+}
+
+// EnrollmentClient is a client for the Enrollment schema.
+type EnrollmentClient struct {
+	config
+}
+
+// NewEnrollmentClient returns a client for the Enrollment from the given config.
+func NewEnrollmentClient(c config) *EnrollmentClient {
+	return &EnrollmentClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `enrollment.Hooks(f(g(h())))`.
+func (c *EnrollmentClient) Use(hooks ...Hook) {
+	c.hooks.Enrollment = append(c.hooks.Enrollment, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `enrollment.Intercept(f(g(h())))`.
+func (c *EnrollmentClient) Intercept(interceptors ...Interceptor) {
+	c.inters.Enrollment = append(c.inters.Enrollment, interceptors...)
+}
+
+// Create returns a builder for creating a Enrollment entity.
+func (c *EnrollmentClient) Create() *EnrollmentCreate {
+	mutation := newEnrollmentMutation(c.config, OpCreate)
+	return &EnrollmentCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of Enrollment entities.
+func (c *EnrollmentClient) CreateBulk(builders ...*EnrollmentCreate) *EnrollmentCreateBulk {
+	return &EnrollmentCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *EnrollmentClient) MapCreateBulk(slice any, setFunc func(*EnrollmentCreate, int)) *EnrollmentCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &EnrollmentCreateBulk{err: fmt.Errorf("calling to EnrollmentClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*EnrollmentCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &EnrollmentCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for Enrollment.
+func (c *EnrollmentClient) Update() *EnrollmentUpdate {
+	mutation := newEnrollmentMutation(c.config, OpUpdate)
+	return &EnrollmentUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *EnrollmentClient) UpdateOne(e *Enrollment) *EnrollmentUpdateOne {
+	mutation := newEnrollmentMutation(c.config, OpUpdateOne, withEnrollment(e))
+	return &EnrollmentUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *EnrollmentClient) UpdateOneID(id uuid.UUID) *EnrollmentUpdateOne {
+	mutation := newEnrollmentMutation(c.config, OpUpdateOne, withEnrollmentID(id))
+	return &EnrollmentUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for Enrollment.
+func (c *EnrollmentClient) Delete() *EnrollmentDelete {
+	mutation := newEnrollmentMutation(c.config, OpDelete)
+	return &EnrollmentDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *EnrollmentClient) DeleteOne(e *Enrollment) *EnrollmentDeleteOne {
+	return c.DeleteOneID(e.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *EnrollmentClient) DeleteOneID(id uuid.UUID) *EnrollmentDeleteOne {
+	builder := c.Delete().Where(enrollment.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &EnrollmentDeleteOne{builder}
+}
+
+// Query returns a query builder for Enrollment.
+func (c *EnrollmentClient) Query() *EnrollmentQuery {
+	return &EnrollmentQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeEnrollment},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a Enrollment entity by its id.
+func (c *EnrollmentClient) Get(ctx context.Context, id uuid.UUID) (*Enrollment, error) {
+	return c.Query().Where(enrollment.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *EnrollmentClient) GetX(ctx context.Context, id uuid.UUID) *Enrollment {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryOrganization queries the organization edge of a Enrollment.
+func (c *EnrollmentClient) QueryOrganization(e *Enrollment) *OrganizationQuery {
+	query := (&OrganizationClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := e.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(enrollment.Table, enrollment.FieldID, id),
+			sqlgraph.To(organization.Table, organization.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, enrollment.OrganizationTable, enrollment.OrganizationColumn),
+		)
+		fromV = sqlgraph.Neighbors(e.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryCourse queries the course edge of a Enrollment.
+func (c *EnrollmentClient) QueryCourse(e *Enrollment) *CourseQuery {
+	query := (&CourseClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := e.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(enrollment.Table, enrollment.FieldID, id),
+			sqlgraph.To(course.Table, course.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, enrollment.CourseTable, enrollment.CourseColumn),
+		)
+		fromV = sqlgraph.Neighbors(e.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryUser queries the user edge of a Enrollment.
+func (c *EnrollmentClient) QueryUser(e *Enrollment) *UserQuery {
+	query := (&UserClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := e.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(enrollment.Table, enrollment.FieldID, id),
+			sqlgraph.To(user.Table, user.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, enrollment.UserTable, enrollment.UserColumn),
+		)
+		fromV = sqlgraph.Neighbors(e.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryGroup queries the group edge of a Enrollment.
+func (c *EnrollmentClient) QueryGroup(e *Enrollment) *GroupQuery {
+	query := (&GroupClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := e.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(enrollment.Table, enrollment.FieldID, id),
+			sqlgraph.To(group.Table, group.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, enrollment.GroupTable, enrollment.GroupColumn),
+		)
+		fromV = sqlgraph.Neighbors(e.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryProgressEntries queries the progress_entries edge of a Enrollment.
+func (c *EnrollmentClient) QueryProgressEntries(e *Enrollment) *ModuleProgressQuery {
+	query := (&ModuleProgressClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := e.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(enrollment.Table, enrollment.FieldID, id),
+			sqlgraph.To(moduleprogress.Table, moduleprogress.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, enrollment.ProgressEntriesTable, enrollment.ProgressEntriesColumn),
+		)
+		fromV = sqlgraph.Neighbors(e.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *EnrollmentClient) Hooks() []Hook {
+	return c.hooks.Enrollment
+}
+
+// Interceptors returns the client interceptors.
+func (c *EnrollmentClient) Interceptors() []Interceptor {
+	return c.inters.Enrollment
+}
+
+func (c *EnrollmentClient) mutate(ctx context.Context, m *EnrollmentMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&EnrollmentCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&EnrollmentUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&EnrollmentUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&EnrollmentDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown Enrollment mutation op: %q", m.Op())
+	}
+}
+
+// GroupClient is a client for the Group schema.
+type GroupClient struct {
+	config
+}
+
+// NewGroupClient returns a client for the Group from the given config.
+func NewGroupClient(c config) *GroupClient {
+	return &GroupClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `group.Hooks(f(g(h())))`.
+func (c *GroupClient) Use(hooks ...Hook) {
+	c.hooks.Group = append(c.hooks.Group, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `group.Intercept(f(g(h())))`.
+func (c *GroupClient) Intercept(interceptors ...Interceptor) {
+	c.inters.Group = append(c.inters.Group, interceptors...)
+}
+
+// Create returns a builder for creating a Group entity.
+func (c *GroupClient) Create() *GroupCreate {
+	mutation := newGroupMutation(c.config, OpCreate)
+	return &GroupCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of Group entities.
+func (c *GroupClient) CreateBulk(builders ...*GroupCreate) *GroupCreateBulk {
+	return &GroupCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *GroupClient) MapCreateBulk(slice any, setFunc func(*GroupCreate, int)) *GroupCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &GroupCreateBulk{err: fmt.Errorf("calling to GroupClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*GroupCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &GroupCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for Group.
+func (c *GroupClient) Update() *GroupUpdate {
+	mutation := newGroupMutation(c.config, OpUpdate)
+	return &GroupUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *GroupClient) UpdateOne(gr *Group) *GroupUpdateOne {
+	mutation := newGroupMutation(c.config, OpUpdateOne, withGroup(gr))
+	return &GroupUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *GroupClient) UpdateOneID(id uuid.UUID) *GroupUpdateOne {
+	mutation := newGroupMutation(c.config, OpUpdateOne, withGroupID(id))
+	return &GroupUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for Group.
+func (c *GroupClient) Delete() *GroupDelete {
+	mutation := newGroupMutation(c.config, OpDelete)
+	return &GroupDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *GroupClient) DeleteOne(gr *Group) *GroupDeleteOne {
+	return c.DeleteOneID(gr.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *GroupClient) DeleteOneID(id uuid.UUID) *GroupDeleteOne {
+	builder := c.Delete().Where(group.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &GroupDeleteOne{builder}
+}
+
+// Query returns a query builder for Group.
+func (c *GroupClient) Query() *GroupQuery {
+	return &GroupQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeGroup},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a Group entity by its id.
+func (c *GroupClient) Get(ctx context.Context, id uuid.UUID) (*Group, error) {
+	return c.Query().Where(group.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *GroupClient) GetX(ctx context.Context, id uuid.UUID) *Group {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryOrganization queries the organization edge of a Group.
+func (c *GroupClient) QueryOrganization(gr *Group) *OrganizationQuery {
+	query := (&OrganizationClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := gr.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(group.Table, group.FieldID, id),
+			sqlgraph.To(organization.Table, organization.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, group.OrganizationTable, group.OrganizationColumn),
+		)
+		fromV = sqlgraph.Neighbors(gr.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryCourse queries the course edge of a Group.
+func (c *GroupClient) QueryCourse(gr *Group) *CourseQuery {
+	query := (&CourseClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := gr.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(group.Table, group.FieldID, id),
+			sqlgraph.To(course.Table, course.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, group.CourseTable, group.CourseColumn),
+		)
+		fromV = sqlgraph.Neighbors(gr.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryEnrollments queries the enrollments edge of a Group.
+func (c *GroupClient) QueryEnrollments(gr *Group) *EnrollmentQuery {
+	query := (&EnrollmentClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := gr.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(group.Table, group.FieldID, id),
+			sqlgraph.To(enrollment.Table, enrollment.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, group.EnrollmentsTable, group.EnrollmentsColumn),
+		)
+		fromV = sqlgraph.Neighbors(gr.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *GroupClient) Hooks() []Hook {
+	return c.hooks.Group
+}
+
+// Interceptors returns the client interceptors.
+func (c *GroupClient) Interceptors() []Interceptor {
+	return c.inters.Group
+}
+
+func (c *GroupClient) mutate(ctx context.Context, m *GroupMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&GroupCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&GroupUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&GroupUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&GroupDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown Group mutation op: %q", m.Op())
 	}
 }
 
@@ -677,6 +1129,22 @@ func (c *ModuleClient) QueryCourse(m *Module) *CourseQuery {
 	return query
 }
 
+// QueryProgressEntries queries the progress_entries edge of a Module.
+func (c *ModuleClient) QueryProgressEntries(m *Module) *ModuleProgressQuery {
+	query := (&ModuleProgressClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(module.Table, module.FieldID, id),
+			sqlgraph.To(moduleprogress.Table, moduleprogress.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, module.ProgressEntriesTable, module.ProgressEntriesColumn),
+		)
+		fromV = sqlgraph.Neighbors(m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *ModuleClient) Hooks() []Hook {
 	return c.hooks.Module
@@ -699,6 +1167,171 @@ func (c *ModuleClient) mutate(ctx context.Context, m *ModuleMutation) (Value, er
 		return (&ModuleDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown Module mutation op: %q", m.Op())
+	}
+}
+
+// ModuleProgressClient is a client for the ModuleProgress schema.
+type ModuleProgressClient struct {
+	config
+}
+
+// NewModuleProgressClient returns a client for the ModuleProgress from the given config.
+func NewModuleProgressClient(c config) *ModuleProgressClient {
+	return &ModuleProgressClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `moduleprogress.Hooks(f(g(h())))`.
+func (c *ModuleProgressClient) Use(hooks ...Hook) {
+	c.hooks.ModuleProgress = append(c.hooks.ModuleProgress, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `moduleprogress.Intercept(f(g(h())))`.
+func (c *ModuleProgressClient) Intercept(interceptors ...Interceptor) {
+	c.inters.ModuleProgress = append(c.inters.ModuleProgress, interceptors...)
+}
+
+// Create returns a builder for creating a ModuleProgress entity.
+func (c *ModuleProgressClient) Create() *ModuleProgressCreate {
+	mutation := newModuleProgressMutation(c.config, OpCreate)
+	return &ModuleProgressCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of ModuleProgress entities.
+func (c *ModuleProgressClient) CreateBulk(builders ...*ModuleProgressCreate) *ModuleProgressCreateBulk {
+	return &ModuleProgressCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *ModuleProgressClient) MapCreateBulk(slice any, setFunc func(*ModuleProgressCreate, int)) *ModuleProgressCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &ModuleProgressCreateBulk{err: fmt.Errorf("calling to ModuleProgressClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*ModuleProgressCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &ModuleProgressCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for ModuleProgress.
+func (c *ModuleProgressClient) Update() *ModuleProgressUpdate {
+	mutation := newModuleProgressMutation(c.config, OpUpdate)
+	return &ModuleProgressUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *ModuleProgressClient) UpdateOne(mp *ModuleProgress) *ModuleProgressUpdateOne {
+	mutation := newModuleProgressMutation(c.config, OpUpdateOne, withModuleProgress(mp))
+	return &ModuleProgressUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *ModuleProgressClient) UpdateOneID(id uuid.UUID) *ModuleProgressUpdateOne {
+	mutation := newModuleProgressMutation(c.config, OpUpdateOne, withModuleProgressID(id))
+	return &ModuleProgressUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for ModuleProgress.
+func (c *ModuleProgressClient) Delete() *ModuleProgressDelete {
+	mutation := newModuleProgressMutation(c.config, OpDelete)
+	return &ModuleProgressDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *ModuleProgressClient) DeleteOne(mp *ModuleProgress) *ModuleProgressDeleteOne {
+	return c.DeleteOneID(mp.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *ModuleProgressClient) DeleteOneID(id uuid.UUID) *ModuleProgressDeleteOne {
+	builder := c.Delete().Where(moduleprogress.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &ModuleProgressDeleteOne{builder}
+}
+
+// Query returns a query builder for ModuleProgress.
+func (c *ModuleProgressClient) Query() *ModuleProgressQuery {
+	return &ModuleProgressQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeModuleProgress},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a ModuleProgress entity by its id.
+func (c *ModuleProgressClient) Get(ctx context.Context, id uuid.UUID) (*ModuleProgress, error) {
+	return c.Query().Where(moduleprogress.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *ModuleProgressClient) GetX(ctx context.Context, id uuid.UUID) *ModuleProgress {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryEnrollment queries the enrollment edge of a ModuleProgress.
+func (c *ModuleProgressClient) QueryEnrollment(mp *ModuleProgress) *EnrollmentQuery {
+	query := (&EnrollmentClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := mp.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(moduleprogress.Table, moduleprogress.FieldID, id),
+			sqlgraph.To(enrollment.Table, enrollment.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, moduleprogress.EnrollmentTable, moduleprogress.EnrollmentColumn),
+		)
+		fromV = sqlgraph.Neighbors(mp.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryModule queries the module edge of a ModuleProgress.
+func (c *ModuleProgressClient) QueryModule(mp *ModuleProgress) *ModuleQuery {
+	query := (&ModuleClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := mp.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(moduleprogress.Table, moduleprogress.FieldID, id),
+			sqlgraph.To(module.Table, module.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, moduleprogress.ModuleTable, moduleprogress.ModuleColumn),
+		)
+		fromV = sqlgraph.Neighbors(mp.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *ModuleProgressClient) Hooks() []Hook {
+	return c.hooks.ModuleProgress
+}
+
+// Interceptors returns the client interceptors.
+func (c *ModuleProgressClient) Interceptors() []Interceptor {
+	return c.inters.ModuleProgress
+}
+
+func (c *ModuleProgressClient) mutate(ctx context.Context, m *ModuleProgressMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&ModuleProgressCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&ModuleProgressUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&ModuleProgressUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&ModuleProgressDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown ModuleProgress mutation op: %q", m.Op())
 	}
 }
 
@@ -858,6 +1491,38 @@ func (c *OrganizationClient) QueryCourses(o *Organization) *CourseQuery {
 	return query
 }
 
+// QueryGroups queries the groups edge of a Organization.
+func (c *OrganizationClient) QueryGroups(o *Organization) *GroupQuery {
+	query := (&GroupClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := o.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(organization.Table, organization.FieldID, id),
+			sqlgraph.To(group.Table, group.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, organization.GroupsTable, organization.GroupsColumn),
+		)
+		fromV = sqlgraph.Neighbors(o.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryEnrollments queries the enrollments edge of a Organization.
+func (c *OrganizationClient) QueryEnrollments(o *Organization) *EnrollmentQuery {
+	query := (&EnrollmentClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := o.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(organization.Table, organization.FieldID, id),
+			sqlgraph.To(enrollment.Table, enrollment.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, organization.EnrollmentsTable, organization.EnrollmentsColumn),
+		)
+		fromV = sqlgraph.Neighbors(o.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *OrganizationClient) Hooks() []Hook {
 	return c.hooks.Organization
@@ -1007,6 +1672,22 @@ func (c *UserClient) QueryOrganization(u *User) *OrganizationQuery {
 	return query
 }
 
+// QueryEnrollments queries the enrollments edge of a User.
+func (c *UserClient) QueryEnrollments(u *User) *EnrollmentQuery {
+	query := (&EnrollmentClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := u.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, id),
+			sqlgraph.To(enrollment.Table, enrollment.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.EnrollmentsTable, user.EnrollmentsColumn),
+		)
+		fromV = sqlgraph.Neighbors(u.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *UserClient) Hooks() []Hook {
 	return c.hooks.User
@@ -1035,9 +1716,11 @@ func (c *UserClient) mutate(ctx context.Context, m *UserMutation) (Value, error)
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		Content, Course, Module, Organization, User []ent.Hook
+		Content, Course, Enrollment, Group, Module, ModuleProgress, Organization,
+		User []ent.Hook
 	}
 	inters struct {
-		Content, Course, Module, Organization, User []ent.Interceptor
+		Content, Course, Enrollment, Group, Module, ModuleProgress, Organization,
+		User []ent.Interceptor
 	}
 )

@@ -39,6 +39,10 @@ const (
 	EdgeOrganization = "organization"
 	// EdgeModules holds the string denoting the modules edge name in mutations.
 	EdgeModules = "modules"
+	// EdgeEnrollments holds the string denoting the enrollments edge name in mutations.
+	EdgeEnrollments = "enrollments"
+	// EdgeGroups holds the string denoting the groups edge name in mutations.
+	EdgeGroups = "groups"
 	// Table holds the table name of the course in the database.
 	Table = "courses"
 	// OrganizationTable is the table that holds the organization relation/edge.
@@ -55,6 +59,20 @@ const (
 	ModulesInverseTable = "modules"
 	// ModulesColumn is the table column denoting the modules relation/edge.
 	ModulesColumn = "course_id"
+	// EnrollmentsTable is the table that holds the enrollments relation/edge.
+	EnrollmentsTable = "enrollments"
+	// EnrollmentsInverseTable is the table name for the Enrollment entity.
+	// It exists in this package in order to avoid circular dependency with the "enrollment" package.
+	EnrollmentsInverseTable = "enrollments"
+	// EnrollmentsColumn is the table column denoting the enrollments relation/edge.
+	EnrollmentsColumn = "course_id"
+	// GroupsTable is the table that holds the groups relation/edge.
+	GroupsTable = "groups"
+	// GroupsInverseTable is the table name for the Group entity.
+	// It exists in this package in order to avoid circular dependency with the "group" package.
+	GroupsInverseTable = "groups"
+	// GroupsColumn is the table column denoting the groups relation/edge.
+	GroupsColumn = "course_id"
 )
 
 // Columns holds all SQL columns for course fields.
@@ -176,6 +194,34 @@ func ByModules(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newModulesStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
+
+// ByEnrollmentsCount orders the results by enrollments count.
+func ByEnrollmentsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newEnrollmentsStep(), opts...)
+	}
+}
+
+// ByEnrollments orders the results by enrollments terms.
+func ByEnrollments(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newEnrollmentsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
+// ByGroupsCount orders the results by groups count.
+func ByGroupsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newGroupsStep(), opts...)
+	}
+}
+
+// ByGroups orders the results by groups terms.
+func ByGroups(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newGroupsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
 func newOrganizationStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
@@ -188,5 +234,19 @@ func newModulesStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(ModulesInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, ModulesTable, ModulesColumn),
+	)
+}
+func newEnrollmentsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(EnrollmentsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, EnrollmentsTable, EnrollmentsColumn),
+	)
+}
+func newGroupsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(GroupsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, GroupsTable, GroupsColumn),
 	)
 }

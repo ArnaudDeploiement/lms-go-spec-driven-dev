@@ -50,9 +50,11 @@ type Module struct {
 type ModuleEdges struct {
 	// Course holds the value of the course edge.
 	Course *Course `json:"course,omitempty"`
+	// ProgressEntries holds the value of the progress_entries edge.
+	ProgressEntries []*ModuleProgress `json:"progress_entries,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [1]bool
+	loadedTypes [2]bool
 }
 
 // CourseOrErr returns the Course value or an error if the edge
@@ -64,6 +66,15 @@ func (e ModuleEdges) CourseOrErr() (*Course, error) {
 		return nil, &NotFoundError{label: course.Label}
 	}
 	return nil, &NotLoadedError{edge: "course"}
+}
+
+// ProgressEntriesOrErr returns the ProgressEntries value or an error if the edge
+// was not loaded in eager-loading.
+func (e ModuleEdges) ProgressEntriesOrErr() ([]*ModuleProgress, error) {
+	if e.loadedTypes[1] {
+		return e.ProgressEntries, nil
+	}
+	return nil, &NotLoadedError{edge: "progress_entries"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -183,6 +194,11 @@ func (m *Module) Value(name string) (ent.Value, error) {
 // QueryCourse queries the "course" edge of the Module entity.
 func (m *Module) QueryCourse() *CourseQuery {
 	return NewModuleClient(m.config).QueryCourse(m)
+}
+
+// QueryProgressEntries queries the "progress_entries" edge of the Module entity.
+func (m *Module) QueryProgressEntries() *ModuleProgressQuery {
+	return NewModuleClient(m.config).QueryProgressEntries(m)
 }
 
 // Update returns a builder for updating this Module.

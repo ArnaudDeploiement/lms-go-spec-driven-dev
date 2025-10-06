@@ -97,14 +97,14 @@ Structure des tickets issue-ready, organisés par phases (MVP → durcissement) 
   - Validation type module (scorm/pdf/video/article/quiz).
 - **Dépendances** : T-1.1, T-1.3.
 
-### T-1.5 Inscriptions & groupes *(4 pts)*
+### ✅ T-1.5 Inscriptions & groupes *(4 pts)*
 - **Description** : Modèle `enrollments`, gestion groupes, auto-inscription via lien sécurisé, invitations.
 - **Critères d’acceptation** :
   - Endpoint `POST /courses/{id}/enroll` avec règles duplication.
   - Gestion liste d’attente.
 - **Dépendances** : T-1.2, T-1.4.
 
-### T-1.6 Workflow progression parcours *(4 pts)*
+### ✅ T-1.6 Workflow progression parcours *(4 pts)*
 - **Description** : Service progression linéaire modules, état (non commencé, en cours, terminé), transitions.
 - **Critères d’acceptation** :
   - Tests transitions progression.

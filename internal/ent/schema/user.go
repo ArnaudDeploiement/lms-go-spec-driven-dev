@@ -68,5 +68,6 @@ func (User) Edges() []ent.Edge {
 			Field("organization_id").
 			Unique().
 			Required(),
+		edge.To("enrollments", Enrollment.Type),
 	}
 }

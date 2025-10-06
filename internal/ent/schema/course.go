@@ -54,6 +54,8 @@ func (Course) Edges() []ent.Edge {
 			Unique().
 			Required(),
 		edge.To("modules", Module.Type),
+		edge.To("enrollments", Enrollment.Type),
+		edge.To("groups", Group.Type),
 	}
 }
 

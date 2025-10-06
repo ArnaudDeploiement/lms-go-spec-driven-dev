@@ -66,6 +66,11 @@ scripts           # Scripts utils/CI
 - `GET /users` : lister les utilisateurs d'une organisation (entête `X-Org-ID`).
 - `POST /users` : créer un utilisateur dans l'organisation courante.
 - `GET /users/{id}` / `PATCH /users/{id}` / `DELETE /users/{id}` / `POST /users/{id}/activate` : cycle de vie utilisateur (nécessite `X-Org-ID`).
+- `GET /enrollments` : lister les inscriptions (filtres `course_id`, `user_id`, `group_id`, `status`).
+- `POST /enrollments` : inscrire un utilisateur (`course_id`, `user_id`, option `group_id`).
+- `PATCH /enrollments/{id}` / `DELETE /enrollments/{id}` : mettre à jour progression/statut ou annuler.
+- `GET /enrollments/groups` / `POST /enrollments/groups` : gérer les groupes (capacité, association cours).
+- `GET /enrollments/{id}/progress` / `POST /enrollments/{id}/progress/start` / `POST /enrollments/{id}/progress/complete` : workflow de progression module par module.
 - `GET /contents` : lister les contenus d'une organisation (`X-Org-ID`).
 - `POST /contents` : créer un contenu et obtenir une URL de dépôt pré-signée.
 - `GET /contents/{id}` / `POST /contents/{id}/finalize` / `DELETE /contents/{id}` / `GET /contents/{id}/download` : finaliser, archiver ou télécharger un contenu.

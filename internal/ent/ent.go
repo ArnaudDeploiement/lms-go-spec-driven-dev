@@ -8,7 +8,10 @@ import (
 	"fmt"
 	"lms-go/internal/ent/content"
 	"lms-go/internal/ent/course"
+	"lms-go/internal/ent/enrollment"
+	"lms-go/internal/ent/group"
 	"lms-go/internal/ent/module"
+	"lms-go/internal/ent/moduleprogress"
 	"lms-go/internal/ent/organization"
 	"lms-go/internal/ent/user"
 	"reflect"
@@ -77,11 +80,14 @@ var (
 func checkColumn(table, column string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
-			content.Table:      content.ValidColumn,
-			course.Table:       course.ValidColumn,
-			module.Table:       module.ValidColumn,
-			organization.Table: organization.ValidColumn,
-			user.Table:         user.ValidColumn,
+			content.Table:        content.ValidColumn,
+			course.Table:         course.ValidColumn,
+			enrollment.Table:     enrollment.ValidColumn,
+			group.Table:          group.ValidColumn,
+			module.Table:         module.ValidColumn,
+			moduleprogress.Table: moduleprogress.ValidColumn,
+			organization.Table:   organization.ValidColumn,
+			user.Table:           user.ValidColumn,
 		})
 	})
 	return columnCheck(table, column)

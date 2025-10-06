@@ -16,8 +16,14 @@ type Tx struct {
 	Content *ContentClient
 	// Course is the client for interacting with the Course builders.
 	Course *CourseClient
+	// Enrollment is the client for interacting with the Enrollment builders.
+	Enrollment *EnrollmentClient
+	// Group is the client for interacting with the Group builders.
+	Group *GroupClient
 	// Module is the client for interacting with the Module builders.
 	Module *ModuleClient
+	// ModuleProgress is the client for interacting with the ModuleProgress builders.
+	ModuleProgress *ModuleProgressClient
 	// Organization is the client for interacting with the Organization builders.
 	Organization *OrganizationClient
 	// User is the client for interacting with the User builders.
@@ -155,7 +161,10 @@ func (tx *Tx) Client() *Client {
 func (tx *Tx) init() {
 	tx.Content = NewContentClient(tx.config)
 	tx.Course = NewCourseClient(tx.config)
+	tx.Enrollment = NewEnrollmentClient(tx.config)
+	tx.Group = NewGroupClient(tx.config)
 	tx.Module = NewModuleClient(tx.config)
+	tx.ModuleProgress = NewModuleProgressClient(tx.config)
 	tx.Organization = NewOrganizationClient(tx.config)
 	tx.User = NewUserClient(tx.config)
 }

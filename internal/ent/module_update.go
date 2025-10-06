@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"lms-go/internal/ent/course"
 	"lms-go/internal/ent/module"
+	"lms-go/internal/ent/moduleprogress"
 	"lms-go/internal/ent/predicate"
 	"time"
 
@@ -177,6 +178,21 @@ func (mu *ModuleUpdate) SetCourse(c *Course) *ModuleUpdate {
 	return mu.SetCourseID(c.ID)
 }
 
+// AddProgressEntryIDs adds the "progress_entries" edge to the ModuleProgress entity by IDs.
+func (mu *ModuleUpdate) AddProgressEntryIDs(ids ...uuid.UUID) *ModuleUpdate {
+	mu.mutation.AddProgressEntryIDs(ids...)
+	return mu
+}
+
+// AddProgressEntries adds the "progress_entries" edges to the ModuleProgress entity.
+func (mu *ModuleUpdate) AddProgressEntries(m ...*ModuleProgress) *ModuleUpdate {
+	ids := make([]uuid.UUID, len(m))
+	for i := range m {
+		ids[i] = m[i].ID
+	}
+	return mu.AddProgressEntryIDs(ids...)
+}
+
 // Mutation returns the ModuleMutation object of the builder.
 func (mu *ModuleUpdate) Mutation() *ModuleMutation {
 	return mu.mutation
@@ -186,6 +202,27 @@ func (mu *ModuleUpdate) Mutation() *ModuleMutation {
 func (mu *ModuleUpdate) ClearCourse() *ModuleUpdate {
 	mu.mutation.ClearCourse()
 	return mu
+}
+
+// ClearProgressEntries clears all "progress_entries" edges to the ModuleProgress entity.
+func (mu *ModuleUpdate) ClearProgressEntries() *ModuleUpdate {
+	mu.mutation.ClearProgressEntries()
+	return mu
+}
+
+// RemoveProgressEntryIDs removes the "progress_entries" edge to ModuleProgress entities by IDs.
+func (mu *ModuleUpdate) RemoveProgressEntryIDs(ids ...uuid.UUID) *ModuleUpdate {
+	mu.mutation.RemoveProgressEntryIDs(ids...)
+	return mu
+}
+
+// RemoveProgressEntries removes "progress_entries" edges to ModuleProgress entities.
+func (mu *ModuleUpdate) RemoveProgressEntries(m ...*ModuleProgress) *ModuleUpdate {
+	ids := make([]uuid.UUID, len(m))
+	for i := range m {
+		ids[i] = m[i].ID
+	}
+	return mu.RemoveProgressEntryIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -315,6 +352,51 @@ func (mu *ModuleUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(course.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if mu.mutation.ProgressEntriesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   module.ProgressEntriesTable,
+			Columns: []string{module.ProgressEntriesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(moduleprogress.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := mu.mutation.RemovedProgressEntriesIDs(); len(nodes) > 0 && !mu.mutation.ProgressEntriesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   module.ProgressEntriesTable,
+			Columns: []string{module.ProgressEntriesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(moduleprogress.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := mu.mutation.ProgressEntriesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   module.ProgressEntriesTable,
+			Columns: []string{module.ProgressEntriesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(moduleprogress.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {
@@ -489,6 +571,21 @@ func (muo *ModuleUpdateOne) SetCourse(c *Course) *ModuleUpdateOne {
 	return muo.SetCourseID(c.ID)
 }
 
+// AddProgressEntryIDs adds the "progress_entries" edge to the ModuleProgress entity by IDs.
+func (muo *ModuleUpdateOne) AddProgressEntryIDs(ids ...uuid.UUID) *ModuleUpdateOne {
+	muo.mutation.AddProgressEntryIDs(ids...)
+	return muo
+}
+
+// AddProgressEntries adds the "progress_entries" edges to the ModuleProgress entity.
+func (muo *ModuleUpdateOne) AddProgressEntries(m ...*ModuleProgress) *ModuleUpdateOne {
+	ids := make([]uuid.UUID, len(m))
+	for i := range m {
+		ids[i] = m[i].ID
+	}
+	return muo.AddProgressEntryIDs(ids...)
+}
+
 // Mutation returns the ModuleMutation object of the builder.
 func (muo *ModuleUpdateOne) Mutation() *ModuleMutation {
 	return muo.mutation
@@ -498,6 +595,27 @@ func (muo *ModuleUpdateOne) Mutation() *ModuleMutation {
 func (muo *ModuleUpdateOne) ClearCourse() *ModuleUpdateOne {
 	muo.mutation.ClearCourse()
 	return muo
+}
+
+// ClearProgressEntries clears all "progress_entries" edges to the ModuleProgress entity.
+func (muo *ModuleUpdateOne) ClearProgressEntries() *ModuleUpdateOne {
+	muo.mutation.ClearProgressEntries()
+	return muo
+}
+
+// RemoveProgressEntryIDs removes the "progress_entries" edge to ModuleProgress entities by IDs.
+func (muo *ModuleUpdateOne) RemoveProgressEntryIDs(ids ...uuid.UUID) *ModuleUpdateOne {
+	muo.mutation.RemoveProgressEntryIDs(ids...)
+	return muo
+}
+
+// RemoveProgressEntries removes "progress_entries" edges to ModuleProgress entities.
+func (muo *ModuleUpdateOne) RemoveProgressEntries(m ...*ModuleProgress) *ModuleUpdateOne {
+	ids := make([]uuid.UUID, len(m))
+	for i := range m {
+		ids[i] = m[i].ID
+	}
+	return muo.RemoveProgressEntryIDs(ids...)
 }
 
 // Where appends a list predicates to the ModuleUpdate builder.
@@ -657,6 +775,51 @@ func (muo *ModuleUpdateOne) sqlSave(ctx context.Context) (_node *Module, err err
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(course.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if muo.mutation.ProgressEntriesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   module.ProgressEntriesTable,
+			Columns: []string{module.ProgressEntriesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(moduleprogress.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := muo.mutation.RemovedProgressEntriesIDs(); len(nodes) > 0 && !muo.mutation.ProgressEntriesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   module.ProgressEntriesTable,
+			Columns: []string{module.ProgressEntriesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(moduleprogress.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := muo.mutation.ProgressEntriesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   module.ProgressEntriesTable,
+			Columns: []string{module.ProgressEntriesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(moduleprogress.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {

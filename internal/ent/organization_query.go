@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"lms-go/internal/ent/content"
 	"lms-go/internal/ent/course"
+	"lms-go/internal/ent/enrollment"
+	"lms-go/internal/ent/group"
 	"lms-go/internal/ent/organization"
 	"lms-go/internal/ent/predicate"
 	"lms-go/internal/ent/user"
@@ -22,13 +24,15 @@ import (
 // OrganizationQuery is the builder for querying Organization entities.
 type OrganizationQuery struct {
 	config
-	ctx          *QueryContext
-	order        []organization.OrderOption
-	inters       []Interceptor
-	predicates   []predicate.Organization
-	withUsers    *UserQuery
-	withContents *ContentQuery
-	withCourses  *CourseQuery
+	ctx             *QueryContext
+	order           []organization.OrderOption
+	inters          []Interceptor
+	predicates      []predicate.Organization
+	withUsers       *UserQuery
+	withContents    *ContentQuery
+	withCourses     *CourseQuery
+	withGroups      *GroupQuery
+	withEnrollments *EnrollmentQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -124,6 +128,50 @@ func (oq *OrganizationQuery) QueryCourses() *CourseQuery {
 			sqlgraph.From(organization.Table, organization.FieldID, selector),
 			sqlgraph.To(course.Table, course.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, organization.CoursesTable, organization.CoursesColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(oq.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryGroups chains the current query on the "groups" edge.
+func (oq *OrganizationQuery) QueryGroups() *GroupQuery {
+	query := (&GroupClient{config: oq.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := oq.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := oq.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(organization.Table, organization.FieldID, selector),
+			sqlgraph.To(group.Table, group.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, organization.GroupsTable, organization.GroupsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(oq.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryEnrollments chains the current query on the "enrollments" edge.
+func (oq *OrganizationQuery) QueryEnrollments() *EnrollmentQuery {
+	query := (&EnrollmentClient{config: oq.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := oq.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := oq.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(organization.Table, organization.FieldID, selector),
+			sqlgraph.To(enrollment.Table, enrollment.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, organization.EnrollmentsTable, organization.EnrollmentsColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(oq.driver.Dialect(), step)
 		return fromU, nil
@@ -318,14 +366,16 @@ func (oq *OrganizationQuery) Clone() *OrganizationQuery {
 		return nil
 	}
 	return &OrganizationQuery{
-		config:       oq.config,
-		ctx:          oq.ctx.Clone(),
-		order:        append([]organization.OrderOption{}, oq.order...),
-		inters:       append([]Interceptor{}, oq.inters...),
-		predicates:   append([]predicate.Organization{}, oq.predicates...),
-		withUsers:    oq.withUsers.Clone(),
-		withContents: oq.withContents.Clone(),
-		withCourses:  oq.withCourses.Clone(),
+		config:          oq.config,
+		ctx:             oq.ctx.Clone(),
+		order:           append([]organization.OrderOption{}, oq.order...),
+		inters:          append([]Interceptor{}, oq.inters...),
+		predicates:      append([]predicate.Organization{}, oq.predicates...),
+		withUsers:       oq.withUsers.Clone(),
+		withContents:    oq.withContents.Clone(),
+		withCourses:     oq.withCourses.Clone(),
+		withGroups:      oq.withGroups.Clone(),
+		withEnrollments: oq.withEnrollments.Clone(),
 		// clone intermediate query.
 		sql:  oq.sql.Clone(),
 		path: oq.path,
@@ -362,6 +412,28 @@ func (oq *OrganizationQuery) WithCourses(opts ...func(*CourseQuery)) *Organizati
 		opt(query)
 	}
 	oq.withCourses = query
+	return oq
+}
+
+// WithGroups tells the query-builder to eager-load the nodes that are connected to
+// the "groups" edge. The optional arguments are used to configure the query builder of the edge.
+func (oq *OrganizationQuery) WithGroups(opts ...func(*GroupQuery)) *OrganizationQuery {
+	query := (&GroupClient{config: oq.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	oq.withGroups = query
+	return oq
+}
+
+// WithEnrollments tells the query-builder to eager-load the nodes that are connected to
+// the "enrollments" edge. The optional arguments are used to configure the query builder of the edge.
+func (oq *OrganizationQuery) WithEnrollments(opts ...func(*EnrollmentQuery)) *OrganizationQuery {
+	query := (&EnrollmentClient{config: oq.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	oq.withEnrollments = query
 	return oq
 }
 
@@ -443,10 +515,12 @@ func (oq *OrganizationQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]
 	var (
 		nodes       = []*Organization{}
 		_spec       = oq.querySpec()
-		loadedTypes = [3]bool{
+		loadedTypes = [5]bool{
 			oq.withUsers != nil,
 			oq.withContents != nil,
 			oq.withCourses != nil,
+			oq.withGroups != nil,
+			oq.withEnrollments != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -485,6 +559,20 @@ func (oq *OrganizationQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]
 		if err := oq.loadCourses(ctx, query, nodes,
 			func(n *Organization) { n.Edges.Courses = []*Course{} },
 			func(n *Organization, e *Course) { n.Edges.Courses = append(n.Edges.Courses, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := oq.withGroups; query != nil {
+		if err := oq.loadGroups(ctx, query, nodes,
+			func(n *Organization) { n.Edges.Groups = []*Group{} },
+			func(n *Organization, e *Group) { n.Edges.Groups = append(n.Edges.Groups, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := oq.withEnrollments; query != nil {
+		if err := oq.loadEnrollments(ctx, query, nodes,
+			func(n *Organization) { n.Edges.Enrollments = []*Enrollment{} },
+			func(n *Organization, e *Enrollment) { n.Edges.Enrollments = append(n.Edges.Enrollments, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -566,6 +654,66 @@ func (oq *OrganizationQuery) loadCourses(ctx context.Context, query *CourseQuery
 	}
 	query.Where(predicate.Course(func(s *sql.Selector) {
 		s.Where(sql.InValues(s.C(organization.CoursesColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.OrganizationID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "organization_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (oq *OrganizationQuery) loadGroups(ctx context.Context, query *GroupQuery, nodes []*Organization, init func(*Organization), assign func(*Organization, *Group)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[uuid.UUID]*Organization)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(group.FieldOrganizationID)
+	}
+	query.Where(predicate.Group(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(organization.GroupsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.OrganizationID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "organization_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (oq *OrganizationQuery) loadEnrollments(ctx context.Context, query *EnrollmentQuery, nodes []*Organization, init func(*Organization), assign func(*Organization, *Enrollment)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[uuid.UUID]*Organization)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(enrollment.FieldOrganizationID)
+	}
+	query.Where(predicate.Enrollment(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(organization.EnrollmentsColumn), fks...))
 	}))
 	neighbors, err := query.All(ctx)
 	if err != nil {

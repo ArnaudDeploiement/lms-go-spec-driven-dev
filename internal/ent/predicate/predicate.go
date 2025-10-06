@@ -12,8 +12,17 @@ type Content func(*sql.Selector)
 // Course is the predicate function for course builders.
 type Course func(*sql.Selector)
 
+// Enrollment is the predicate function for enrollment builders.
+type Enrollment func(*sql.Selector)
+
+// Group is the predicate function for group builders.
+type Group func(*sql.Selector)
+
 // Module is the predicate function for module builders.
 type Module func(*sql.Selector)
+
+// ModuleProgress is the predicate function for moduleprogress builders.
+type ModuleProgress func(*sql.Selector)
 
 // Organization is the predicate function for organization builders.
 type Organization func(*sql.Selector)

@@ -45,9 +45,13 @@ type OrganizationEdges struct {
 	Contents []*Content `json:"contents,omitempty"`
 	// Courses holds the value of the courses edge.
 	Courses []*Course `json:"courses,omitempty"`
+	// Groups holds the value of the groups edge.
+	Groups []*Group `json:"groups,omitempty"`
+	// Enrollments holds the value of the enrollments edge.
+	Enrollments []*Enrollment `json:"enrollments,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [3]bool
+	loadedTypes [5]bool
 }
 
 // UsersOrErr returns the Users value or an error if the edge
@@ -75,6 +79,24 @@ func (e OrganizationEdges) CoursesOrErr() ([]*Course, error) {
 		return e.Courses, nil
 	}
 	return nil, &NotLoadedError{edge: "courses"}
+}
+
+// GroupsOrErr returns the Groups value or an error if the edge
+// was not loaded in eager-loading.
+func (e OrganizationEdges) GroupsOrErr() ([]*Group, error) {
+	if e.loadedTypes[3] {
+		return e.Groups, nil
+	}
+	return nil, &NotLoadedError{edge: "groups"}
+}
+
+// EnrollmentsOrErr returns the Enrollments value or an error if the edge
+// was not loaded in eager-loading.
+func (e OrganizationEdges) EnrollmentsOrErr() ([]*Enrollment, error) {
+	if e.loadedTypes[4] {
+		return e.Enrollments, nil
+	}
+	return nil, &NotLoadedError{edge: "enrollments"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -175,6 +197,16 @@ func (o *Organization) QueryContents() *ContentQuery {
 // QueryCourses queries the "courses" edge of the Organization entity.
 func (o *Organization) QueryCourses() *CourseQuery {
 	return NewOrganizationClient(o.config).QueryCourses(o)
+}
+
+// QueryGroups queries the "groups" edge of the Organization entity.
+func (o *Organization) QueryGroups() *GroupQuery {
+	return NewOrganizationClient(o.config).QueryGroups(o)
+}
+
+// QueryEnrollments queries the "enrollments" edge of the Organization entity.
+func (o *Organization) QueryEnrollments() *EnrollmentQuery {
+	return NewOrganizationClient(o.config).QueryEnrollments(o)
 }
 
 // Update returns a builder for updating this Organization.

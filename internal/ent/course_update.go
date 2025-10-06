@@ -7,6 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"lms-go/internal/ent/course"
+	"lms-go/internal/ent/enrollment"
+	"lms-go/internal/ent/group"
 	"lms-go/internal/ent/module"
 	"lms-go/internal/ent/organization"
 	"lms-go/internal/ent/predicate"
@@ -186,6 +188,36 @@ func (cu *CourseUpdate) AddModules(m ...*Module) *CourseUpdate {
 	return cu.AddModuleIDs(ids...)
 }
 
+// AddEnrollmentIDs adds the "enrollments" edge to the Enrollment entity by IDs.
+func (cu *CourseUpdate) AddEnrollmentIDs(ids ...uuid.UUID) *CourseUpdate {
+	cu.mutation.AddEnrollmentIDs(ids...)
+	return cu
+}
+
+// AddEnrollments adds the "enrollments" edges to the Enrollment entity.
+func (cu *CourseUpdate) AddEnrollments(e ...*Enrollment) *CourseUpdate {
+	ids := make([]uuid.UUID, len(e))
+	for i := range e {
+		ids[i] = e[i].ID
+	}
+	return cu.AddEnrollmentIDs(ids...)
+}
+
+// AddGroupIDs adds the "groups" edge to the Group entity by IDs.
+func (cu *CourseUpdate) AddGroupIDs(ids ...uuid.UUID) *CourseUpdate {
+	cu.mutation.AddGroupIDs(ids...)
+	return cu
+}
+
+// AddGroups adds the "groups" edges to the Group entity.
+func (cu *CourseUpdate) AddGroups(g ...*Group) *CourseUpdate {
+	ids := make([]uuid.UUID, len(g))
+	for i := range g {
+		ids[i] = g[i].ID
+	}
+	return cu.AddGroupIDs(ids...)
+}
+
 // Mutation returns the CourseMutation object of the builder.
 func (cu *CourseUpdate) Mutation() *CourseMutation {
 	return cu.mutation
@@ -216,6 +248,48 @@ func (cu *CourseUpdate) RemoveModules(m ...*Module) *CourseUpdate {
 		ids[i] = m[i].ID
 	}
 	return cu.RemoveModuleIDs(ids...)
+}
+
+// ClearEnrollments clears all "enrollments" edges to the Enrollment entity.
+func (cu *CourseUpdate) ClearEnrollments() *CourseUpdate {
+	cu.mutation.ClearEnrollments()
+	return cu
+}
+
+// RemoveEnrollmentIDs removes the "enrollments" edge to Enrollment entities by IDs.
+func (cu *CourseUpdate) RemoveEnrollmentIDs(ids ...uuid.UUID) *CourseUpdate {
+	cu.mutation.RemoveEnrollmentIDs(ids...)
+	return cu
+}
+
+// RemoveEnrollments removes "enrollments" edges to Enrollment entities.
+func (cu *CourseUpdate) RemoveEnrollments(e ...*Enrollment) *CourseUpdate {
+	ids := make([]uuid.UUID, len(e))
+	for i := range e {
+		ids[i] = e[i].ID
+	}
+	return cu.RemoveEnrollmentIDs(ids...)
+}
+
+// ClearGroups clears all "groups" edges to the Group entity.
+func (cu *CourseUpdate) ClearGroups() *CourseUpdate {
+	cu.mutation.ClearGroups()
+	return cu
+}
+
+// RemoveGroupIDs removes the "groups" edge to Group entities by IDs.
+func (cu *CourseUpdate) RemoveGroupIDs(ids ...uuid.UUID) *CourseUpdate {
+	cu.mutation.RemoveGroupIDs(ids...)
+	return cu
+}
+
+// RemoveGroups removes "groups" edges to Group entities.
+func (cu *CourseUpdate) RemoveGroups(g ...*Group) *CourseUpdate {
+	ids := make([]uuid.UUID, len(g))
+	for i := range g {
+		ids[i] = g[i].ID
+	}
+	return cu.RemoveGroupIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -387,6 +461,96 @@ func (cu *CourseUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(module.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if cu.mutation.EnrollmentsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   course.EnrollmentsTable,
+			Columns: []string{course.EnrollmentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(enrollment.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := cu.mutation.RemovedEnrollmentsIDs(); len(nodes) > 0 && !cu.mutation.EnrollmentsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   course.EnrollmentsTable,
+			Columns: []string{course.EnrollmentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(enrollment.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := cu.mutation.EnrollmentsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   course.EnrollmentsTable,
+			Columns: []string{course.EnrollmentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(enrollment.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if cu.mutation.GroupsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   course.GroupsTable,
+			Columns: []string{course.GroupsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(group.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := cu.mutation.RemovedGroupsIDs(); len(nodes) > 0 && !cu.mutation.GroupsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   course.GroupsTable,
+			Columns: []string{course.GroupsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(group.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := cu.mutation.GroupsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   course.GroupsTable,
+			Columns: []string{course.GroupsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(group.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {
@@ -569,6 +733,36 @@ func (cuo *CourseUpdateOne) AddModules(m ...*Module) *CourseUpdateOne {
 	return cuo.AddModuleIDs(ids...)
 }
 
+// AddEnrollmentIDs adds the "enrollments" edge to the Enrollment entity by IDs.
+func (cuo *CourseUpdateOne) AddEnrollmentIDs(ids ...uuid.UUID) *CourseUpdateOne {
+	cuo.mutation.AddEnrollmentIDs(ids...)
+	return cuo
+}
+
+// AddEnrollments adds the "enrollments" edges to the Enrollment entity.
+func (cuo *CourseUpdateOne) AddEnrollments(e ...*Enrollment) *CourseUpdateOne {
+	ids := make([]uuid.UUID, len(e))
+	for i := range e {
+		ids[i] = e[i].ID
+	}
+	return cuo.AddEnrollmentIDs(ids...)
+}
+
+// AddGroupIDs adds the "groups" edge to the Group entity by IDs.
+func (cuo *CourseUpdateOne) AddGroupIDs(ids ...uuid.UUID) *CourseUpdateOne {
+	cuo.mutation.AddGroupIDs(ids...)
+	return cuo
+}
+
+// AddGroups adds the "groups" edges to the Group entity.
+func (cuo *CourseUpdateOne) AddGroups(g ...*Group) *CourseUpdateOne {
+	ids := make([]uuid.UUID, len(g))
+	for i := range g {
+		ids[i] = g[i].ID
+	}
+	return cuo.AddGroupIDs(ids...)
+}
+
 // Mutation returns the CourseMutation object of the builder.
 func (cuo *CourseUpdateOne) Mutation() *CourseMutation {
 	return cuo.mutation
@@ -599,6 +793,48 @@ func (cuo *CourseUpdateOne) RemoveModules(m ...*Module) *CourseUpdateOne {
 		ids[i] = m[i].ID
 	}
 	return cuo.RemoveModuleIDs(ids...)
+}
+
+// ClearEnrollments clears all "enrollments" edges to the Enrollment entity.
+func (cuo *CourseUpdateOne) ClearEnrollments() *CourseUpdateOne {
+	cuo.mutation.ClearEnrollments()
+	return cuo
+}
+
+// RemoveEnrollmentIDs removes the "enrollments" edge to Enrollment entities by IDs.
+func (cuo *CourseUpdateOne) RemoveEnrollmentIDs(ids ...uuid.UUID) *CourseUpdateOne {
+	cuo.mutation.RemoveEnrollmentIDs(ids...)
+	return cuo
+}
+
+// RemoveEnrollments removes "enrollments" edges to Enrollment entities.
+func (cuo *CourseUpdateOne) RemoveEnrollments(e ...*Enrollment) *CourseUpdateOne {
+	ids := make([]uuid.UUID, len(e))
+	for i := range e {
+		ids[i] = e[i].ID
+	}
+	return cuo.RemoveEnrollmentIDs(ids...)
+}
+
+// ClearGroups clears all "groups" edges to the Group entity.
+func (cuo *CourseUpdateOne) ClearGroups() *CourseUpdateOne {
+	cuo.mutation.ClearGroups()
+	return cuo
+}
+
+// RemoveGroupIDs removes the "groups" edge to Group entities by IDs.
+func (cuo *CourseUpdateOne) RemoveGroupIDs(ids ...uuid.UUID) *CourseUpdateOne {
+	cuo.mutation.RemoveGroupIDs(ids...)
+	return cuo
+}
+
+// RemoveGroups removes "groups" edges to Group entities.
+func (cuo *CourseUpdateOne) RemoveGroups(g ...*Group) *CourseUpdateOne {
+	ids := make([]uuid.UUID, len(g))
+	for i := range g {
+		ids[i] = g[i].ID
+	}
+	return cuo.RemoveGroupIDs(ids...)
 }
 
 // Where appends a list predicates to the CourseUpdate builder.
@@ -800,6 +1036,96 @@ func (cuo *CourseUpdateOne) sqlSave(ctx context.Context) (_node *Course, err err
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(module.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if cuo.mutation.EnrollmentsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   course.EnrollmentsTable,
+			Columns: []string{course.EnrollmentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(enrollment.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := cuo.mutation.RemovedEnrollmentsIDs(); len(nodes) > 0 && !cuo.mutation.EnrollmentsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   course.EnrollmentsTable,
+			Columns: []string{course.EnrollmentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(enrollment.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := cuo.mutation.EnrollmentsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   course.EnrollmentsTable,
+			Columns: []string{course.EnrollmentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(enrollment.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if cuo.mutation.GroupsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   course.GroupsTable,
+			Columns: []string{course.GroupsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(group.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := cuo.mutation.RemovedGroupsIDs(); len(nodes) > 0 && !cuo.mutation.GroupsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   course.GroupsTable,
+			Columns: []string{course.GroupsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(group.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := cuo.mutation.GroupsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   course.GroupsTable,
+			Columns: []string{course.GroupsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(group.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {

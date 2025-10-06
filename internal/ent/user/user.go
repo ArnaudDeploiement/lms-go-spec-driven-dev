@@ -37,6 +37,8 @@ const (
 	FieldUpdatedAt = "updated_at"
 	// EdgeOrganization holds the string denoting the organization edge name in mutations.
 	EdgeOrganization = "organization"
+	// EdgeEnrollments holds the string denoting the enrollments edge name in mutations.
+	EdgeEnrollments = "enrollments"
 	// Table holds the table name of the user in the database.
 	Table = "users"
 	// OrganizationTable is the table that holds the organization relation/edge.
@@ -46,6 +48,13 @@ const (
 	OrganizationInverseTable = "organizations"
 	// OrganizationColumn is the table column denoting the organization relation/edge.
 	OrganizationColumn = "organization_id"
+	// EnrollmentsTable is the table that holds the enrollments relation/edge.
+	EnrollmentsTable = "enrollments"
+	// EnrollmentsInverseTable is the table name for the Enrollment entity.
+	// It exists in this package in order to avoid circular dependency with the "enrollment" package.
+	EnrollmentsInverseTable = "enrollments"
+	// EnrollmentsColumn is the table column denoting the enrollments relation/edge.
+	EnrollmentsColumn = "user_id"
 )
 
 // Columns holds all SQL columns for user fields.
@@ -153,10 +162,31 @@ func ByOrganizationField(field string, opts ...sql.OrderTermOption) OrderOption 
 		sqlgraph.OrderByNeighborTerms(s, newOrganizationStep(), sql.OrderByField(field, opts...))
 	}
 }
+
+// ByEnrollmentsCount orders the results by enrollments count.
+func ByEnrollmentsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newEnrollmentsStep(), opts...)
+	}
+}
+
+// ByEnrollments orders the results by enrollments terms.
+func ByEnrollments(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newEnrollmentsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
 func newOrganizationStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(OrganizationInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.M2O, true, OrganizationTable, OrganizationColumn),
+	)
+}
+func newEnrollmentsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(EnrollmentsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, EnrollmentsTable, EnrollmentsColumn),
 	)
 }

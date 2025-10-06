@@ -87,6 +87,109 @@ var (
 			},
 		},
 	}
+	// EnrollmentsColumns holds the columns for the "enrollments" table.
+	EnrollmentsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "status", Type: field.TypeString, Default: "pending"},
+		{Name: "progress", Type: field.TypeFloat32, Default: 0},
+		{Name: "started_at", Type: field.TypeTime, Nullable: true},
+		{Name: "completed_at", Type: field.TypeTime, Nullable: true},
+		{Name: "metadata", Type: field.TypeJSON, Nullable: true},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "course_id", Type: field.TypeUUID},
+		{Name: "group_id", Type: field.TypeUUID, Nullable: true},
+		{Name: "organization_id", Type: field.TypeUUID},
+		{Name: "user_id", Type: field.TypeUUID},
+	}
+	// EnrollmentsTable holds the schema information for the "enrollments" table.
+	EnrollmentsTable = &schema.Table{
+		Name:       "enrollments",
+		Columns:    EnrollmentsColumns,
+		PrimaryKey: []*schema.Column{EnrollmentsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "enrollments_courses_enrollments",
+				Columns:    []*schema.Column{EnrollmentsColumns[8]},
+				RefColumns: []*schema.Column{CoursesColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "enrollments_groups_enrollments",
+				Columns:    []*schema.Column{EnrollmentsColumns[9]},
+				RefColumns: []*schema.Column{GroupsColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+			{
+				Symbol:     "enrollments_organizations_enrollments",
+				Columns:    []*schema.Column{EnrollmentsColumns[10]},
+				RefColumns: []*schema.Column{OrganizationsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "enrollments_users_enrollments",
+				Columns:    []*schema.Column{EnrollmentsColumns[11]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "enrollment_organization_id_course_id_user_id",
+				Unique:  true,
+				Columns: []*schema.Column{EnrollmentsColumns[10], EnrollmentsColumns[8], EnrollmentsColumns[11]},
+			},
+			{
+				Name:    "enrollment_organization_id_status",
+				Unique:  false,
+				Columns: []*schema.Column{EnrollmentsColumns[10], EnrollmentsColumns[1]},
+			},
+		},
+	}
+	// GroupsColumns holds the columns for the "groups" table.
+	GroupsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "name", Type: field.TypeString},
+		{Name: "description", Type: field.TypeString, Nullable: true},
+		{Name: "capacity", Type: field.TypeInt, Nullable: true},
+		{Name: "metadata", Type: field.TypeJSON, Nullable: true},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "course_id", Type: field.TypeUUID, Nullable: true},
+		{Name: "organization_id", Type: field.TypeUUID},
+	}
+	// GroupsTable holds the schema information for the "groups" table.
+	GroupsTable = &schema.Table{
+		Name:       "groups",
+		Columns:    GroupsColumns,
+		PrimaryKey: []*schema.Column{GroupsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "groups_courses_groups",
+				Columns:    []*schema.Column{GroupsColumns[7]},
+				RefColumns: []*schema.Column{CoursesColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+			{
+				Symbol:     "groups_organizations_groups",
+				Columns:    []*schema.Column{GroupsColumns[8]},
+				RefColumns: []*schema.Column{OrganizationsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "group_organization_id_name",
+				Unique:  false,
+				Columns: []*schema.Column{GroupsColumns[8], GroupsColumns[1]},
+			},
+			{
+				Name:    "group_organization_id_course_id",
+				Unique:  false,
+				Columns: []*schema.Column{GroupsColumns[8], GroupsColumns[7]},
+			},
+		},
+	}
 	// ModulesColumns holds the columns for the "modules" table.
 	ModulesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
@@ -124,6 +227,51 @@ var (
 				Name:    "module_course_id_status",
 				Unique:  false,
 				Columns: []*schema.Column{ModulesColumns[10], ModulesColumns[6]},
+			},
+		},
+	}
+	// ModuleProgressesColumns holds the columns for the "module_progresses" table.
+	ModuleProgressesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "status", Type: field.TypeString, Default: "not_started"},
+		{Name: "score", Type: field.TypeFloat32, Nullable: true},
+		{Name: "attempts", Type: field.TypeInt, Default: 0},
+		{Name: "started_at", Type: field.TypeTime, Nullable: true},
+		{Name: "completed_at", Type: field.TypeTime, Nullable: true},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "enrollment_id", Type: field.TypeUUID},
+		{Name: "module_id", Type: field.TypeUUID},
+	}
+	// ModuleProgressesTable holds the schema information for the "module_progresses" table.
+	ModuleProgressesTable = &schema.Table{
+		Name:       "module_progresses",
+		Columns:    ModuleProgressesColumns,
+		PrimaryKey: []*schema.Column{ModuleProgressesColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "module_progresses_enrollments_progress_entries",
+				Columns:    []*schema.Column{ModuleProgressesColumns[8]},
+				RefColumns: []*schema.Column{EnrollmentsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "module_progresses_modules_progress_entries",
+				Columns:    []*schema.Column{ModuleProgressesColumns[9]},
+				RefColumns: []*schema.Column{ModulesColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "moduleprogress_enrollment_id_module_id",
+				Unique:  true,
+				Columns: []*schema.Column{ModuleProgressesColumns[8], ModuleProgressesColumns[9]},
+			},
+			{
+				Name:    "moduleprogress_module_id_status",
+				Unique:  false,
+				Columns: []*schema.Column{ModuleProgressesColumns[9], ModuleProgressesColumns[1]},
 			},
 		},
 	}
@@ -182,7 +330,10 @@ var (
 	Tables = []*schema.Table{
 		ContentsTable,
 		CoursesTable,
+		EnrollmentsTable,
+		GroupsTable,
 		ModulesTable,
+		ModuleProgressesTable,
 		OrganizationsTable,
 		UsersTable,
 	}
@@ -191,6 +342,14 @@ var (
 func init() {
 	ContentsTable.ForeignKeys[0].RefTable = OrganizationsTable
 	CoursesTable.ForeignKeys[0].RefTable = OrganizationsTable
+	EnrollmentsTable.ForeignKeys[0].RefTable = CoursesTable
+	EnrollmentsTable.ForeignKeys[1].RefTable = GroupsTable
+	EnrollmentsTable.ForeignKeys[2].RefTable = OrganizationsTable
+	EnrollmentsTable.ForeignKeys[3].RefTable = UsersTable
+	GroupsTable.ForeignKeys[0].RefTable = CoursesTable
+	GroupsTable.ForeignKeys[1].RefTable = OrganizationsTable
 	ModulesTable.ForeignKeys[0].RefTable = CoursesTable
+	ModuleProgressesTable.ForeignKeys[0].RefTable = EnrollmentsTable
+	ModuleProgressesTable.ForeignKeys[1].RefTable = ModulesTable
 	UsersTable.ForeignKeys[0].RefTable = OrganizationsTable
 }

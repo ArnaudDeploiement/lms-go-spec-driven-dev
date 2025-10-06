@@ -5,7 +5,10 @@ package ent
 import (
 	"lms-go/internal/ent/content"
 	"lms-go/internal/ent/course"
+	"lms-go/internal/ent/enrollment"
+	"lms-go/internal/ent/group"
 	"lms-go/internal/ent/module"
+	"lms-go/internal/ent/moduleprogress"
 	"lms-go/internal/ent/organization"
 	"lms-go/internal/ent/schema"
 	"lms-go/internal/ent/user"
@@ -90,6 +93,58 @@ func init() {
 	courseDescID := courseFields[0].Descriptor()
 	// course.DefaultID holds the default value on creation for the id field.
 	course.DefaultID = courseDescID.Default.(func() uuid.UUID)
+	enrollmentFields := schema.Enrollment{}.Fields()
+	_ = enrollmentFields
+	// enrollmentDescStatus is the schema descriptor for status field.
+	enrollmentDescStatus := enrollmentFields[5].Descriptor()
+	// enrollment.DefaultStatus holds the default value on creation for the status field.
+	enrollment.DefaultStatus = enrollmentDescStatus.Default.(string)
+	// enrollmentDescProgress is the schema descriptor for progress field.
+	enrollmentDescProgress := enrollmentFields[6].Descriptor()
+	// enrollment.DefaultProgress holds the default value on creation for the progress field.
+	enrollment.DefaultProgress = enrollmentDescProgress.Default.(float32)
+	// enrollmentDescMetadata is the schema descriptor for metadata field.
+	enrollmentDescMetadata := enrollmentFields[9].Descriptor()
+	// enrollment.DefaultMetadata holds the default value on creation for the metadata field.
+	enrollment.DefaultMetadata = enrollmentDescMetadata.Default.(map[string]interface{})
+	// enrollmentDescCreatedAt is the schema descriptor for created_at field.
+	enrollmentDescCreatedAt := enrollmentFields[10].Descriptor()
+	// enrollment.DefaultCreatedAt holds the default value on creation for the created_at field.
+	enrollment.DefaultCreatedAt = enrollmentDescCreatedAt.Default.(func() time.Time)
+	// enrollmentDescUpdatedAt is the schema descriptor for updated_at field.
+	enrollmentDescUpdatedAt := enrollmentFields[11].Descriptor()
+	// enrollment.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	enrollment.DefaultUpdatedAt = enrollmentDescUpdatedAt.Default.(func() time.Time)
+	// enrollment.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	enrollment.UpdateDefaultUpdatedAt = enrollmentDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// enrollmentDescID is the schema descriptor for id field.
+	enrollmentDescID := enrollmentFields[0].Descriptor()
+	// enrollment.DefaultID holds the default value on creation for the id field.
+	enrollment.DefaultID = enrollmentDescID.Default.(func() uuid.UUID)
+	groupFields := schema.Group{}.Fields()
+	_ = groupFields
+	// groupDescName is the schema descriptor for name field.
+	groupDescName := groupFields[3].Descriptor()
+	// group.NameValidator is a validator for the "name" field. It is called by the builders before save.
+	group.NameValidator = groupDescName.Validators[0].(func(string) error)
+	// groupDescMetadata is the schema descriptor for metadata field.
+	groupDescMetadata := groupFields[6].Descriptor()
+	// group.DefaultMetadata holds the default value on creation for the metadata field.
+	group.DefaultMetadata = groupDescMetadata.Default.(map[string]interface{})
+	// groupDescCreatedAt is the schema descriptor for created_at field.
+	groupDescCreatedAt := groupFields[7].Descriptor()
+	// group.DefaultCreatedAt holds the default value on creation for the created_at field.
+	group.DefaultCreatedAt = groupDescCreatedAt.Default.(func() time.Time)
+	// groupDescUpdatedAt is the schema descriptor for updated_at field.
+	groupDescUpdatedAt := groupFields[8].Descriptor()
+	// group.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	group.DefaultUpdatedAt = groupDescUpdatedAt.Default.(func() time.Time)
+	// group.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	group.UpdateDefaultUpdatedAt = groupDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// groupDescID is the schema descriptor for id field.
+	groupDescID := groupFields[0].Descriptor()
+	// group.DefaultID holds the default value on creation for the id field.
+	group.DefaultID = groupDescID.Default.(func() uuid.UUID)
 	moduleFields := schema.Module{}.Fields()
 	_ = moduleFields
 	// moduleDescTitle is the schema descriptor for title field.
@@ -126,6 +181,30 @@ func init() {
 	moduleDescID := moduleFields[0].Descriptor()
 	// module.DefaultID holds the default value on creation for the id field.
 	module.DefaultID = moduleDescID.Default.(func() uuid.UUID)
+	moduleprogressFields := schema.ModuleProgress{}.Fields()
+	_ = moduleprogressFields
+	// moduleprogressDescStatus is the schema descriptor for status field.
+	moduleprogressDescStatus := moduleprogressFields[3].Descriptor()
+	// moduleprogress.DefaultStatus holds the default value on creation for the status field.
+	moduleprogress.DefaultStatus = moduleprogressDescStatus.Default.(string)
+	// moduleprogressDescAttempts is the schema descriptor for attempts field.
+	moduleprogressDescAttempts := moduleprogressFields[5].Descriptor()
+	// moduleprogress.DefaultAttempts holds the default value on creation for the attempts field.
+	moduleprogress.DefaultAttempts = moduleprogressDescAttempts.Default.(int)
+	// moduleprogressDescCreatedAt is the schema descriptor for created_at field.
+	moduleprogressDescCreatedAt := moduleprogressFields[8].Descriptor()
+	// moduleprogress.DefaultCreatedAt holds the default value on creation for the created_at field.
+	moduleprogress.DefaultCreatedAt = moduleprogressDescCreatedAt.Default.(func() time.Time)
+	// moduleprogressDescUpdatedAt is the schema descriptor for updated_at field.
+	moduleprogressDescUpdatedAt := moduleprogressFields[9].Descriptor()
+	// moduleprogress.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	moduleprogress.DefaultUpdatedAt = moduleprogressDescUpdatedAt.Default.(func() time.Time)
+	// moduleprogress.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	moduleprogress.UpdateDefaultUpdatedAt = moduleprogressDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// moduleprogressDescID is the schema descriptor for id field.
+	moduleprogressDescID := moduleprogressFields[0].Descriptor()
+	// moduleprogress.DefaultID holds the default value on creation for the id field.
+	moduleprogress.DefaultID = moduleprogressDescID.Default.(func() uuid.UUID)
 	organizationFields := schema.Organization{}.Fields()
 	_ = organizationFields
 	// organizationDescName is the schema descriptor for name field.

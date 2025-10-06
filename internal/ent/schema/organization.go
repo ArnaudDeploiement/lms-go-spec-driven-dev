@@ -47,5 +47,7 @@ func (Organization) Edges() []ent.Edge {
 		edge.To("users", User.Type),
 		edge.To("contents", Content.Type),
 		edge.To("courses", Course.Type),
+		edge.To("groups", Group.Type),
+		edge.To("enrollments", Enrollment.Type),
 	}
 }

@@ -1,30 +1,32 @@
 package main
 
 import (
-	"context"
-	"encoding/json"
-	"log"
-	"net/http"
-	"os/signal"
-	"syscall"
-	"time"
+    "context"
+    "encoding/json"
+    "log"
+    "net/http"
+    "os/signal"
+    "syscall"
+    "time"
 
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
-	"github.com/go-chi/cors"
+    "github.com/go-chi/chi/v5"
+    "github.com/go-chi/chi/v5/middleware"
+    "github.com/go-chi/cors"
 
-	"lms-go/internal/app/config"
-	"lms-go/internal/auth"
-	"lms-go/internal/content"
-	"lms-go/internal/course"
-	"lms-go/internal/ent"
-	httpapi "lms-go/internal/http/api"
-	httpmiddleware "lms-go/internal/http/middleware"
-	"lms-go/internal/http/ui"
-	"lms-go/internal/organization"
-	"lms-go/internal/platform/database"
-	"lms-go/internal/platform/storage"
-	"lms-go/internal/user"
+    "lms-go/internal/app/config"
+    "lms-go/internal/auth"
+    "lms-go/internal/content"
+    "lms-go/internal/course"
+    "lms-go/internal/enrollment"
+    "lms-go/internal/ent"
+    httpapi "lms-go/internal/http/api"
+    httpmiddleware "lms-go/internal/http/middleware"
+    "lms-go/internal/http/ui"
+    "lms-go/internal/organization"
+    "lms-go/internal/platform/database"
+    "lms-go/internal/platform/storage"
+    "lms-go/internal/progress"
+    "lms-go/internal/user"
 )
 
 func main() {
@@ -69,11 +71,13 @@ func main() {
 		RefreshTokenTTL: cfg.RefreshTokenTTL,
 	})
 
-	userService := user.NewService(dbClient)
-	contentService := content.NewService(dbClient, storageClient, content.Config{})
-	courseService := course.NewService(dbClient)
+    userService := user.NewService(dbClient)
+    contentService := content.NewService(dbClient, storageClient, content.Config{})
+    courseService := course.NewService(dbClient)
+    enrollmentService := enrollment.NewService(dbClient)
+    progressService := progress.NewService(dbClient)
 
-	router := newRouter(dbClient, orgService, userService, contentService, courseService, authService)
+    router := newRouter(dbClient, orgService, userService, contentService, courseService, enrollmentService, progressService, authService)
 	server := &http.Server{
 		Addr:              cfg.APIAddr,
 		Handler:           router,
@@ -97,7 +101,7 @@ func main() {
 	}
 }
 
-func newRouter(client *ent.Client, orgService *organization.Service, userService *user.Service, contentService *content.Service, courseService *course.Service, authService *auth.Service) http.Handler {
+func newRouter(client *ent.Client, orgService *organization.Service, userService *user.Service, contentService *content.Service, courseService *course.Service, enrollmentService *enrollment.Service, progressService *progress.Service, authService *auth.Service) http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
@@ -139,6 +143,16 @@ func newRouter(client *ent.Client, orgService *organization.Service, userService
 	r.Route("/courses", func(cr chi.Router) {
 		cr.Use(httpmiddleware.TenantFromHeader)
 		courseHandler.Mount(cr)
+	})
+
+	enrollmentHandler := httpapi.NewEnrollmentHandler(enrollmentService)
+	r.Route("/enrollments", func(cr chi.Router) {
+		cr.Use(httpmiddleware.TenantFromHeader)
+		enrollmentHandler.Mount(cr)
+		progressHandler := httpapi.NewProgressHandler(progressService)
+		cr.Route("/{id}/progress", func(pr chi.Router) {
+			progressHandler.Mount(pr)
+		})
 	})
 
 	return r

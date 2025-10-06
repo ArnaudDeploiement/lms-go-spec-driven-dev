@@ -50,9 +50,11 @@ type User struct {
 type UserEdges struct {
 	// Organization holds the value of the organization edge.
 	Organization *Organization `json:"organization,omitempty"`
+	// Enrollments holds the value of the enrollments edge.
+	Enrollments []*Enrollment `json:"enrollments,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [1]bool
+	loadedTypes [2]bool
 }
 
 // OrganizationOrErr returns the Organization value or an error if the edge
@@ -64,6 +66,15 @@ func (e UserEdges) OrganizationOrErr() (*Organization, error) {
 		return nil, &NotFoundError{label: organization.Label}
 	}
 	return nil, &NotLoadedError{edge: "organization"}
+}
+
+// EnrollmentsOrErr returns the Enrollments value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) EnrollmentsOrErr() ([]*Enrollment, error) {
+	if e.loadedTypes[1] {
+		return e.Enrollments, nil
+	}
+	return nil, &NotLoadedError{edge: "enrollments"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -180,6 +191,11 @@ func (u *User) Value(name string) (ent.Value, error) {
 // QueryOrganization queries the "organization" edge of the User entity.
 func (u *User) QueryOrganization() *OrganizationQuery {
 	return NewUserClient(u.config).QueryOrganization(u)
+}
+
+// QueryEnrollments queries the "enrollments" edge of the User entity.
+func (u *User) QueryEnrollments() *EnrollmentQuery {
+	return NewUserClient(u.config).QueryEnrollments(u)
 }
 
 // Update returns a builder for updating this User.

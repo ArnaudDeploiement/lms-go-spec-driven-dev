@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"lms-go/internal/ent/enrollment"
 	"lms-go/internal/ent/organization"
 	"lms-go/internal/ent/predicate"
 	"lms-go/internal/ent/user"
@@ -163,6 +164,21 @@ func (uu *UserUpdate) SetOrganization(o *Organization) *UserUpdate {
 	return uu.SetOrganizationID(o.ID)
 }
 
+// AddEnrollmentIDs adds the "enrollments" edge to the Enrollment entity by IDs.
+func (uu *UserUpdate) AddEnrollmentIDs(ids ...uuid.UUID) *UserUpdate {
+	uu.mutation.AddEnrollmentIDs(ids...)
+	return uu
+}
+
+// AddEnrollments adds the "enrollments" edges to the Enrollment entity.
+func (uu *UserUpdate) AddEnrollments(e ...*Enrollment) *UserUpdate {
+	ids := make([]uuid.UUID, len(e))
+	for i := range e {
+		ids[i] = e[i].ID
+	}
+	return uu.AddEnrollmentIDs(ids...)
+}
+
 // Mutation returns the UserMutation object of the builder.
 func (uu *UserUpdate) Mutation() *UserMutation {
 	return uu.mutation
@@ -172,6 +188,27 @@ func (uu *UserUpdate) Mutation() *UserMutation {
 func (uu *UserUpdate) ClearOrganization() *UserUpdate {
 	uu.mutation.ClearOrganization()
 	return uu
+}
+
+// ClearEnrollments clears all "enrollments" edges to the Enrollment entity.
+func (uu *UserUpdate) ClearEnrollments() *UserUpdate {
+	uu.mutation.ClearEnrollments()
+	return uu
+}
+
+// RemoveEnrollmentIDs removes the "enrollments" edge to Enrollment entities by IDs.
+func (uu *UserUpdate) RemoveEnrollmentIDs(ids ...uuid.UUID) *UserUpdate {
+	uu.mutation.RemoveEnrollmentIDs(ids...)
+	return uu
+}
+
+// RemoveEnrollments removes "enrollments" edges to Enrollment entities.
+func (uu *UserUpdate) RemoveEnrollments(e ...*Enrollment) *UserUpdate {
+	ids := make([]uuid.UUID, len(e))
+	for i := range e {
+		ids[i] = e[i].ID
+	}
+	return uu.RemoveEnrollmentIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -295,6 +332,51 @@ func (uu *UserUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(organization.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if uu.mutation.EnrollmentsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.EnrollmentsTable,
+			Columns: []string{user.EnrollmentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(enrollment.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := uu.mutation.RemovedEnrollmentsIDs(); len(nodes) > 0 && !uu.mutation.EnrollmentsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.EnrollmentsTable,
+			Columns: []string{user.EnrollmentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(enrollment.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := uu.mutation.EnrollmentsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.EnrollmentsTable,
+			Columns: []string{user.EnrollmentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(enrollment.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {
@@ -455,6 +537,21 @@ func (uuo *UserUpdateOne) SetOrganization(o *Organization) *UserUpdateOne {
 	return uuo.SetOrganizationID(o.ID)
 }
 
+// AddEnrollmentIDs adds the "enrollments" edge to the Enrollment entity by IDs.
+func (uuo *UserUpdateOne) AddEnrollmentIDs(ids ...uuid.UUID) *UserUpdateOne {
+	uuo.mutation.AddEnrollmentIDs(ids...)
+	return uuo
+}
+
+// AddEnrollments adds the "enrollments" edges to the Enrollment entity.
+func (uuo *UserUpdateOne) AddEnrollments(e ...*Enrollment) *UserUpdateOne {
+	ids := make([]uuid.UUID, len(e))
+	for i := range e {
+		ids[i] = e[i].ID
+	}
+	return uuo.AddEnrollmentIDs(ids...)
+}
+
 // Mutation returns the UserMutation object of the builder.
 func (uuo *UserUpdateOne) Mutation() *UserMutation {
 	return uuo.mutation
@@ -464,6 +561,27 @@ func (uuo *UserUpdateOne) Mutation() *UserMutation {
 func (uuo *UserUpdateOne) ClearOrganization() *UserUpdateOne {
 	uuo.mutation.ClearOrganization()
 	return uuo
+}
+
+// ClearEnrollments clears all "enrollments" edges to the Enrollment entity.
+func (uuo *UserUpdateOne) ClearEnrollments() *UserUpdateOne {
+	uuo.mutation.ClearEnrollments()
+	return uuo
+}
+
+// RemoveEnrollmentIDs removes the "enrollments" edge to Enrollment entities by IDs.
+func (uuo *UserUpdateOne) RemoveEnrollmentIDs(ids ...uuid.UUID) *UserUpdateOne {
+	uuo.mutation.RemoveEnrollmentIDs(ids...)
+	return uuo
+}
+
+// RemoveEnrollments removes "enrollments" edges to Enrollment entities.
+func (uuo *UserUpdateOne) RemoveEnrollments(e ...*Enrollment) *UserUpdateOne {
+	ids := make([]uuid.UUID, len(e))
+	for i := range e {
+		ids[i] = e[i].ID
+	}
+	return uuo.RemoveEnrollmentIDs(ids...)
 }
 
 // Where appends a list predicates to the UserUpdate builder.
@@ -617,6 +735,51 @@ func (uuo *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) 
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(organization.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if uuo.mutation.EnrollmentsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.EnrollmentsTable,
+			Columns: []string{user.EnrollmentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(enrollment.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := uuo.mutation.RemovedEnrollmentsIDs(); len(nodes) > 0 && !uuo.mutation.EnrollmentsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.EnrollmentsTable,
+			Columns: []string{user.EnrollmentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(enrollment.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := uuo.mutation.EnrollmentsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.EnrollmentsTable,
+			Columns: []string{user.EnrollmentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(enrollment.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {

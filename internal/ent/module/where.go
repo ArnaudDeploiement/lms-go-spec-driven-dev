@@ -569,6 +569,29 @@ func HasCourseWith(preds ...predicate.Course) predicate.Module {
 	})
 }
 
+// HasProgressEntries applies the HasEdge predicate on the "progress_entries" edge.
+func HasProgressEntries() predicate.Module {
+	return predicate.Module(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, ProgressEntriesTable, ProgressEntriesColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasProgressEntriesWith applies the HasEdge predicate on the "progress_entries" edge with a given conditions (other predicates).
+func HasProgressEntriesWith(preds ...predicate.ModuleProgress) predicate.Module {
+	return predicate.Module(func(s *sql.Selector) {
+		step := newProgressEntriesStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // And groups predicates with the AND operator between them.
 func And(predicates ...predicate.Module) predicate.Module {
 	return predicate.Module(sql.AndPredicates(predicates...))

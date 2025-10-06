@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"lms-go/internal/ent/course"
 	"lms-go/internal/ent/module"
+	"lms-go/internal/ent/moduleprogress"
 	"time"
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
@@ -147,6 +148,21 @@ func (mc *ModuleCreate) SetNillableID(u *uuid.UUID) *ModuleCreate {
 // SetCourse sets the "course" edge to the Course entity.
 func (mc *ModuleCreate) SetCourse(c *Course) *ModuleCreate {
 	return mc.SetCourseID(c.ID)
+}
+
+// AddProgressEntryIDs adds the "progress_entries" edge to the ModuleProgress entity by IDs.
+func (mc *ModuleCreate) AddProgressEntryIDs(ids ...uuid.UUID) *ModuleCreate {
+	mc.mutation.AddProgressEntryIDs(ids...)
+	return mc
+}
+
+// AddProgressEntries adds the "progress_entries" edges to the ModuleProgress entity.
+func (mc *ModuleCreate) AddProgressEntries(m ...*ModuleProgress) *ModuleCreate {
+	ids := make([]uuid.UUID, len(m))
+	for i := range m {
+		ids[i] = m[i].ID
+	}
+	return mc.AddProgressEntryIDs(ids...)
 }
 
 // Mutation returns the ModuleMutation object of the builder.
@@ -332,6 +348,22 @@ func (mc *ModuleCreate) createSpec() (*Module, *sqlgraph.CreateSpec) {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
 		_node.CourseID = nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := mc.mutation.ProgressEntriesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   module.ProgressEntriesTable,
+			Columns: []string{module.ProgressEntriesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(moduleprogress.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec

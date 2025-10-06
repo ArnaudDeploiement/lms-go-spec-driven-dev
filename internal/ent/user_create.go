@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"lms-go/internal/ent/enrollment"
 	"lms-go/internal/ent/organization"
 	"lms-go/internal/ent/user"
 	"time"
@@ -147,6 +148,21 @@ func (uc *UserCreate) SetNillableID(u *uuid.UUID) *UserCreate {
 // SetOrganization sets the "organization" edge to the Organization entity.
 func (uc *UserCreate) SetOrganization(o *Organization) *UserCreate {
 	return uc.SetOrganizationID(o.ID)
+}
+
+// AddEnrollmentIDs adds the "enrollments" edge to the Enrollment entity by IDs.
+func (uc *UserCreate) AddEnrollmentIDs(ids ...uuid.UUID) *UserCreate {
+	uc.mutation.AddEnrollmentIDs(ids...)
+	return uc
+}
+
+// AddEnrollments adds the "enrollments" edges to the Enrollment entity.
+func (uc *UserCreate) AddEnrollments(e ...*Enrollment) *UserCreate {
+	ids := make([]uuid.UUID, len(e))
+	for i := range e {
+		ids[i] = e[i].ID
+	}
+	return uc.AddEnrollmentIDs(ids...)
 }
 
 // Mutation returns the UserMutation object of the builder.
@@ -332,6 +348,22 @@ func (uc *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
 		_node.OrganizationID = nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := uc.mutation.EnrollmentsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.EnrollmentsTable,
+			Columns: []string{user.EnrollmentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(enrollment.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec

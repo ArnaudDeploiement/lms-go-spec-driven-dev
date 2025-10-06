@@ -37,6 +37,8 @@ const (
 	FieldUpdatedAt = "updated_at"
 	// EdgeCourse holds the string denoting the course edge name in mutations.
 	EdgeCourse = "course"
+	// EdgeProgressEntries holds the string denoting the progress_entries edge name in mutations.
+	EdgeProgressEntries = "progress_entries"
 	// Table holds the table name of the module in the database.
 	Table = "modules"
 	// CourseTable is the table that holds the course relation/edge.
@@ -46,6 +48,13 @@ const (
 	CourseInverseTable = "courses"
 	// CourseColumn is the table column denoting the course relation/edge.
 	CourseColumn = "course_id"
+	// ProgressEntriesTable is the table that holds the progress_entries relation/edge.
+	ProgressEntriesTable = "module_progresses"
+	// ProgressEntriesInverseTable is the table name for the ModuleProgress entity.
+	// It exists in this package in order to avoid circular dependency with the "moduleprogress" package.
+	ProgressEntriesInverseTable = "module_progresses"
+	// ProgressEntriesColumn is the table column denoting the progress_entries relation/edge.
+	ProgressEntriesColumn = "module_id"
 )
 
 // Columns holds all SQL columns for module fields.
@@ -153,10 +162,31 @@ func ByCourseField(field string, opts ...sql.OrderTermOption) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newCourseStep(), sql.OrderByField(field, opts...))
 	}
 }
+
+// ByProgressEntriesCount orders the results by progress_entries count.
+func ByProgressEntriesCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newProgressEntriesStep(), opts...)
+	}
+}
+
+// ByProgressEntries orders the results by progress_entries terms.
+func ByProgressEntries(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newProgressEntriesStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
 func newCourseStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(CourseInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.M2O, true, CourseTable, CourseColumn),
+	)
+}
+func newProgressEntriesStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ProgressEntriesInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, ProgressEntriesTable, ProgressEntriesColumn),
 	)
 }

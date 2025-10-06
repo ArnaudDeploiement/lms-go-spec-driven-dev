@@ -52,9 +52,13 @@ type CourseEdges struct {
 	Organization *Organization `json:"organization,omitempty"`
 	// Modules holds the value of the modules edge.
 	Modules []*Module `json:"modules,omitempty"`
+	// Enrollments holds the value of the enrollments edge.
+	Enrollments []*Enrollment `json:"enrollments,omitempty"`
+	// Groups holds the value of the groups edge.
+	Groups []*Group `json:"groups,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [2]bool
+	loadedTypes [4]bool
 }
 
 // OrganizationOrErr returns the Organization value or an error if the edge
@@ -75,6 +79,24 @@ func (e CourseEdges) ModulesOrErr() ([]*Module, error) {
 		return e.Modules, nil
 	}
 	return nil, &NotLoadedError{edge: "modules"}
+}
+
+// EnrollmentsOrErr returns the Enrollments value or an error if the edge
+// was not loaded in eager-loading.
+func (e CourseEdges) EnrollmentsOrErr() ([]*Enrollment, error) {
+	if e.loadedTypes[2] {
+		return e.Enrollments, nil
+	}
+	return nil, &NotLoadedError{edge: "enrollments"}
+}
+
+// GroupsOrErr returns the Groups value or an error if the edge
+// was not loaded in eager-loading.
+func (e CourseEdges) GroupsOrErr() ([]*Group, error) {
+	if e.loadedTypes[3] {
+		return e.Groups, nil
+	}
+	return nil, &NotLoadedError{edge: "groups"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -197,6 +219,16 @@ func (c *Course) QueryOrganization() *OrganizationQuery {
 // QueryModules queries the "modules" edge of the Course entity.
 func (c *Course) QueryModules() *ModuleQuery {
 	return NewCourseClient(c.config).QueryModules(c)
+}
+
+// QueryEnrollments queries the "enrollments" edge of the Course entity.
+func (c *Course) QueryEnrollments() *EnrollmentQuery {
+	return NewCourseClient(c.config).QueryEnrollments(c)
+}
+
+// QueryGroups queries the "groups" edge of the Course entity.
+func (c *Course) QueryGroups() *GroupQuery {
+	return NewCourseClient(c.config).QueryGroups(c)
 }
 
 // Update returns a builder for updating this Course.

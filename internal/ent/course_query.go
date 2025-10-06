@@ -7,6 +7,8 @@ import (
 	"database/sql/driver"
 	"fmt"
 	"lms-go/internal/ent/course"
+	"lms-go/internal/ent/enrollment"
+	"lms-go/internal/ent/group"
 	"lms-go/internal/ent/module"
 	"lms-go/internal/ent/organization"
 	"lms-go/internal/ent/predicate"
@@ -27,6 +29,8 @@ type CourseQuery struct {
 	predicates       []predicate.Course
 	withOrganization *OrganizationQuery
 	withModules      *ModuleQuery
+	withEnrollments  *EnrollmentQuery
+	withGroups       *GroupQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -100,6 +104,50 @@ func (cq *CourseQuery) QueryModules() *ModuleQuery {
 			sqlgraph.From(course.Table, course.FieldID, selector),
 			sqlgraph.To(module.Table, module.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, course.ModulesTable, course.ModulesColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(cq.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryEnrollments chains the current query on the "enrollments" edge.
+func (cq *CourseQuery) QueryEnrollments() *EnrollmentQuery {
+	query := (&EnrollmentClient{config: cq.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := cq.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := cq.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(course.Table, course.FieldID, selector),
+			sqlgraph.To(enrollment.Table, enrollment.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, course.EnrollmentsTable, course.EnrollmentsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(cq.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryGroups chains the current query on the "groups" edge.
+func (cq *CourseQuery) QueryGroups() *GroupQuery {
+	query := (&GroupClient{config: cq.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := cq.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := cq.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(course.Table, course.FieldID, selector),
+			sqlgraph.To(group.Table, group.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, course.GroupsTable, course.GroupsColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(cq.driver.Dialect(), step)
 		return fromU, nil
@@ -301,6 +349,8 @@ func (cq *CourseQuery) Clone() *CourseQuery {
 		predicates:       append([]predicate.Course{}, cq.predicates...),
 		withOrganization: cq.withOrganization.Clone(),
 		withModules:      cq.withModules.Clone(),
+		withEnrollments:  cq.withEnrollments.Clone(),
+		withGroups:       cq.withGroups.Clone(),
 		// clone intermediate query.
 		sql:  cq.sql.Clone(),
 		path: cq.path,
@@ -326,6 +376,28 @@ func (cq *CourseQuery) WithModules(opts ...func(*ModuleQuery)) *CourseQuery {
 		opt(query)
 	}
 	cq.withModules = query
+	return cq
+}
+
+// WithEnrollments tells the query-builder to eager-load the nodes that are connected to
+// the "enrollments" edge. The optional arguments are used to configure the query builder of the edge.
+func (cq *CourseQuery) WithEnrollments(opts ...func(*EnrollmentQuery)) *CourseQuery {
+	query := (&EnrollmentClient{config: cq.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	cq.withEnrollments = query
+	return cq
+}
+
+// WithGroups tells the query-builder to eager-load the nodes that are connected to
+// the "groups" edge. The optional arguments are used to configure the query builder of the edge.
+func (cq *CourseQuery) WithGroups(opts ...func(*GroupQuery)) *CourseQuery {
+	query := (&GroupClient{config: cq.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	cq.withGroups = query
 	return cq
 }
 
@@ -407,9 +479,11 @@ func (cq *CourseQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Cours
 	var (
 		nodes       = []*Course{}
 		_spec       = cq.querySpec()
-		loadedTypes = [2]bool{
+		loadedTypes = [4]bool{
 			cq.withOrganization != nil,
 			cq.withModules != nil,
+			cq.withEnrollments != nil,
+			cq.withGroups != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -440,6 +514,20 @@ func (cq *CourseQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Cours
 		if err := cq.loadModules(ctx, query, nodes,
 			func(n *Course) { n.Edges.Modules = []*Module{} },
 			func(n *Course, e *Module) { n.Edges.Modules = append(n.Edges.Modules, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := cq.withEnrollments; query != nil {
+		if err := cq.loadEnrollments(ctx, query, nodes,
+			func(n *Course) { n.Edges.Enrollments = []*Enrollment{} },
+			func(n *Course, e *Enrollment) { n.Edges.Enrollments = append(n.Edges.Enrollments, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := cq.withGroups; query != nil {
+		if err := cq.loadGroups(ctx, query, nodes,
+			func(n *Course) { n.Edges.Groups = []*Group{} },
+			func(n *Course, e *Group) { n.Edges.Groups = append(n.Edges.Groups, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -500,6 +588,69 @@ func (cq *CourseQuery) loadModules(ctx context.Context, query *ModuleQuery, node
 		node, ok := nodeids[fk]
 		if !ok {
 			return fmt.Errorf(`unexpected referenced foreign-key "course_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (cq *CourseQuery) loadEnrollments(ctx context.Context, query *EnrollmentQuery, nodes []*Course, init func(*Course), assign func(*Course, *Enrollment)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[uuid.UUID]*Course)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(enrollment.FieldCourseID)
+	}
+	query.Where(predicate.Enrollment(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(course.EnrollmentsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.CourseID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "course_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (cq *CourseQuery) loadGroups(ctx context.Context, query *GroupQuery, nodes []*Course, init func(*Course), assign func(*Course, *Group)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[uuid.UUID]*Course)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(group.FieldCourseID)
+	}
+	query.Where(predicate.Group(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(course.GroupsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.CourseID
+		if fk == nil {
+			return fmt.Errorf(`foreign-key "course_id" is nil for node %v`, n.ID)
+		}
+		node, ok := nodeids[*fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "course_id" returned %v for node %v`, *fk, n.ID)
 		}
 		assign(node, n)
 	}

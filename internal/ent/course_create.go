@@ -7,6 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"lms-go/internal/ent/course"
+	"lms-go/internal/ent/enrollment"
+	"lms-go/internal/ent/group"
 	"lms-go/internal/ent/module"
 	"lms-go/internal/ent/organization"
 	"time"
@@ -163,6 +165,36 @@ func (cc *CourseCreate) AddModules(m ...*Module) *CourseCreate {
 		ids[i] = m[i].ID
 	}
 	return cc.AddModuleIDs(ids...)
+}
+
+// AddEnrollmentIDs adds the "enrollments" edge to the Enrollment entity by IDs.
+func (cc *CourseCreate) AddEnrollmentIDs(ids ...uuid.UUID) *CourseCreate {
+	cc.mutation.AddEnrollmentIDs(ids...)
+	return cc
+}
+
+// AddEnrollments adds the "enrollments" edges to the Enrollment entity.
+func (cc *CourseCreate) AddEnrollments(e ...*Enrollment) *CourseCreate {
+	ids := make([]uuid.UUID, len(e))
+	for i := range e {
+		ids[i] = e[i].ID
+	}
+	return cc.AddEnrollmentIDs(ids...)
+}
+
+// AddGroupIDs adds the "groups" edge to the Group entity by IDs.
+func (cc *CourseCreate) AddGroupIDs(ids ...uuid.UUID) *CourseCreate {
+	cc.mutation.AddGroupIDs(ids...)
+	return cc
+}
+
+// AddGroups adds the "groups" edges to the Group entity.
+func (cc *CourseCreate) AddGroups(g ...*Group) *CourseCreate {
+	ids := make([]uuid.UUID, len(g))
+	for i := range g {
+		ids[i] = g[i].ID
+	}
+	return cc.AddGroupIDs(ids...)
 }
 
 // Mutation returns the CourseMutation object of the builder.
@@ -359,6 +391,38 @@ func (cc *CourseCreate) createSpec() (*Course, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(module.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := cc.mutation.EnrollmentsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   course.EnrollmentsTable,
+			Columns: []string{course.EnrollmentsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(enrollment.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := cc.mutation.GroupsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   course.GroupsTable,
+			Columns: []string{course.GroupsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(group.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {
