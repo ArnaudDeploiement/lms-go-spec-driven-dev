@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/minio/minio-go/v7"
@@ -21,7 +22,7 @@ type Config struct {
 
 // Client encapsule un client MinIO et le bucket ciblé.
 type Client struct {
-	minio *minio.Client
+	minio  *minio.Client
 	bucket string
 }
 
@@ -34,9 +35,29 @@ func NewMinioClient(ctx context.Context, cfg Config) (*Client, error) {
 		return nil, fmt.Errorf("storage: bucket required")
 	}
 
-	client, err := minio.New(cfg.Endpoint, &minio.Options{
+	endpoint := cfg.Endpoint
+	useSSL := cfg.UseSSL
+
+	if strings.HasPrefix(endpoint, "http://") || strings.HasPrefix(endpoint, "https://") {
+		parsed, err := url.Parse(endpoint)
+		if err != nil {
+			return nil, fmt.Errorf("storage: parse endpoint: %w", err)
+		}
+		if parsed.Host == "" {
+			return nil, fmt.Errorf("storage: endpoint host missing")
+		}
+		endpoint = parsed.Host
+		if parsed.Scheme == "https" {
+			useSSL = true
+		}
+		if parsed.Scheme == "http" {
+			useSSL = false
+		}
+	}
+
+	client, err := minio.New(endpoint, &minio.Options{
 		Creds:  credentials.NewStaticV4(cfg.AccessKey, cfg.SecretKey, ""),
-		Secure: cfg.UseSSL,
+		Secure: useSSL,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("storage: init minio: %w", err)
