@@ -1,0 +1,23 @@
+# Go artifacts
+bin/
+coverage.out
+*.log
+
+# Build cache
+.cache/
+
+# Node/Frontend artifacts
+node_modules/
+web/node_modules/
+web/dist/
+
+# IDE
+.idea/
+.vscode/
+
+# Env files
+.env
+.env.local
+
+# Codex / temporary
+.codex/log/

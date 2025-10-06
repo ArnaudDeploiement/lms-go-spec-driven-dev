@@ -1,0 +1,41 @@
+{{define "layout"}}
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{block "title" .}}LMS Go{{end}}</title>
+    <link rel="stylesheet" href="/static/tailwind.css" />
+  </head>
+  <body class="min-h-screen bg-slate-50 text-slate-900">
+    <header class="bg-gradient-to-r from-blue-600 to-indigo-700 py-6">
+      <div class="mx-auto flex max-w-5xl items-center justify-between px-6">
+        <div class="flex items-center gap-3">
+          <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-white/10 ring-1 ring-white/40">
+            <span class="text-xl font-semibold text-white">LMS</span>
+          </div>
+          <div>
+            <p class="text-lg font-semibold text-white">LMS Go</p>
+            <p class="text-sm text-white/80">Plateforme pédagogique open source</p>
+          </div>
+        </div>
+        <nav class="hidden items-center gap-6 text-sm font-medium text-white/90 md:flex">
+          <a class="hover:text-white" href="#">Tableau de bord</a>
+          <a class="hover:text-white" href="#">Parcours</a>
+          <a class="hover:text-white" href="#">Inscriptions</a>
+          <a class="hover:text-white" href="#">Rapports</a>
+        </nav>
+      </div>
+    </header>
+    <main class="mx-auto w-full max-w-5xl flex-1 px-6 py-10">
+      {{template "content" .}}
+    </main>
+    <footer class="border-t border-slate-200 bg-white py-6">
+      <div class="mx-auto flex max-w-5xl flex-col items-start gap-2 px-6 text-sm text-slate-500 md:flex-row md:items-center md:justify-between">
+        <p>© {{.CurrentYear}} LMS Go — Projet open source sous licence MIT.</p>
+        <p>Construit avec Go, Tailwind CSS et une architecture hexagonale.</p>
+      </div>
+    </footer>
+  </body>
+</html>
+{{end}}
