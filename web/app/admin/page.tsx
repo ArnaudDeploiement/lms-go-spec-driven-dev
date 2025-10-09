@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
 import {
   apiClient,
   CourseResponse,
@@ -25,7 +24,6 @@ import {
   Layers,
   LineChart,
   PlusCircle,
-  Rocket,
   ShieldCheck,
   BookOpen,
   UserPlus,
@@ -34,6 +32,7 @@ import {
   Building2,
   ArrowLeft,
 } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const baseNavItems = [
   { id: "overview", label: "Aperçu", icon: LayoutGrid },
@@ -41,8 +40,9 @@ const baseNavItems = [
   { id: "learners", label: "Apprenants", icon: Users },
   { id: "enrollments", label: "Inscriptions", icon: Layers },
   { id: "content", label: "Contenus", icon: FileStack },
-  { id: "back-to-learn", label: "Retour Learn", icon: ArrowLeft, href: "/learn" },
 ];
+
+const backToLearnNav = { id: "back-to-learn", label: "Retour Learn", icon: ArrowLeft, href: "/learn" } as const;
 
 const moduleTypes = [
   { value: "video", label: "Vidéo" },
@@ -765,6 +765,7 @@ export default function AdminPage() {
     }
   };
 
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-slate-50">
@@ -810,8 +811,41 @@ export default function AdminPage() {
               <p className="text-xs capitalize text-slate-500">{user?.role}</p>
             </div>
           </div>
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Progression</p>
+            <p className="mt-2 text-3xl font-semibold text-slate-900">{stats.progressPercentage}%</p>
+            <p className="mt-2 text-xs text-slate-500">Taux moyen de complétion</p>
+          </div>
+        </section>
+
+        <div className="grid gap-3 sm:grid-cols-3">
+          <Button
+            type="button"
+            onClick={() => setActiveSection("courses")}
+            className="justify-between bg-blue-600 text-white hover:bg-blue-700"
+          >
+            <span>Créer un cours</span>
+            <PlusCircle className="h-4 w-4" />
+          </Button>
+          <Button
+            type="button"
+            onClick={() => setActiveSection("learners")}
+            variant="outline"
+            className="justify-between border-slate-200 text-slate-700 hover:bg-slate-100"
+          >
+            <span>Inviter un apprenant</span>
+            <UserPlus className="h-4 w-4" />
+          </Button>
+          <Button
+            type="button"
+            onClick={() => setActiveSection("content")}
+            variant="outline"
+            className="justify-between border-slate-200 text-slate-700 hover:bg-slate-100"
+          >
+            <span>Déposer un contenu</span>
+            <UploadCloud className="h-4 w-4" />
+          </Button>
         </div>
-      </header>
 
       <div className="container-custom flex flex-col gap-8 px-4 py-10 sm:px-6 lg:flex-row lg:items-start">
         <aside className="lg:w-64">
@@ -1938,7 +1972,7 @@ export default function AdminPage() {
                           required
                         />
                       </div>
-                      <div className="grid gap-4 md:grid-cols-2">
+                      <div className="grid gap-4 sm:grid-cols-2">
                         <div className="space-y-2">
                           <label className="text-sm font-medium text-slate-700">Type MIME</label>
                           <Input
