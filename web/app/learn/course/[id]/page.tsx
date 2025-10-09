@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth/context';
-import { apiClient } from '@/lib/api/client';
+import { apiClient, type CourseResponse, type ModuleResponse } from '@/lib/api/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -23,25 +23,15 @@ import {
 interface Module {
   id: string;
   title: string;
-  description: string;
+  description?: string;
   module_type: string;
   order_index: number;
   duration_minutes?: number;
-  content?: {
-    id: string;
-    title: string;
-    description: string;
-    content_type: string;
-  };
 }
 
-interface Course {
-  id: string;
-  title: string;
-  description: string;
-  status: string;
+type Course = CourseResponse & {
   modules?: Module[];
-}
+};
 
 interface ModuleProgress {
   module_id: string;
@@ -86,7 +76,28 @@ export default function CourseDetailPage() {
       try {
         // Fetch course details
         const courseData = await apiClient.getCourse(organization.id, courseId);
-        setCourse(courseData);
+
+        // Fetch course modules to enrich course data for the UI
+        let modules: Module[] = [];
+        try {
+          const moduleResponses = await apiClient.listModules(organization.id, courseId);
+          modules = moduleResponses
+            .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+            .map((module: ModuleResponse, index) => ({
+              id: module.id,
+              title: module.title,
+              description: typeof module.data?.description === 'string' ? module.data.description : undefined,
+              module_type: module.module_type,
+              order_index: module.position ?? index,
+              duration_minutes: module.duration_seconds
+                ? Math.max(1, Math.ceil(module.duration_seconds / 60))
+                : undefined,
+            }));
+        } catch (error) {
+          console.error('Error fetching modules:', error);
+        }
+
+        setCourse({ ...courseData, modules });
 
         // Check if user is enrolled
         try {
