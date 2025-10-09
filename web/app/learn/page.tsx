@@ -9,7 +9,7 @@ import { Navigation } from "@/components/layout/navigation";
 import { StatCard } from "@/components/ui/stat-card";
 import { ProgressBar, CircularProgress } from "@/components/ui/progress";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Loading, LoadingDashboard } from "@/components/ui/loading";
+import { LoadingDashboard } from "@/components/ui/loading";
 import {
   BookOpen,
   GraduationCap,
@@ -21,12 +21,6 @@ import {
   Target,
   Zap,
 } from "lucide-react";
-
-interface CourseWithEnrollment {
-  course: CourseResponse;
-  enrollment?: EnrollmentResponse;
-  progress: number;
-}
 
 export default function LearnPage() {
   const router = useRouter();
@@ -108,91 +102,99 @@ export default function LearnPage() {
       <div className="min-h-screen pt-32 pb-16">
         <div className="container-custom space-y-12">
           {/* Hero Section */}
-          <motion.div
+          <motion.section
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            className="relative"
           >
-            <div className="glass-card p-8 md:p-12 overflow-hidden">
-              {/* Background Glow */}
-              <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-indigo-500/20 to-cyan-500/20 rounded-full blur-3xl -z-10" />
+            <div className="glass-card relative overflow-hidden p-8 md:p-12">
+              <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-blue-50 via-white to-cyan-50" />
+              <div className="pointer-events-none absolute right-[-80px] top-[-80px] h-60 w-60 rounded-full bg-blue-100/60 blur-3xl" />
 
-              <div className="relative z-10">
-                <div className="flex items-start justify-between mb-6">
-                  <div>
-                    <motion.h1
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ duration: 0.5, delay: 0.1 }}
-                      className="text-4xl md:text-5xl font-bold text-[var(--text-primary)] mb-3"
-                    >
-                      Bonjour, {user?.email?.split("@")[0]} 👋
-                    </motion.h1>
-                    <motion.p
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ duration: 0.5, delay: 0.2 }}
-                      className="text-lg text-[var(--text-secondary)]"
-                    >
-                      Continuez votre parcours d'apprentissage
-                    </motion.p>
-                  </div>
-
-                  {/* Overall Progress Circle */}
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.5, delay: 0.3 }}
-                    className="hidden md:block"
+              <div className="flex flex-col gap-10 lg:flex-row lg:items-center lg:justify-between">
+                <div className="max-w-2xl space-y-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">
+                    Votre espace formation
+                  </p>
+                  <motion.h1
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.5, delay: 0.1 }}
+                    className="text-4xl font-bold tracking-tight text-slate-900 md:text-5xl"
                   >
-                    <CircularProgress value={avgProgress} size={120} />
-                  </motion.div>
+                    Bonjour {user?.email?.split("@")[0]}
+                  </motion.h1>
+                  <motion.p
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.5, delay: 0.2 }}
+                    className="text-base text-slate-600 md:text-lg"
+                  >
+                    Retrouvez vos formations actives, suivez votre progression et découvrez de nouveaux contenus sélectionnés pour vous.
+                  </motion.p>
                 </div>
 
-                {/* Quick Stats Bar */}
                 <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: 0.4 }}
-                  className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8"
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.5, delay: 0.3 }}
+                  className="flex flex-col items-center gap-3 rounded-2xl border border-slate-200 bg-white/70 px-8 py-6 text-center shadow-sm"
                 >
-                  <div className="text-center p-4 rounded-2xl bg-white/5 border border-white/10">
-                    <div className="text-2xl font-bold text-[var(--text-primary)] mb-1">
-                      {enrolledCourses.length}
-                    </div>
-                    <div className="text-xs text-[var(--text-tertiary)] uppercase tracking-wide">
-                      En cours
-                    </div>
-                  </div>
-                  <div className="text-center p-4 rounded-2xl bg-white/5 border border-white/10">
-                    <div className="text-2xl font-bold text-[var(--accent-success)] mb-1">
-                      {completedCount}
-                    </div>
-                    <div className="text-xs text-[var(--text-tertiary)] uppercase tracking-wide">
-                      Terminés
-                    </div>
-                  </div>
-                  <div className="text-center p-4 rounded-2xl bg-white/5 border border-white/10">
-                    <div className="text-2xl font-bold text-[var(--accent-secondary)] mb-1">
-                      {avgProgress}%
-                    </div>
-                    <div className="text-xs text-[var(--text-tertiary)] uppercase tracking-wide">
-                      Progression
-                    </div>
-                  </div>
-                  <div className="text-center p-4 rounded-2xl bg-white/5 border border-white/10">
-                    <div className="text-2xl font-bold text-[var(--accent-primary)] mb-1">
-                      {courses.length}
-                    </div>
-                    <div className="text-xs text-[var(--text-tertiary)] uppercase tracking-wide">
-                      Disponibles
-                    </div>
-                  </div>
+                  <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Progression moyenne
+                  </span>
+                  <CircularProgress value={avgProgress} size={120} />
+                  <p className="text-sm text-slate-500">
+                    {avgProgress}% de vos formations complétées
+                  </p>
                 </motion.div>
               </div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.4 }}
+                className="mt-12 grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
+              >
+                <div className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white/80 p-5 shadow-sm">
+                  <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-100 text-blue-600">
+                    <Clock className="h-5 w-5" />
+                  </span>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Formations en cours</p>
+                    <p className="mt-1 text-2xl font-semibold text-slate-900">{enrolledCourses.length}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white/80 p-5 shadow-sm">
+                  <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600">
+                    <Trophy className="h-5 w-5" />
+                  </span>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Certifications obtenues</p>
+                    <p className="mt-1 text-2xl font-semibold text-slate-900">{completedCount}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white/80 p-5 shadow-sm">
+                  <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-cyan-100 text-cyan-600">
+                    <Target className="h-5 w-5" />
+                  </span>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Progression globale</p>
+                    <p className="mt-1 text-2xl font-semibold text-slate-900">{avgProgress}%</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white/80 p-5 shadow-sm">
+                  <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-100 text-indigo-600">
+                    <BookOpen className="h-5 w-5" />
+                  </span>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Formations disponibles</p>
+                    <p className="mt-1 text-2xl font-semibold text-slate-900">{courses.length}</p>
+                  </div>
+                </div>
+              </motion.div>
             </div>
-          </motion.div>
+          </motion.section>
 
           {/* Stats Cards */}
           <motion.div
@@ -233,8 +235,8 @@ export default function LearnPage() {
             >
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-2xl bg-gradient-to-br from-indigo-500 to-cyan-500 flex items-center justify-center">
-                    <GraduationCap className="h-5 w-5 text-white" strokeWidth={2.5} />
+                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-blue-100 text-blue-600">
+                    <GraduationCap className="h-5 w-5" strokeWidth={2.5} />
                   </div>
                   <div>
                     <h2 className="text-2xl font-bold text-[var(--text-primary)]">
@@ -259,7 +261,7 @@ export default function LearnPage() {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.4, delay: 0.7 + index * 0.1 }}
                     >
-                      <div className="glass-card-hover p-6 h-full flex flex-col group cursor-pointer">
+                      <div className="glass-card-hover group flex h-full cursor-pointer flex-col p-6">
                         {/* Course Header */}
                         <div className="flex items-start justify-between mb-4">
                           <div className="flex-1">
@@ -272,11 +274,11 @@ export default function LearnPage() {
                           </div>
                           <div className="ml-4">
                             {progress === 100 ? (
-                              <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center">
-                                <Trophy className="h-6 w-6 text-white" strokeWidth={2.5} />
+                              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600">
+                                <Trophy className="h-6 w-6" strokeWidth={2.5} />
                               </div>
                             ) : (
-                              <div className="h-12 w-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center">
+                              <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50">
                                 <BookOpen className="h-6 w-6 text-[var(--accent-primary)]" />
                               </div>
                             )}
@@ -313,8 +315,8 @@ export default function LearnPage() {
             >
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-                    <Sparkles className="h-5 w-5 text-white" strokeWidth={2.5} />
+                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-cyan-100 text-cyan-600">
+                    <Sparkles className="h-5 w-5" strokeWidth={2.5} />
                   </div>
                   <div>
                     <h2 className="text-2xl font-bold text-[var(--text-primary)]">
@@ -335,17 +337,17 @@ export default function LearnPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.4, delay: 0.9 + index * 0.1 }}
                   >
-                    <div className="glass-card-hover p-6 h-full flex flex-col group cursor-pointer">
+                    <div className="glass-card-hover group flex h-full cursor-pointer flex-col p-6">
                       {/* Badge New */}
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="badge-primary">
+                      <div className="mb-4 flex items-start justify-between">
+                        <div className="inline-flex items-center gap-1 rounded-full border border-sky-100 bg-sky-50 px-3 py-1 text-xs font-medium text-sky-700">
                           <Zap className="h-3 w-3" />
                           <span>Nouveau</span>
                         </div>
                       </div>
 
                       {/* Course Info */}
-                      <div className="flex-1 mb-6">
+                      <div className="mb-6 flex-1">
                         <h3 className="text-xl font-semibold text-[var(--text-primary)] mb-2 line-clamp-2">
                           {course.title}
                         </h3>
