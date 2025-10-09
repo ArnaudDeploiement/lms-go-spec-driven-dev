@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -29,6 +30,8 @@ func (h *AuthHandler) Mount(r chi.Router) {
 	r.Post("/login", h.handleLogin)
 	r.Post("/refresh", h.handleRefresh)
 	r.Post("/forgot-password", h.handleForgotPassword)
+	r.Get("/me", h.handleMe)
+	r.Post("/logout", h.handleLogout)
 }
 
 type registerRequest struct {
@@ -227,6 +230,30 @@ func setAuthCookies(w http.ResponseWriter, r *http.Request, tokens auth.TokenPai
 	})
 }
 
+func clearAuthCookies(w http.ResponseWriter, r *http.Request) {
+	expired := time.Now().Add(-time.Hour)
+	http.SetCookie(w, &http.Cookie{
+		Name:     "access_token",
+		Value:    "",
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   r.TLS != nil,
+		SameSite: http.SameSiteStrictMode,
+		Expires:  expired,
+		MaxAge:   -1,
+	})
+	http.SetCookie(w, &http.Cookie{
+		Name:     "refresh_token",
+		Value:    "",
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   r.TLS != nil,
+		SameSite: http.SameSiteStrictMode,
+		Expires:  expired,
+		MaxAge:   -1,
+	})
+}
+
 func (h *AuthHandler) handleSignup(w http.ResponseWriter, r *http.Request) {
 	var req signupRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -292,4 +319,64 @@ func (h *AuthHandler) handleForgotPassword(w http.ResponseWriter, r *http.Reques
 	respondJSON(w, http.StatusOK, map[string]string{
 		"message": "Si un compte existe avec cet email, un lien de réinitialisation sera envoyé",
 	})
+}
+
+func (h *AuthHandler) handleMe(w http.ResponseWriter, r *http.Request) {
+	token := extractAccessToken(r)
+	if token == "" {
+		respondError(w, http.StatusUnauthorized, "token manquant")
+		return
+	}
+
+	user, org, err := h.service.Profile(r.Context(), token)
+	if err != nil {
+		switch {
+		case errors.Is(err, auth.ErrInvalidToken):
+			respondError(w, http.StatusUnauthorized, "token invalide")
+		default:
+			respondError(w, http.StatusInternalServerError, "erreur serveur")
+		}
+		return
+	}
+
+	respondJSON(w, http.StatusOK, map[string]any{
+		"user": map[string]any{
+			"id":     user.ID,
+			"email":  user.Email,
+			"role":   user.Role,
+			"status": user.Status,
+		},
+		"organization": map[string]any{
+			"id":   org.ID,
+			"name": org.Name,
+			"slug": org.Slug,
+		},
+	})
+}
+
+func (h *AuthHandler) handleLogout(w http.ResponseWriter, r *http.Request) {
+	token := extractAccessToken(r)
+	if token != "" {
+		if user, _, err := h.service.Profile(r.Context(), token); err == nil {
+			_ = h.service.ClearRefreshToken(r.Context(), user.ID)
+		}
+	}
+
+	clearAuthCookies(w, r)
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func extractAccessToken(r *http.Request) string {
+	authHeader := r.Header.Get("Authorization")
+	if len(authHeader) >= 7 && strings.EqualFold(authHeader[:7], "Bearer ") {
+		if token := strings.TrimSpace(authHeader[7:]); token != "" {
+			return token
+		}
+	}
+
+	if cookie, err := r.Cookie("access_token"); err == nil && cookie.Value != "" {
+		return cookie.Value
+	}
+
+	return ""
 }

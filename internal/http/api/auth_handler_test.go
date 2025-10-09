@@ -104,6 +104,31 @@ func TestAuthHandler_RegisterAndLogin(t *testing.T) {
 	require.Equal(t, http.StatusOK, refreshRec.Code)
 }
 
+func TestAuthHandler_RegisterRejectsShortPassword(t *testing.T) {
+	_, svc, orgID := setupAuthTest(t)
+	handler := NewAuthHandler(svc)
+	r := chi.NewRouter()
+	handler.Mount(r)
+
+	payload := map[string]any{
+		"organization_id": orgID.String(),
+		"email":           "user@example.com",
+		"password":        "short",
+	}
+	body, _ := json.Marshal(payload)
+
+	req := httptest.NewRequest(http.MethodPost, "/register", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+
+	r.ServeHTTP(rec, req)
+	require.Equal(t, http.StatusBadRequest, rec.Code)
+
+	var resp map[string]string
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
+	require.Equal(t, "données invalides", resp["error"])
+}
+
 func TestAuthHandler_InvalidPayload(t *testing.T) {
 	_, svc, _ := setupAuthTest(t)
 	handler := NewAuthHandler(svc)
@@ -353,5 +378,80 @@ func TestAuthHandler_ForgotPassword(t *testing.T) {
 		var resp map[string]string
 		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
 		require.Contains(t, resp["message"], "réinitialisation")
+	})
+}
+
+func TestAuthHandler_MeAndLogout(t *testing.T) {
+	_, svc, orgID := setupAuthTest(t)
+	handler := NewAuthHandler(svc)
+	r := chi.NewRouter()
+	handler.Mount(r)
+
+	ctx := context.Background()
+	user, err := svc.Register(ctx, auth.RegisterInput{
+		OrganizationID: orgID,
+		Email:          "learner@example.com",
+		Password:       "supersecret",
+		Role:           "learner",
+	})
+	require.NoError(t, err)
+
+	tokens, err := svc.Login(ctx, orgID, "learner@example.com", "supersecret")
+	require.NoError(t, err)
+
+	t.Run("missing token returns unauthorized", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/me", nil)
+		rec := httptest.NewRecorder()
+
+		r.ServeHTTP(rec, req)
+		require.Equal(t, http.StatusUnauthorized, rec.Code)
+	})
+
+	t.Run("me endpoint returns profile", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/me", nil)
+		req.AddCookie(&http.Cookie{
+			Name:  "access_token",
+			Value: tokens.AccessToken,
+		})
+		rec := httptest.NewRecorder()
+
+		r.ServeHTTP(rec, req)
+		require.Equal(t, http.StatusOK, rec.Code)
+
+		var resp map[string]map[string]any
+		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
+
+		require.Equal(t, "learner@example.com", resp["user"]["email"])
+		require.Equal(t, "learner", resp["user"]["role"])
+		require.Equal(t, user.ID.String(), resp["user"]["id"].(string))
+		require.Equal(t, orgID.String(), resp["organization"]["id"].(string))
+	})
+
+	t.Run("logout clears refresh token and cookies", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPost, "/logout", nil)
+		req.AddCookie(&http.Cookie{
+			Name:  "access_token",
+			Value: tokens.AccessToken,
+		})
+		req.AddCookie(&http.Cookie{
+			Name:  "refresh_token",
+			Value: tokens.RefreshToken,
+		})
+		rec := httptest.NewRecorder()
+
+		r.ServeHTTP(rec, req)
+		require.Equal(t, http.StatusNoContent, rec.Code)
+
+		cookies := rec.Result().Cookies()
+		require.Len(t, cookies, 2)
+
+		for _, c := range cookies {
+			require.Equal(t, -1, c.MaxAge)
+			require.Empty(t, c.Value)
+		}
+
+		_, err := svc.Refresh(ctx, tokens.RefreshToken)
+		require.Error(t, err)
+		require.ErrorIs(t, err, auth.ErrInvalidToken)
 	})
 }

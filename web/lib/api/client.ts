@@ -45,6 +45,20 @@ export interface LoginResponse extends AuthTokens {}
 
 export interface RefreshResponse extends AuthTokens {}
 
+export interface ProfileResponse {
+  user: {
+    id: string;
+    email: string;
+    role: string;
+    status: string;
+  };
+  organization: {
+    id: string;
+    name: string;
+    slug: string;
+  };
+}
+
 class ApiClient {
   private baseUrl: string;
   private isRefreshing = false;
@@ -147,7 +161,7 @@ class ApiClient {
       } catch (error) {
         // If refresh fails, redirect to login
         if (typeof window !== 'undefined') {
-          window.location.href = '/auth/login';
+          window.location.href = '/auth';
         }
         throw error;
       } finally {
@@ -175,6 +189,10 @@ class ApiClient {
     });
   }
 
+  async me(): Promise<ProfileResponse> {
+    return this.request<ProfileResponse>('/auth/me');
+  }
+
   async logout(): Promise<void> {
     try {
       await fetch(`${this.baseUrl}/auth/logout`, {
@@ -186,7 +204,7 @@ class ApiClient {
     }
 
     if (typeof window !== 'undefined') {
-      window.location.href = '/auth/login';
+      window.location.href = '/auth';
     }
   }
 

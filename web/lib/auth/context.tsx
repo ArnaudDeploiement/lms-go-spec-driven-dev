@@ -1,7 +1,13 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { apiClient, SignupRequest, LoginRequest, SignupResponse } from '@/lib/api/client';
+import {
+  apiClient,
+  SignupRequest,
+  LoginRequest,
+  SignupResponse,
+  ProfileResponse,
+} from '@/lib/api/client';
 
 interface User {
   id: string;
@@ -33,7 +39,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user is authenticated from localStorage
     const storedUser = localStorage.getItem('user');
     const storedOrg = localStorage.getItem('organization');
 
@@ -42,7 +47,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setOrganization(JSON.parse(storedOrg));
     }
 
-    setIsLoading(false);
+    const fetchProfile = async () => {
+      try {
+        const profile = await apiClient.me();
+        const userData: User = {
+          id: profile.user.id,
+          email: profile.user.email,
+          role: profile.user.role,
+        };
+
+        const orgData: Organization = {
+          id: profile.organization.id,
+          name: profile.organization.name,
+          slug: profile.organization.slug,
+        };
+
+        setUser(userData);
+        setOrganization(orgData);
+        localStorage.setItem('user', JSON.stringify(userData));
+        localStorage.setItem('organization', JSON.stringify(orgData));
+      } catch (error: any) {
+        if (error?.status !== 401) {
+          console.error('Profile fetch error:', error);
+        }
+        setUser(null);
+        setOrganization(null);
+        localStorage.removeItem('user');
+        localStorage.removeItem('organization');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProfile();
   }, []);
 
   const signup = async (data: SignupRequest) => {
@@ -77,19 +114,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await apiClient.login(data);
 
-      // After login, we need to fetch user data
-      // For now, we'll store minimal data
-      // TODO: Add a /me endpoint to fetch current user
+      const profile: ProfileResponse = await apiClient.me();
+
       const userData: User = {
-        id: 'temp', // Will be replaced by /me endpoint
-        email: data.email,
-        role: 'learner',
+        id: profile.user.id,
+        email: profile.user.email,
+        role: profile.user.role,
       };
 
       const orgData: Organization = {
-        id: data.organization_id,
-        name: 'Organization', // Will be replaced by /me endpoint
-        slug: 'org',
+        id: profile.organization.id,
+        name: profile.organization.name,
+        slug: profile.organization.slug,
       };
 
       setUser(userData);
