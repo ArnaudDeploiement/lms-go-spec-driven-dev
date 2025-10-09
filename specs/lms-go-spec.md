@@ -50,24 +50,33 @@
 - `background workers` : traitement async (envoi emails, import SCORM, génération rapports).
 
 ### 5.2 Stack technologique
-- Go 1.22+, framework HTTP Gin/Fiber ou chi (choisir selon préférence performance vs middleware).
-- ORM : ent (schema first) ou GORM; recommandation ent pour générer schémas clairs.
-- Base de données : PostgreSQL 15.
-- Stockage fichiers : S3 compatible (MinIO pour dev), support local FS (volume Docker).
-- Message broker : NATS ou RabbitMQ (optionnel MVP, fallback en in-process queue).
-- Cache : Redis (sessions, rate limit, file d’attente simple).
-- Front-end : rendu server-side Go (`html/template`) avec Tailwind CSS (CDN), pas de JavaScript obligatoire.
-- CI : GitHub Actions (lint, test, build images).
+- **Backend Go** :
+  - Go 1.22+, framework HTTP **chi** pour le routing.
+  - ORM : **ent** (schema first) pour générer schémas clairs.
+  - Base de données : PostgreSQL 15.
+  - Stockage fichiers : S3 compatible (MinIO pour dev).
+  - Message broker : NATS ou RabbitMQ (optionnel MVP, fallback en in-process queue).
+  - Cache : Redis (sessions, rate limit, file d'attente simple).
+- **Frontend Next.js** :
+  - **Next.js 14+** (App Router) avec TypeScript.
+  - **Tailwind CSS** pour le styling + **shadcn/ui** pour les composants.
+  - **Framer Motion** pour les animations et transitions.
+  - Architecture : API client TypeScript communiquant avec le backend Go via REST.
+  - Authentification : JWT avec refresh tokens stockés en cookies httpOnly.
+- **CI/CD** : GitHub Actions (lint, test, build images Docker).
 
 ### 5.3 Schéma de déploiement
 ```
-[Clients Web] -> [Gateway REST] -> [Services Go] -> [PostgreSQL]
-                              -> [Redis] -> [Workers]
-                              -> [S3/MinIO]
+[Navigateur Web] -> [Next.js Frontend :3000] -> [API Go :8080] -> [PostgreSQL]
+                                                              -> [Redis]
+                                                              -> [MinIO/S3]
+                                            -> [Worker Go]
 ```
-- Images Docker multi-stage (Go build + runtime slim).
-- Compose : services (api, worker, frontend, postgres, redis, minio).
-- Helm chart : valeurs pour secrets, persistance, ingress.
+- **Images Docker multi-stage** :
+  - Backend Go : build + runtime slim (alpine).
+  - Frontend Next.js : standalone output pour production.
+- **Docker Compose dev** : services (web, api, worker, postgres, redis, minio).
+- **Helm chart** : valeurs pour secrets, persistance, ingress (production).
 
 ## 6. Modèle de données (extrait MVP)
 - `users` : id, org_id, email, password_hash, role, status, metadata JSONB, created_at.
@@ -101,17 +110,20 @@
 - Feature flags pour fonctionnalités expérimentales (OpenFeature, config DB).
 
 ## 10. Roadmap initiale
-1. **Phase 0 – Setup (2 semaines)**
-   - Structuration repo (Go monorepo), configuration CI, Docker base, conventions coding.
-   - Mise en place ent + migrations, squelette services, authentification basique.
-2. **Phase 1 – MVP parcours (4 semaines)**
-   - Modules user/org/course/enrollment.
-   - Upload contenus (PDF, vidéo lien, article Markdown).
-   - UI admin minimale (templates Go) pour CRUD et suivi simple.
-3. **Phase 2 – Suivi & évaluation (3 semaines)**
-   - Quiz, tracking progression, reporting tuteur.
+1. **✅ Phase 0 – Setup (2 semaines)**
+   - Structuration repo (Go monorepo + Next.js frontend), configuration CI, Docker base, conventions coding.
+   - Mise en place ent + migrations, squelette services, authentification basique JWT.
+   - Configuration Next.js avec Tailwind, shadcn/ui, Framer Motion.
+2. **✅ Phase 1 – MVP parcours (4 semaines)**
+   - Modules user/org/course/enrollment/progress.
+   - Upload contenus (PDF, vidéo lien, article Markdown) via MinIO.
+   - **UI Next.js** : page auth (signup/login), dashboard apprenant (/learn), détail cours, dashboard admin.
+   - API client TypeScript avec gestion automatique des tokens JWT.
+3. **Phase 2 – Suivi & évaluation (3 semaines)** *(en cours)*
+   - Quiz, tracking activité détaillée, reporting tuteur.
    - Notifications emails, tâches async via worker.
-4. **Phase 3 – Durcissement (3 semaines)**
+   - Amélioration UX frontend (micro-interactions, feedback temps réel).
+4. **Phase 3 – Durcissement (3 semaines)** *(à venir)*
    - RBAC complet, audit logs, observabilité, Helm chart.
    - Tests charge basiques, documentation déploiement, publication release.
 

@@ -1,6 +1,6 @@
 GOCACHE ?= $(PWD)/.cache/go-build
 
-.PHONY: tidy fmt lint test generate up down
+.PHONY: tidy fmt lint test generate up down clean
 
 tidy:
 	go mod tidy
@@ -22,3 +22,9 @@ up:
 
 down:
 	docker compose down -v
+
+clean:
+	@echo "🧹 Nettoyage complet (containers + volumes + images)..."
+	docker compose down -v
+	docker volume prune -f
+	@echo "✅ Nettoyage terminé. Toutes les données ont été supprimées."

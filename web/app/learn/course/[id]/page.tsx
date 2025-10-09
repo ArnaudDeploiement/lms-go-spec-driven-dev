@@ -49,6 +49,15 @@ type Enrollment = EnrollmentResponse & {
   module_progress?: ProgressResponse[];
 };
 
+// utils/typeGuards.ts (ou en haut du fichier)
+function hasModules(x: unknown): x is { modules: unknown[] } {
+  return !!x && typeof x === 'object' && Array.isArray((x as any).modules);
+}
+function hasDataModules(x: unknown): x is { data: { modules: unknown[] } } {
+  return !!(x as any)?.data && Array.isArray((x as any).data.modules);
+}
+
+
 const deriveProgressPercentage = ({
   progressValue,
   moduleProgress,
@@ -135,14 +144,25 @@ export default function CourseDetailPage() {
 
           if (userEnrollment) {
             // Fetch detailed progress
-            const progress = await apiClient.getProgress(organization.id, userEnrollment.id);
-            setEnrollment(
-              normalizeEnrollment(
-                userEnrollment,
-                progress,
-                courseData.modules?.length ?? progress.length,
-              ),
-            );
+ // Fetch detailed progress
+const progress = await apiClient.getProgress(organization.id, userEnrollment.id);
+
+// 🔽 calcule un moduleCount robuste selon la forme réelle de getCourse
+const moduleCount = hasModules(courseData)
+  ? courseData.modules.length
+  : hasDataModules(courseData)
+  ? courseData.data.modules.length
+  : progress.length;
+
+// Utilise moduleCount au lieu de courseData.modules?.length ?? progress.length
+setEnrollment(
+  normalizeEnrollment(
+    userEnrollment,
+    progress,
+    moduleCount,
+  ),
+);
+
           }
         } catch (error) {
           console.error('Error fetching enrollment:', error);

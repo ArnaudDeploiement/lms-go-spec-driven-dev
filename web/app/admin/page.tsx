@@ -14,6 +14,7 @@ import {
   OrganizationResponse,
 } from "@/lib/api/client";
 import { useAuth } from "@/lib/auth/context";
+import { Navigation } from "@/components/layout/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,7 +32,6 @@ import {
   UserPlus,
   FileStack,
   UploadCloud,
-  Download,
   Building2,
 } from "lucide-react";
 
@@ -527,6 +527,7 @@ export default function AdminPage() {
 
   return (
     <div className="relative min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-slate-900 pb-32 text-gray-100">
+      <Navigation />
       <header className="glass-nav fixed inset-x-6 top-6 z-50 flex items-center justify-between rounded-3xl px-6 py-4">
         <div className="flex items-center gap-4">
           <div className="relative h-12 w-12 rounded-2xl bg-white/10 p-[2px]">
