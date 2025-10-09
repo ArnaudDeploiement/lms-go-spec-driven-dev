@@ -24,9 +24,11 @@ func NewAuthHandler(service *auth.Service) *AuthHandler {
 
 // Mount enregistre les routes d'authentification sur le routeur chi donné.
 func (h *AuthHandler) Mount(r chi.Router) {
+	r.Post("/signup", h.handleSignup)
 	r.Post("/register", h.handleRegister)
 	r.Post("/login", h.handleLogin)
 	r.Post("/refresh", h.handleRefresh)
+	r.Post("/forgot-password", h.handleForgotPassword)
 }
 
 type registerRequest struct {
@@ -37,10 +39,26 @@ type registerRequest struct {
 	Metadata       map[string]any `json:"metadata"`
 }
 
+type signupRequest struct {
+	OrgName  string         `json:"org_name"`
+	OrgSlug  string         `json:"org_slug,omitempty"`
+	Email    string         `json:"email"`
+	Password string         `json:"password"`
+	Metadata map[string]any `json:"metadata,omitempty"`
+}
+
 type authResponse struct {
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
 	ExpiresAt    string `json:"expires_at"`
+}
+
+type signupResponse struct {
+	Organization map[string]any `json:"organization"`
+	User         map[string]any `json:"user"`
+	AccessToken  string         `json:"access_token"`
+	RefreshToken string         `json:"refresh_token"`
+	ExpiresAt    string         `json:"expires_at"`
 }
 
 func (h *AuthHandler) handleRegister(w http.ResponseWriter, r *http.Request) {
@@ -120,6 +138,12 @@ func (h *AuthHandler) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Support optionnel des cookies httpOnly
+	setCookie := r.URL.Query().Get("use_cookies") == "true"
+	if setCookie {
+		setAuthCookies(w, r, tokens)
+	}
+
 	respondJSON(w, http.StatusOK, authResponse{
 		AccessToken:  tokens.AccessToken,
 		RefreshToken: tokens.RefreshToken,
@@ -134,7 +158,20 @@ func (h *AuthHandler) handleRefresh(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tokens, err := h.service.Refresh(r.Context(), req.RefreshToken)
+	// Si pas de refresh_token dans le body, chercher dans les cookies
+	refreshToken := req.RefreshToken
+	if refreshToken == "" {
+		if cookie, err := r.Cookie("refresh_token"); err == nil {
+			refreshToken = cookie.Value
+		}
+	}
+
+	if refreshToken == "" {
+		respondError(w, http.StatusBadRequest, "refresh_token manquant")
+		return
+	}
+
+	tokens, err := h.service.Refresh(r.Context(), refreshToken)
 	if err != nil {
 		switch {
 		case errors.Is(err, auth.ErrInvalidToken):
@@ -143,6 +180,12 @@ func (h *AuthHandler) handleRefresh(w http.ResponseWriter, r *http.Request) {
 			respondError(w, http.StatusInternalServerError, "erreur serveur")
 		}
 		return
+	}
+
+	// Support optionnel des cookies httpOnly
+	setCookie := r.URL.Query().Get("use_cookies") == "true"
+	if setCookie {
+		setAuthCookies(w, r, tokens)
 	}
 
 	respondJSON(w, http.StatusOK, authResponse{
@@ -160,4 +203,93 @@ func respondJSON(w http.ResponseWriter, status int, payload any) {
 
 func respondError(w http.ResponseWriter, status int, message string) {
 	respondJSON(w, status, map[string]string{"error": message})
+}
+
+// setAuthCookies définit les cookies httpOnly pour les tokens d'authentification
+func setAuthCookies(w http.ResponseWriter, r *http.Request, tokens auth.TokenPair) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     "access_token",
+		Value:    tokens.AccessToken,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   r.TLS != nil,
+		SameSite: http.SameSiteStrictMode,
+		MaxAge:   int(tokens.ExpiresAt.Sub(time.Now()).Seconds()),
+	})
+	http.SetCookie(w, &http.Cookie{
+		Name:     "refresh_token",
+		Value:    tokens.RefreshToken,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   r.TLS != nil,
+		SameSite: http.SameSiteStrictMode,
+		MaxAge:   72 * 3600, // 72h
+	})
+}
+
+func (h *AuthHandler) handleSignup(w http.ResponseWriter, r *http.Request) {
+	var req signupRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondError(w, http.StatusBadRequest, "payload invalide")
+		return
+	}
+
+	org, user, tokens, err := h.service.Signup(r.Context(), auth.SignupInput{
+		OrgName:  req.OrgName,
+		OrgSlug:  req.OrgSlug,
+		Email:    req.Email,
+		Password: req.Password,
+		Metadata: req.Metadata,
+	})
+	if err != nil {
+		switch {
+		case errors.Is(err, auth.ErrEmailAlreadyUsed):
+			respondError(w, http.StatusConflict, "email ou organisation déjà utilisé")
+		case errors.Is(err, auth.ErrInvalidCredentials):
+			respondError(w, http.StatusBadRequest, "données invalides")
+		default:
+			respondError(w, http.StatusInternalServerError, "erreur serveur")
+		}
+		return
+	}
+
+	// Support optionnel des cookies httpOnly
+	setCookie := r.URL.Query().Get("use_cookies") == "true"
+	if setCookie {
+		setAuthCookies(w, r, tokens)
+	}
+
+	respondJSON(w, http.StatusCreated, signupResponse{
+		Organization: map[string]any{
+			"id":   org.ID,
+			"name": org.Name,
+			"slug": org.Slug,
+		},
+		User: map[string]any{
+			"id":    user.ID,
+			"email": user.Email,
+			"role":  user.Role,
+		},
+		AccessToken:  tokens.AccessToken,
+		RefreshToken: tokens.RefreshToken,
+		ExpiresAt:    tokens.ExpiresAt.Format(time.RFC3339),
+	})
+}
+
+func (h *AuthHandler) handleForgotPassword(w http.ResponseWriter, r *http.Request) {
+	// Placeholder pour forgot password
+	// TODO: Implémenter l'envoi d'email avec token de réinitialisation
+	var req struct {
+		Email string `json:"email"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondError(w, http.StatusBadRequest, "payload invalide")
+		return
+	}
+
+	// Pour l'instant, retourne toujours un succès (même si l'email n'existe pas)
+	// pour éviter de divulguer l'existence des comptes
+	respondJSON(w, http.StatusOK, map[string]string{
+		"message": "Si un compte existe avec cet email, un lien de réinitialisation sera envoyé",
+	})
 }

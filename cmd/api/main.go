@@ -155,6 +155,12 @@ func newRouter(client *ent.Client, orgService *organization.Service, userService
 		})
 	})
 
+	learnerHandler := ui.NewLearnerHandler(orgService, userService, courseService, contentService, enrollmentService, progressService)
+	r.Route("/learn", learnerHandler.Mount)
+
+	adminHandler := ui.NewAdminHandler(orgService, userService, courseService, contentService, enrollmentService)
+	r.Route("/admin", adminHandler.Mount)
+
 	return r
 }
 

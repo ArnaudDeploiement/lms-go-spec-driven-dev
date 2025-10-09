@@ -12,8 +12,11 @@ import (
 var uiFS embed.FS
 
 var (
-	layoutTemplates = template.Must(template.ParseFS(uiFS, "templates/layout.tmpl", "templates/home.tmpl"))
-	staticFS        = mustSubFS(uiFS, "static")
+	adminTemplates        = template.Must(template.ParseFS(uiFS, "templates/layout.tmpl", "templates/admin.tmpl"))
+	homeTemplates         = template.Must(template.ParseFS(uiFS, "templates/layout.tmpl", "templates/home.tmpl"))
+	learnerCatalogTmpl    = template.Must(template.ParseFS(uiFS, "templates/layout.tmpl", "templates/learn_catalog.tmpl"))
+	learnerCourseTmpl     = template.Must(template.ParseFS(uiFS, "templates/layout.tmpl", "templates/learn_course.tmpl"))
+	staticFS              = mustSubFS(uiFS, "static")
 )
 
 func mustSubFS(fsys embed.FS, path string) fs.FS {
@@ -41,14 +44,20 @@ func HomeHandler() http.HandlerFunc {
 		Description string
 		ActionLabel string
 	}
-	type viewModel struct {
-		CurrentYear int
-		Highlights  []highlight
-		Shortcuts   []shortcut
+		type viewModel struct {
+			Page         string
+			PageTitle    string
+			FlashMessage string
+			FlashError   string
+			CurrentYear  int
+			Highlights   []highlight
+			Shortcuts    []shortcut
 	}
 
-	data := viewModel{
-		CurrentYear: time.Now().Year(),
+		data := viewModel{
+			Page:        "home",
+			PageTitle:   "LMS Go",
+			CurrentYear: time.Now().Year(),
 		Highlights: []highlight{
 			{Title: "Cours actifs", Value: "6", Description: "Parcours publiés et accessibles aux apprenants."},
 			{Title: "Utilisateurs", Value: "128", Description: "Apprenants, concepteurs et tuteurs actifs."},
@@ -80,7 +89,7 @@ func HomeHandler() http.HandlerFunc {
 
 	return func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		if err := layoutTemplates.ExecuteTemplate(w, "layout", data); err != nil {
+		if err := homeTemplates.ExecuteTemplate(w, "home", data); err != nil {
 			http.Error(w, "template rendering error", http.StatusInternalServerError)
 		}
 	}

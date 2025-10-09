@@ -111,18 +111,28 @@ Structure des tickets issue-ready, organisés par phases (MVP → durcissement) 
   - Stockage progression par utilisateur/mode module.
 - **Dépendances** : T-1.4, T-1.5.
 
-### T-1.7 UI Admin CRUD *(5 pts)*
+### ✅ T-1.7 UI Admin CRUD *(5 pts)*
 - **Description** : Templates Go (server-side) pour orgs, utilisateurs, cours/modules, uploads contenus.
 - **Critères d’acceptation** :
   - Formulaires HTML accessibles et validation serveur.
   - Tests intégration HTTP (Go) couvrant les flux clés.
 - **Dépendances** : T-1.2, T-1.4.
 
-### T-1.8 UI Apprenant parcours *(4 pts)*
-- **Description** : Templates Go pour catalogue cours, détail module (PDF viewer, vidéo embed, article markdown), suivi progression.
+### T-1.8 Front web Next.js « Learner » *(8 pts)*
+- **Description** : Implémenter une application Next.js (Tailwind + shadcn/ui + Framer Motion) inspirée du design Revolut pour les vues publiques/apprenants : page d’auth (signup/login), catalogue de parcours, lecteur de module, navigation responsive (sidebar animée).
 - **Critères d’acceptation** :
-  - Progression affichée via vues server-side.
-  - Tests intégration HTTP couvrant la navigation principale.
+  - Monorepo Go (API) + Next.js (front) fonctionnel avec scripts npm dédiés.
+  - Page d’accueil = formulaire d’auth unifié (inscription/connexion) avec transitions fluides.
+  - Catalogue apprenant affichant progression, modules et micro-interactions Revolut-like.
+  - Tests basiques (Playwright ou Vitest/RTL) couvrant le rendu des pages critiques.
+- **Dépendances** : T-1.6.
+
+### T-1.8.1 Auth JWT côté API *(5 pts)*
+- **Description** : Adapter l’API Go pour supporter l’inscription initiale (auto-admin), la gestion JWT pour le front Next.js (login, refresh, forgot password placeholder).
+- **Critères d’acceptation** :
+  - Endpoint public `POST /auth/signup` créant l’instance initiale (organisation + admin).
+  - Flux JWT cohérent (headers, refresh, cookies httpOnly optionnels) documenté pour le front.
+  - Tests d’intégration couvrant signup/login/refresh.
 - **Dépendances** : T-1.6.
 
 ### T-1.9 Tests intégrés & qualité *(3 pts)*

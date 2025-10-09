@@ -4,7 +4,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{{block "title" .}}LMS Go{{end}}</title>
+    <title>{{if .PageTitle}}{{.PageTitle}}{{else}}LMS Go{{end}}</title>
     <link rel="stylesheet" href="/static/tailwind.css" />
   </head>
   <body class="min-h-screen bg-slate-50 text-slate-900">
@@ -20,15 +20,24 @@
           </div>
         </div>
         <nav class="hidden items-center gap-6 text-sm font-medium text-white/90 md:flex">
-          <a class="hover:text-white" href="#">Tableau de bord</a>
-          <a class="hover:text-white" href="#">Parcours</a>
-          <a class="hover:text-white" href="#">Inscriptions</a>
-          <a class="hover:text-white" href="#">Rapports</a>
+          <a class="hover:text-white {{if eq .Page "home"}}text-white font-semibold{{end}}" href="/">Accueil</a>
+          <a class="hover:text-white {{if eq .Page "learn"}}text-white font-semibold{{end}}" href="/learn">Parcours</a>
+          <a class="hover:text-white {{if eq .Page "admin"}}text-white font-semibold{{end}}" href="/admin">Admin</a>
         </nav>
       </div>
     </header>
     <main class="mx-auto w-full max-w-5xl flex-1 px-6 py-10">
-      {{template "content" .}}
+      {{if .FlashMessage}}
+      <div class="mb-4 rounded border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800 shadow-sm" role="status" aria-live="polite">
+        {{.FlashMessage}}
+      </div>
+      {{end}}
+      {{if .FlashError}}
+      <div class="mb-4 rounded border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 shadow-sm" role="alert">
+        {{.FlashError}}
+      </div>
+      {{end}}
+      {{block "content" .}}{{end}}
     </main>
     <footer class="border-t border-slate-200 bg-white py-6">
       <div class="mx-auto flex max-w-5xl flex-col items-start gap-2 px-6 text-sm text-slate-500 md:flex-row md:items-center md:justify-between">

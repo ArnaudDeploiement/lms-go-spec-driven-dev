@@ -1,0 +1,52 @@
+{
+  "pages": {
+    "/_not-found/page": [
+      "static/chunks/webpack-496a9687aa56f43e.js",
+      "static/chunks/fd9d1056-31cd4e5e32ed9a2a.js",
+      "static/chunks/117-f90253c18c86f8c6.js",
+      "static/chunks/main-app-58db79cb76841ed3.js",
+      "static/chunks/app/_not-found/page-5a816c46748b8e20.js"
+    ],
+    "/layout": [
+      "static/chunks/webpack-496a9687aa56f43e.js",
+      "static/chunks/fd9d1056-31cd4e5e32ed9a2a.js",
+      "static/chunks/117-f90253c18c86f8c6.js",
+      "static/chunks/main-app-58db79cb76841ed3.js",
+      "static/css/367839f13ed7895e.css",
+      "static/chunks/app/layout-9f79e0965420d8e9.js"
+    ],
+    "/auth/page": [
+      "static/chunks/webpack-496a9687aa56f43e.js",
+      "static/chunks/fd9d1056-31cd4e5e32ed9a2a.js",
+      "static/chunks/117-f90253c18c86f8c6.js",
+      "static/chunks/main-app-58db79cb76841ed3.js",
+      "static/chunks/498-96972480129db219.js",
+      "static/chunks/967-ce603d95d9825071.js",
+      "static/chunks/app/auth/page-ae2c344f0fedf797.js"
+    ],
+    "/learn/course/[id]/page": [
+      "static/chunks/webpack-496a9687aa56f43e.js",
+      "static/chunks/fd9d1056-31cd4e5e32ed9a2a.js",
+      "static/chunks/117-f90253c18c86f8c6.js",
+      "static/chunks/main-app-58db79cb76841ed3.js",
+      "static/chunks/498-96972480129db219.js",
+      "static/chunks/476-e2fe54f50508d472.js",
+      "static/chunks/app/learn/course/[id]/page-04cc58914f6dab0e.js"
+    ],
+    "/learn/page": [
+      "static/chunks/webpack-496a9687aa56f43e.js",
+      "static/chunks/fd9d1056-31cd4e5e32ed9a2a.js",
+      "static/chunks/117-f90253c18c86f8c6.js",
+      "static/chunks/main-app-58db79cb76841ed3.js",
+      "static/chunks/498-96972480129db219.js",
+      "static/chunks/app/learn/page-0d39f64bf1ca2b5e.js"
+    ],
+    "/page": [
+      "static/chunks/webpack-496a9687aa56f43e.js",
+      "static/chunks/fd9d1056-31cd4e5e32ed9a2a.js",
+      "static/chunks/117-f90253c18c86f8c6.js",
+      "static/chunks/main-app-58db79cb76841ed3.js",
+      "static/chunks/app/page-0dc968c812a49003.js"
+    ]
+  }
+}

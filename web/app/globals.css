@@ -1,0 +1,58 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Revolut-inspired theme */
+:root {
+  --background: #FAFAFA;
+  --foreground: #000000;
+  --muted: #6B7280;
+  --card: #FFFFFF;
+  --card-foreground: #000000;
+  --revolut-gradient: linear-gradient(135deg, #8B5CF6 0%, #A855F7 100%);
+}
+
+.dark {
+  --background: #000000;
+  --foreground: #FFFFFF;
+  --card: #1A1A1A;
+  --card-foreground: #FFFFFF;
+}
+
+body {
+  @apply bg-[var(--background)] text-[var(--foreground)] antialiased;
+  font-feature-settings: "rlig" 1, "calt" 1;
+}
+
+/* Revolut-style glass effect */
+.glass-panel {
+  @apply bg-white/80 backdrop-blur-xl border border-black/5 shadow-revolut;
+}
+
+/* Revolut-style gradient backgrounds */
+.gradient-revolut {
+  background: var(--revolut-gradient);
+}
+
+.gradient-revolut-radial {
+  background: radial-gradient(circle at top right, #A855F7 0%, #8B5CF6 50%, #7C3AED 100%);
+}
+
+/* Smooth transitions for all interactive elements */
+@layer components {
+  .revolut-card {
+    @apply bg-white rounded-2xl border border-black/5 shadow-revolut-card transition-all duration-200;
+  }
+
+  .revolut-card:hover {
+    @apply shadow-revolut-hover -translate-y-0.5;
+  }
+
+  .revolut-button {
+    @apply rounded-xl font-medium transition-all duration-200 active:scale-95;
+  }
+
+  .revolut-input {
+    @apply rounded-xl border-2 border-black/10 focus:border-revolut-purple focus:ring-4 focus:ring-revolut-purple/10 transition-all duration-200;
+  }
+}

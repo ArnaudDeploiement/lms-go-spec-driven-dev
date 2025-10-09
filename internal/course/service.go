@@ -2,6 +2,7 @@ package course
 
 import (
 	"context"
+	"sort"
 	"strings"
 	"time"
 
@@ -377,4 +378,14 @@ func sanitizeSlug(raw string) string {
 	slug = strings.ReplaceAll(slug, "--", "-")
 	slug = strings.Trim(slug, "-")
 	return slug
+}
+
+// AllowedModuleTypes retourne la liste triée des types de modules supportés.
+func AllowedModuleTypes() []string {
+	types := make([]string, 0, len(allowedModuleTypes))
+	for t := range allowedModuleTypes {
+		types = append(types, t)
+	}
+	sort.Strings(types)
+	return types
 }

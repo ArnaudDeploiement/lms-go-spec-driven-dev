@@ -1,0 +1,95 @@
+{{define "learn_catalog"}}
+  {{template "layout" .}}
+{{end}}
+
+{{define "content"}}
+<div class="space-y-8">
+  <section class="rounded-2xl bg-white p-6 shadow-xl shadow-slate-900/5 ring-1 ring-slate-200">
+    <h1 class="text-2xl font-semibold text-slate-900">Catalogue des parcours</h1>
+    <p class="mt-2 text-sm text-slate-600">
+      Sélectionnez votre organisation et, si disponible, votre profil apprenant pour afficher vos parcours publiés.
+    </p>
+
+    <form class="mt-4 grid gap-4 md:grid-cols-3" method="get" action="/learn">
+      <div>
+        <label class="block text-sm font-medium text-slate-700" for="org-select">Organisation</label>
+        <select id="org-select" name="org" class="mt-1 w-full rounded border border-slate-300 px-3 py-2">
+          <option value="">Toutes</option>
+          {{range .Organizations}}
+          <option value="{{.ID}}" {{if eq $.SelectedOrg .ID}}selected{{end}}>{{.Name}}</option>
+          {{end}}
+        </select>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-slate-700" for="learner-select">Apprenant</label>
+        <select id="learner-select" name="user" class="mt-1 w-full rounded border border-slate-300 px-3 py-2">
+          <option value="">Tous les utilisateurs</option>
+          {{range .Learners}}
+          <option value="{{.ID}}" {{if eq $.SelectedLearner .ID}}selected{{end}}>{{.Email}}</option>
+          {{end}}
+        </select>
+        <p class="mt-1 text-xs text-slate-500">Les apprenants sont identifiés par leur rôle <code>learner</code>.</p>
+      </div>
+
+      <div class="flex items-end">
+        <button class="w-full rounded bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700" type="submit">
+          Mettre à jour
+        </button>
+      </div>
+    </form>
+  </section>
+
+  {{if ne .SelectedOrg.String "00000000-0000-0000-0000-000000000000"}}
+  <section class="rounded-2xl bg-white p-6 shadow-xl shadow-slate-900/5 ring-1 ring-slate-200">
+    <h2 class="text-lg font-semibold text-slate-900">Parcours publiés</h2>
+    {{if .Courses}}
+    <div class="mt-4 grid gap-6 lg:grid-cols-2">
+      {{range .Courses}}
+      <article class="flex flex-col justify-between rounded-2xl border border-slate-200 p-5 shadow-sm transition hover:shadow-lg">
+        <div>
+          <p class="text-sm uppercase tracking-wide text-slate-500">Course</p>
+          <h3 class="mt-2 text-xl font-semibold text-slate-900">{{.Course.Title}}</h3>
+          <p class="mt-2 text-sm text-slate-600">{{.Course.Description}}</p>
+        </div>
+
+        <dl class="mt-4 grid grid-cols-2 gap-3 text-sm text-slate-600">
+          <div>
+            <dt class="font-medium text-slate-500">Progression</dt>
+            <dd class="mt-1 font-semibold text-slate-900">{{.ProgressLabel}}</dd>
+          </div>
+          <div>
+            <dt class="font-medium text-slate-500">Modules</dt>
+            <dd class="mt-1">{{.ModuleCount}}</dd>
+          </div>
+          {{if .NextModule}}
+          <div class="col-span-2">
+            <dt class="font-medium text-slate-500">Prochain module</dt>
+            <dd class="mt-1">{{.NextModule}}</dd>
+          </div>
+          {{end}}
+        </dl>
+
+        <a
+          class="mt-6 inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+          href="/learn/courses/{{.Course.ID}}?org={{$.SelectedOrg}}{{if ne $.SelectedLearner.String "00000000-0000-0000-0000-000000000000"}}&user={{$.SelectedLearner}}{{end}}">
+          Ouvrir le parcours
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M5 12h14" />
+            <path d="m12 5 7 7-7 7" />
+          </svg>
+        </a>
+      </article>
+      {{end}}
+    </div>
+    {{else}}
+    <p class="mt-4 text-sm text-slate-600">Aucun parcours publié trouvé pour cette organisation.</p>
+    {{end}}
+  </section>
+  {{else}}
+  <section class="rounded-2xl border border-dashed border-slate-300 bg-white p-6 text-sm text-slate-600">
+    Sélectionnez d'abord une organisation pour afficher le catalogue.
+  </section>
+  {{end}}
+</div>
+{{end}}

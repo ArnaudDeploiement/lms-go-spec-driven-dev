@@ -195,3 +195,107 @@ func (s *Service) ClearRefreshToken(ctx context.Context, userID uuid.UUID) error
 		ClearRefreshTokenID().
 		Exec(ctx)
 }
+
+// SignupInput contient les informations pour créer une organisation avec un admin initial.
+type SignupInput struct {
+	OrgName  string
+	OrgSlug  string
+	Email    string
+	Password string
+	Metadata map[string]any
+}
+
+// Signup crée une nouvelle organisation avec un utilisateur admin initial.
+// Utile pour l'inscription initiale depuis le frontend Next.js.
+func (s *Service) Signup(ctx context.Context, input SignupInput) (*ent.Organization, *ent.User, TokenPair, error) {
+	// Validation
+	email := strings.TrimSpace(strings.ToLower(input.Email))
+	if email == "" || input.Password == "" || input.OrgName == "" {
+		return nil, nil, TokenPair{}, ErrInvalidCredentials
+	}
+
+	// Hash du mot de passe
+	passwordHash, err := HashPassword(strings.TrimSpace(input.Password))
+	if err != nil {
+		return nil, nil, TokenPair{}, err
+	}
+
+	// Sanitize slug
+	slug := input.OrgSlug
+	if slug == "" {
+		slug = input.OrgName
+	}
+
+	// Transaction pour créer org + user atomiquement
+	tx, err := s.client.Tx(ctx)
+	if err != nil {
+		return nil, nil, TokenPair{}, err
+	}
+
+	// Rollback en cas d'erreur
+	defer func() {
+		if v := recover(); v != nil {
+			_ = tx.Rollback()
+			panic(v)
+		}
+	}()
+
+	// Créer l'organisation
+	org, err := tx.Organization.Create().
+		SetName(input.OrgName).
+		SetSlug(slug).
+		SetSettings(map[string]any{}).
+		Save(ctx)
+	if err != nil {
+		_ = tx.Rollback()
+		if ent.IsConstraintError(err) {
+			return nil, nil, TokenPair{}, ErrEmailAlreadyUsed // Réutilise l'erreur pour slug duplicate
+		}
+		return nil, nil, TokenPair{}, err
+	}
+
+	// Créer l'utilisateur admin
+	metadata := input.Metadata
+	if metadata == nil {
+		metadata = map[string]any{}
+	}
+
+	user, err := tx.User.Create().
+		SetOrganizationID(org.ID).
+		SetEmail(email).
+		SetPasswordHash(passwordHash).
+		SetRole("admin").
+		SetMetadata(metadata).
+		Save(ctx)
+	if err != nil {
+		_ = tx.Rollback()
+		if ent.IsConstraintError(err) {
+			return nil, nil, TokenPair{}, ErrEmailAlreadyUsed
+		}
+		return nil, nil, TokenPair{}, err
+	}
+
+	// Générer les tokens
+	tokens, refreshID, err := s.tokens.IssuePair(user.ID, org.ID, user.Role)
+	if err != nil {
+		_ = tx.Rollback()
+		return nil, nil, TokenPair{}, err
+	}
+
+	// Mettre à jour le refresh token de l'utilisateur
+	user, err = tx.User.UpdateOneID(user.ID).
+		SetRefreshTokenID(refreshID).
+		SetLastLoginAt(s.now()).
+		Save(ctx)
+	if err != nil {
+		_ = tx.Rollback()
+		return nil, nil, TokenPair{}, err
+	}
+
+	// Commit de la transaction
+	if err := tx.Commit(); err != nil {
+		return nil, nil, TokenPair{}, err
+	}
+
+	return org, user, tokens, nil
+}
