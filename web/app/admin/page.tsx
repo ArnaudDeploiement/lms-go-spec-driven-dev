@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
 import {
   apiClient,
   CourseResponse,
@@ -23,10 +22,7 @@ import {
   GraduationCap,
   Users,
   Layers,
-  Sparkles,
-  LineChart,
   PlusCircle,
-  Rocket,
   ShieldCheck,
   BookOpen,
   UserPlus,
@@ -35,6 +31,7 @@ import {
   Building2,
   ArrowLeft,
 } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const baseNavItems = [
   { id: "overview", label: "Aperçu", icon: LayoutGrid },
@@ -42,8 +39,9 @@ const baseNavItems = [
   { id: "learners", label: "Apprenants", icon: Users },
   { id: "enrollments", label: "Inscriptions", icon: Layers },
   { id: "content", label: "Contenus", icon: FileStack },
-  { id: "back-to-learn", label: "Retour Learn", icon: ArrowLeft, href: "/learn" },
 ];
+
+const backToLearnNav = { id: "back-to-learn", label: "Retour Learn", icon: ArrowLeft, href: "/learn" } as const;
 
 const moduleTypes = [
   { value: "video", label: "Vidéo" },
@@ -52,6 +50,67 @@ const moduleTypes = [
   { value: "quiz", label: "Quiz" },
   { value: "scorm", label: "SCORM" },
 ];
+
+type CourseFormState = {
+  title: string;
+  slug: string;
+  description: string;
+  tags: string;
+  duration_hours: string;
+  level: string;
+  visibility: string;
+  metadata: string;
+};
+
+type CourseEditFormState = {
+  title: string;
+  description: string;
+  tags: string;
+  duration_hours: string;
+  level: string;
+  visibility: string;
+  metadata: string;
+};
+
+type ModuleFormState = {
+  title: string;
+  module_type: string;
+  content_id: string;
+  duration_seconds: string;
+  data: string;
+};
+
+const createEmptyCourseForm = (): CourseFormState => ({
+  title: "",
+  slug: "",
+  description: "",
+  tags: "",
+  duration_hours: "",
+  level: "beginner",
+  visibility: "private",
+  metadata: "",
+});
+
+const createEmptyCourseEditForm = (): CourseEditFormState => ({
+  title: "",
+  description: "",
+  tags: "",
+  duration_hours: "",
+  level: "beginner",
+  visibility: "private",
+  metadata: "",
+});
+
+const createEmptyModuleForm = (): ModuleFormState => ({
+  title: "",
+  module_type: moduleTypes[0].value,
+  content_id: "",
+  duration_seconds: "",
+  data: "",
+});
+
+const baseFieldClasses =
+  "w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50";
 
 function slugify(value: string) {
   return value
@@ -75,32 +134,49 @@ function parseJsonInput(input: string): Record<string, any> | undefined {
 }
 
 async function uploadFileToSignedUrl(url: string, file: File, onProgress: (value: number) => void) {
-  return new Promise<void>((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open("PUT", url, true);
-    xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream");
+  if (typeof window !== "undefined" && typeof XMLHttpRequest !== "undefined") {
+    return new Promise<void>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("PUT", url, true);
+      xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream");
 
-    xhr.upload.onprogress = (event) => {
-      if (!event.lengthComputable) return;
-      const percent = Math.round((event.loaded / event.total) * 100);
-      onProgress(percent);
-    };
+      xhr.upload.onprogress = (event) => {
+        if (!event.lengthComputable) return;
+        const percent = Math.round((event.loaded / event.total) * 100);
+        onProgress(percent);
+      };
 
-    xhr.onload = () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        onProgress(100);
-        resolve();
-      } else {
-        reject(new Error("Le téléversement a échoué"));
-      }
-    };
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          onProgress(100);
+          resolve();
+        } else {
+          reject(new Error("Le téléversement a échoué"));
+        }
+      };
 
-    xhr.onerror = () => {
-      reject(new Error("Impossible de téléverser le fichier"));
-    };
+      xhr.onerror = () => {
+        reject(new Error("Impossible de téléverser le fichier"));
+      };
 
-    xhr.send(file);
+      xhr.send(file);
+    });
+  }
+
+  onProgress(0);
+  const response = await fetch(url, {
+    method: "PUT",
+    headers: {
+      "Content-Type": file.type || "application/octet-stream",
+    },
+    body: file,
   });
+
+  if (!response.ok) {
+    throw new Error("Le téléversement a échoué");
+  }
+
+  onProgress(100);
 }
 
 
@@ -132,24 +208,14 @@ export default function AdminPage() {
   const [lastUploadLink, setLastUploadLink] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
 
-  const [courseForm, setCourseForm] = useState({
-    title: "",
-    slug: "",
-    description: "",
-    tags: "",
-    duration_hours: "",
-    level: "beginner",
-    visibility: "private",
-    metadata: "",
-  });
+  const [courseForm, setCourseForm] = useState<CourseFormState>(createEmptyCourseForm());
+  const [courseEditForm, setCourseEditForm] = useState<CourseEditFormState>(createEmptyCourseEditForm());
+  const [isUpdatingCourse, setIsUpdatingCourse] = useState(false);
 
-  const [moduleForm, setModuleForm] = useState({
-    title: "",
-    module_type: moduleTypes[0].value,
-    content_id: "",
-    duration_seconds: "",
-    data: "",
-  });
+  const [moduleForm, setModuleForm] = useState<ModuleFormState>(createEmptyModuleForm());
+  const [moduleEditForm, setModuleEditForm] = useState<ModuleFormState>(createEmptyModuleForm());
+  const [editingModule, setEditingModule] = useState<ModuleResponse | null>(null);
+  const [isUpdatingModule, setIsUpdatingModule] = useState(false);
 
   const [userForm, setUserForm] = useState({
     email: "",
@@ -246,6 +312,45 @@ export default function AdminPage() {
     loadModules();
   }, [organization, selectedCourse]);
 
+  useEffect(() => {
+    if (!selectedCourse) {
+      setCourseEditForm(createEmptyCourseEditForm());
+      setEditingModule(null);
+      setModuleEditForm(createEmptyModuleForm());
+      return;
+    }
+
+    const metadata = { ...(selectedCourse.metadata ?? {}) } as Record<string, any>;
+    const tags = Array.isArray(metadata.tags) ? (metadata.tags as string[]) : [];
+    const durationValue =
+      metadata.duration_hours !== undefined && metadata.duration_hours !== null
+        ? String(metadata.duration_hours)
+        : "";
+    const levelValue =
+      typeof metadata.level === "string" ? (metadata.level as string) : "beginner";
+    const visibilityValue =
+      typeof metadata.visibility === "string" ? (metadata.visibility as string) : "private";
+
+    const extraMetadata = { ...metadata };
+    delete extraMetadata.tags;
+    delete extraMetadata.duration_hours;
+    delete extraMetadata.level;
+    delete extraMetadata.visibility;
+
+    setCourseEditForm({
+      title: selectedCourse.title,
+      description: selectedCourse.description,
+      tags: tags.join(", "),
+      duration_hours: durationValue,
+      level: levelValue,
+      visibility: visibilityValue,
+      metadata: Object.keys(extraMetadata).length > 0 ? JSON.stringify(extraMetadata, null, 2) : "",
+    });
+
+    setEditingModule(null);
+    setModuleEditForm(createEmptyModuleForm());
+  }, [selectedCourse]);
+
   const stats = useMemo(() => {
     const completed = enrollments.filter((enrollment) => enrollment.status === "completed").length;
     const total = enrollments.length;
@@ -295,22 +400,54 @@ export default function AdminPage() {
         },
       });
       setCourses((prev) => [newCourse, ...prev]);
-      setCourseForm({
-        title: "",
-        slug: "",
-        description: "",
-        metadata: "",
-        tags: "",
-        duration_hours: "",
-        level: "beginner",
-        visibility: "private",
-      });
+      setCourseForm(createEmptyCourseForm());
       setSelectedCourse(newCourse);
       setFeedback(`Cours "${newCourse.title}" créé avec succès`);
     } catch (err: any) {
       setError(err?.error || "Impossible de créer le cours");
     } finally {
       setIsSubmittingCourse(false);
+    }
+  };
+
+  const handleCourseUpdate = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!organization || !selectedCourse) return;
+    try {
+      setIsUpdatingCourse(true);
+      setError(null);
+      const baseMetadata = parseJsonInput(courseEditForm.metadata || "") || {};
+      const tags = courseEditForm.tags
+        .split(",")
+        .map((tag) => tag.trim())
+        .filter(Boolean);
+      const durationHours = courseEditForm.duration_hours
+        ? Number(courseEditForm.duration_hours)
+        : undefined;
+      const metadata: Record<string, any> = {
+        ...baseMetadata,
+        tags,
+        level: courseEditForm.level,
+        visibility: courseEditForm.visibility,
+      };
+
+      if (durationHours !== undefined && !Number.isNaN(durationHours)) {
+        metadata.duration_hours = durationHours;
+      }
+
+      const updatedCourse = await apiClient.updateCourse(organization.id, selectedCourse.id, {
+        title: courseEditForm.title,
+        description: courseEditForm.description,
+        metadata,
+      });
+
+      setCourses((prev) => prev.map((course) => (course.id === updatedCourse.id ? updatedCourse : course)));
+      setSelectedCourse(updatedCourse);
+      setFeedback(`Cours "${updatedCourse.title}" mis à jour`);
+    } catch (err: any) {
+      setError(err?.error || "Impossible de modifier le cours");
+    } finally {
+      setIsUpdatingCourse(false);
     }
   };
 
@@ -329,13 +466,56 @@ export default function AdminPage() {
         data: metadata,
       });
       setModules((prev) => [...prev, module]);
-      setModuleForm({ title: "", module_type: moduleTypes[0].value, content_id: "", duration_seconds: "", data: "" });
+      setModuleForm(createEmptyModuleForm());
       setFeedback(`Module "${module.title}" ajouté`);
     } catch (err: any) {
       setError(err?.error || "Impossible d'ajouter le module");
     } finally {
       setIsSubmittingModule(false);
     }
+  };
+
+  const handleModuleUpdate = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!organization || !editingModule) return;
+    try {
+      setIsUpdatingModule(true);
+      setError(null);
+      const metadata = parseJsonInput(moduleEditForm.data || "");
+      const duration = moduleEditForm.duration_seconds ? Number(moduleEditForm.duration_seconds) : undefined;
+      const updatedModule = await apiClient.updateModule(organization.id, editingModule.id, {
+        title: moduleEditForm.title,
+        module_type: moduleEditForm.module_type,
+        content_id: moduleEditForm.content_id ? moduleEditForm.content_id : undefined,
+        duration_seconds: duration,
+        data: metadata,
+      });
+
+      setModules((prev) => prev.map((module) => (module.id === updatedModule.id ? updatedModule : module)));
+      setEditingModule(null);
+      setModuleEditForm(createEmptyModuleForm());
+      setFeedback(`Module "${updatedModule.title}" mis à jour`);
+    } catch (err: any) {
+      setError(err?.error || "Impossible de modifier le module");
+    } finally {
+      setIsUpdatingModule(false);
+    }
+  };
+
+  const handleCancelModuleEdit = () => {
+    setEditingModule(null);
+    setModuleEditForm(createEmptyModuleForm());
+  };
+
+  const handleStartModuleEdit = (module: ModuleResponse) => {
+    setEditingModule(module);
+    setModuleEditForm({
+      title: module.title,
+      module_type: module.module_type,
+      content_id: module.content_id || "",
+      duration_seconds: module.duration_seconds ? String(module.duration_seconds) : "",
+      data: module.data ? JSON.stringify(module.data, null, 2) : "",
+    });
   };
 
   const handlePublishCourse = async (course: CourseResponse) => {
@@ -584,348 +764,402 @@ export default function AdminPage() {
     }
   };
 
+
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-gray-950 via-gray-900 to-slate-900">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="glass-card px-6 py-8 text-center"
-        >
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ duration: 1.2, repeat: Infinity, ease: "linear" }}
-            className="mx-auto mb-4 h-12 w-12 rounded-full border-2 border-cyan-400/60 border-t-transparent"
-          />
-          <p className="text-sm text-slate-300">Chargement de votre campus numérique…</p>
-        </motion.div>
+      <div className="min-h-screen bg-slate-50">
+        <Navigation />
+        <div className="flex min-h-screen items-center justify-center pt-24">
+          <div className="flex flex-col items-center gap-3 rounded-xl border border-slate-200 bg-white px-8 py-10 text-center shadow-sm">
+            <div className="h-12 w-12 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
+            <p className="text-sm text-slate-600">Chargement de votre espace administrateur…</p>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="relative min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-slate-900 pb-32 text-gray-100">
+    <div className="min-h-screen bg-slate-50">
       <Navigation />
-      <header className="glass-nav fixed inset-x-6 top-6 z-50 flex items-center justify-between rounded-3xl px-6 py-4">
-        <div className="flex items-center gap-4">
-          <div className="relative h-12 w-12 rounded-2xl bg-white/10 p-[2px]">
-            <div className="h-full w-full rounded-2xl bg-slate-900/80 backdrop-blur-xl" />
-            <Sparkles className="absolute -top-2 -right-2 h-5 w-5 text-cyan-300" />
+      <main className="container-custom space-y-8 px-4 pb-12 pt-24 sm:px-6">
+        <header className="rounded-2xl border border-slate-200 bg-white px-6 py-5 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm">
+                <Building2 className="h-6 w-6" />
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Administration</p>
+                <h1 className="text-2xl font-semibold text-slate-900">{organization?.name || "Organisation"}</h1>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-sm font-semibold text-blue-700">
+                {user?.email?.slice(0, 2).toUpperCase()}
+              </div>
+              <div className="text-sm leading-tight text-slate-600">
+                <p className="font-medium text-slate-900">{user?.email}</p>
+                <p className="text-xs capitalize text-slate-500">{user?.role}</p>
+              </div>
+            </div>
           </div>
-          <div>
-            <p className="text-xs uppercase tracking-widest text-slate-400">LMS Orchestrator</p>
-            <h1 className="text-2xl font-semibold text-slate-50">{organization?.name || "Organisation"}</h1>
-          </div>
-        </div>
-        <div className="flex items-center gap-3 rounded-full border border-white/10 bg-white/10 px-4 py-2 backdrop-blur">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-cyan-400 text-xs font-semibold uppercase text-slate-900">
-            {user?.email?.slice(0, 2).toUpperCase()}
-          </div>
-          <div className="text-right">
-            <p className="text-sm font-medium text-slate-100">{user?.email}</p>
-            <p className="text-xs text-cyan-300">{user?.role}</p>
-          </div>
-        </div>
-      </header>
+        </header>
 
-      <main className="mx-auto flex max-w-6xl flex-col gap-8 px-6 pt-28">
-        {feedback && (
-          <motion.div
-            key={feedback}
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="glass-card border-cyan-400/40 px-4 py-3 text-sm text-cyan-200"
+        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Cours publiés</p>
+            <p className="mt-2 text-3xl font-semibold text-slate-900">{stats.publishedCourses}</p>
+            <p className="mt-2 text-xs text-slate-500">Formations accessibles à vos équipes</p>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Apprenants actifs</p>
+            <p className="mt-2 text-3xl font-semibold text-slate-900">{stats.activeLearners}</p>
+            <p className="mt-2 text-xs text-slate-500">Utilisateurs connectés sur les 30 derniers jours</p>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Cours terminés</p>
+            <p className="mt-2 text-3xl font-semibold text-slate-900">{stats.completed}</p>
+            <p className="mt-2 text-xs text-slate-500">Sur {stats.total || 1} inscriptions</p>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Progression</p>
+            <p className="mt-2 text-3xl font-semibold text-slate-900">{stats.progressPercentage}%</p>
+            <p className="mt-2 text-xs text-slate-500">Taux moyen de complétion</p>
+          </div>
+        </section>
+
+        <div className="grid gap-3 sm:grid-cols-3">
+          <Button
+            type="button"
+            onClick={() => setActiveSection("courses")}
+            className="justify-between bg-blue-600 text-white hover:bg-blue-700"
           >
+            <span>Créer un cours</span>
+            <PlusCircle className="h-4 w-4" />
+          </Button>
+          <Button
+            type="button"
+            onClick={() => setActiveSection("learners")}
+            variant="outline"
+            className="justify-between border-slate-200 text-slate-700 hover:bg-slate-100"
+          >
+            <span>Inviter un apprenant</span>
+            <UserPlus className="h-4 w-4" />
+          </Button>
+          <Button
+            type="button"
+            onClick={() => setActiveSection("content")}
+            variant="outline"
+            className="justify-between border-slate-200 text-slate-700 hover:bg-slate-100"
+          >
+            <span>Déposer un contenu</span>
+            <UploadCloud className="h-4 w-4" />
+          </Button>
+        </div>
+
+        {feedback && (
+          <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700 shadow-sm">
             {feedback}
-          </motion.div>
+          </div>
         )}
 
         {error && (
-          <motion.div
-            key={error}
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="glass-card border-rose-400/40 px-4 py-3 text-sm text-rose-200"
-          >
+          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 shadow-sm">
             {error}
-          </motion.div>
+          </div>
         )}
 
-        <motion.section
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="grid gap-6 lg:grid-cols-[2fr,1fr]"
-        >
-          <Card className="glass-card border-white/10">
-            <CardHeader className="pb-4">
-              <CardTitle className="flex items-center justify-between text-lg text-slate-100">
-                <span>Solde de progression</span>
-                <LineChart className="h-5 w-5 text-cyan-300" />
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
-                <p className="text-sm uppercase tracking-wide text-slate-300">Cours terminés</p>
-                <div className="mt-3 flex items-end justify-between">
-                  <h2 className="text-3xl font-semibold text-white">
-                    {stats.completed}/{stats.total || 1}
-                  </h2>
-                  <span className="revolut-badge text-cyan-200">{stats.progressPercentage}%</span>
-                </div>
-                <div className="mt-4 h-2 w-full rounded-full bg-slate-800">
-                  <div
-                    className="h-full rounded-full bg-gradient-to-r from-indigo-500 via-purple-500 to-cyan-400"
-                    style={{ width: `${stats.progressPercentage}%` }}
-                  />
-                </div>
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
-                  <p className="text-xs uppercase tracking-wide text-slate-300">Cours publiés</p>
-                  <p className="mt-2 text-2xl font-semibold text-white">{stats.publishedCourses}</p>
-                </div>
-                <div className="rounded-3xl border border-white/10 bg-white/5 p-5">
-                  <p className="text-xs uppercase tracking-wide text-slate-300">Apprenants actifs</p>
-                  <p className="mt-2 text-2xl font-semibold text-white">{stats.activeLearners}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="glass-card border-white/10">
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 text-lg text-slate-100">
-                <Rocket className="h-5 w-5 text-cyan-300" />
-                Actions rapides
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-3">
-              <Button onClick={() => setActiveSection("courses")} className="revolut-button flex items-center justify-between">
-                <span>Créer un cours</span>
-                <PlusCircle className="h-4 w-4" />
-              </Button>
-              <Button onClick={() => setActiveSection("learners")} className="revolut-button flex items-center justify-between">
-                <span>Inviter un apprenant</span>
-                <UserPlus className="h-4 w-4" />
-              </Button>
-              <Button onClick={() => setActiveSection("content")} className="revolut-button flex items-center justify-between">
-                <span>Déposer un contenu</span>
-                <UploadCloud className="h-4 w-4" />
-              </Button>
-            </CardContent>
-          </Card>
-        </motion.section>
-
-        <AnimatePresence mode="wait">
-          {activeSection === "overview" && (
-            <motion.section
-              key="overview"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.4 }}
-              className="grid gap-6 lg:grid-cols-3"
+        <Tabs value={activeSection} onValueChange={setActiveSection} className="space-y-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <TabsList className="flex flex-wrap gap-2 rounded-xl border border-slate-200 bg-white p-1 shadow-sm">
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <TabsTrigger
+                    key={item.id}
+                    value={item.id}
+                    className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium text-slate-600 transition-colors data-[state=active]:bg-blue-600 data-[state=active]:text-white"
+                  >
+                    <Icon className="h-4 w-4" />
+                    <span>{item.label}</span>
+                  </TabsTrigger>
+                );
+              })}
+            </TabsList>
+            <Button
+              type="button"
+              variant="outline"
+              className="inline-flex items-center gap-2 border-slate-200 text-sm font-medium text-slate-700 hover:bg-slate-100"
+              onClick={() => router.push(backToLearnNav.href)}
             >
-              {courses.slice(0, 3).map((course) => (
-                <motion.div key={course.id} whileHover={{ translateY: -6 }} className="revolut-card p-6">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-semibold text-white">{course.title}</h3>
-                    <span className="revolut-badge text-xs text-cyan-200">{course.status}</span>
-                  </div>
-                  <p className="mt-2 text-sm text-slate-300">{course.description}</p>
-                  <div className="mt-4 flex items-center justify-between text-xs text-slate-400">
-                    <span>Créé le {new Date(course.created_at).toLocaleDateString()}</span>
+              <ArrowLeft className="h-4 w-4" />
+              {backToLearnNav.label}
+            </Button>
+          </div>
+
+          <TabsContent value="overview" className="space-y-6">
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              <Card className="border border-slate-200 bg-white shadow-sm">
+                <CardHeader className="pb-4">
+                  <CardTitle className="flex items-center gap-2 text-base font-semibold text-slate-900">
+                    <GraduationCap className="h-4 w-4 text-blue-500" />
+                    Cours récents
+                  </CardTitle>
+                  <p className="text-sm text-slate-500">Gérez votre catalogue de formations.</p>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {courses.slice(0, 3).map((course) => (
                     <button
+                      key={course.id}
+                      type="button"
                       onClick={() => {
                         setSelectedCourse(course);
                         setActiveSection("courses");
                       }}
-                      className="text-cyan-300 hover:text-cyan-200"
+                      className="w-full rounded-lg border border-slate-200 px-4 py-3 text-left transition-colors hover:border-blue-200 hover:bg-blue-50"
                     >
-                      Gérer
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-slate-900">{course.title}</p>
+                          <p className="text-xs text-slate-500">{course.description}</p>
+                        </div>
+                        <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
+                          {course.status}
+                        </span>
+                      </div>
                     </button>
-                  </div>
-                </motion.div>
-              ))}
-            </motion.section>
-          )}
+                  ))}
+                  {courses.length === 0 && (
+                    <p className="text-sm text-slate-500">Aucun cours pour le moment.</p>
+                  )}
+                </CardContent>
+              </Card>
 
-          {activeSection === "courses" && (
-            <motion.section
-              key="courses"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.4 }}
-              className="grid gap-6 lg:grid-cols-[1.6fr,1fr]"
-            >
-              <div className="space-y-5">
-                <Card className="glass-card border-white/10">
-                  <CardHeader>
-                    <CardTitle className="flex items-center justify-between text-lg text-slate-100">
-                      <span>Catalogue des cours</span>
-                      <ShieldCheck className="h-5 w-5 text-cyan-300" />
+              <Card className="border border-slate-200 bg-white shadow-sm">
+                <CardHeader className="pb-4">
+                  <CardTitle className="flex items-center gap-2 text-base font-semibold text-slate-900">
+                    <Users className="h-4 w-4 text-blue-500" />
+                    Apprenants récents
+                  </CardTitle>
+                  <p className="text-sm text-slate-500">Derniers comptes créés ou actifs.</p>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {users.slice(0, 3).map((item) => (
+                    <div key={item.id} className="flex items-center justify-between rounded-lg border border-slate-200 px-4 py-3">
+                      <div>
+                        <p className="text-sm font-medium text-slate-900">{item.email}</p>
+                        <p className="text-xs text-slate-500">{item.role}</p>
+                      </div>
+                      <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-600">{item.status}</span>
+                    </div>
+                  ))}
+                  {users.length === 0 && (
+                    <p className="text-sm text-slate-500">Aucun utilisateur enregistré.</p>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card className="border border-slate-200 bg-white shadow-sm">
+                <CardHeader className="pb-4">
+                  <CardTitle className="flex items-center gap-2 text-base font-semibold text-slate-900">
+                    <FileStack className="h-4 w-4 text-blue-500" />
+                    Contenus récents
+                  </CardTitle>
+                  <p className="text-sm text-slate-500">Derniers fichiers téléversés.</p>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {contents.slice(0, 3).map((content) => (
+                    <div key={content.id} className="flex items-center justify-between rounded-lg border border-slate-200 px-4 py-3">
+                      <div>
+                        <p className="text-sm font-medium text-slate-900">{content.name}</p>
+                        <p className="text-xs text-slate-500">{content.mime_type}</p>
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="border-slate-200 text-xs text-slate-700 hover:bg-slate-100"
+                        onClick={() => setActiveSection("content")}
+                      >
+                        Gérer
+                      </Button>
+                    </div>
+                  ))}
+                  {contents.length === 0 && (
+                    <p className="text-sm text-slate-500">Aucun contenu disponible.</p>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="courses" className="space-y-6">
+            <div className="grid gap-6 xl:grid-cols-[1.2fr,0.8fr]">
+              <div className="grid gap-6">
+                <Card className="border border-slate-200 bg-white shadow-sm">
+                  <CardHeader className="pb-4">
+                    <CardTitle className="flex items-center gap-2 text-lg text-slate-900">
+                      <GraduationCap className="h-5 w-5 text-blue-500" />
+                      Catalogue des cours
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-3">
+                  <CardContent className="space-y-2">
                     {courses.map((course) => (
                       <button
                         key={course.id}
+                        type="button"
                         onClick={() => setSelectedCourse(course)}
-                        className={`w-full rounded-3xl border px-4 py-3 text-left transition-all duration-300 ${
-                          selectedCourse?.id === course.id
-                            ? "border-cyan-400/60 bg-white/15 shadow-[0_15px_40px_-20px_rgba(34,211,238,0.6)]"
-                            : "border-white/10 bg-white/5 hover:border-cyan-300/40"
-                        }`}
+                        className={`w-full rounded-lg border px-4 py-3 text-left transition-colors ${selectedCourse?.id === course.id ? 'border-blue-300 bg-blue-50 shadow-sm' : 'border-slate-200 bg-white hover:border-blue-200 hover:bg-blue-50/50'}`}
                       >
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="text-base font-semibold text-white">{course.title}</p>
-                            <p className="text-xs text-slate-300">{course.description}</p>
+                            <p className="text-base font-semibold text-slate-900">{course.title}</p>
+                            <p className="text-xs text-slate-500">{course.description}</p>
                           </div>
-                          <span className="revolut-badge text-cyan-200">{course.status}</span>
+                          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">{course.status}</span>
                         </div>
                       </button>
                     ))}
                     {courses.length === 0 && (
-                      <p className="text-sm text-slate-400">Aucun cours pour le moment. Créez votre première formation !</p>
+                      <p className="text-sm text-slate-500">Aucun cours pour le moment.</p>
                     )}
                   </CardContent>
                 </Card>
 
                 {selectedCourse && (
-                  <Card className="glass-card border-white/10">
-                    <CardHeader>
-                      <CardTitle className="flex items-center justify-between text-lg text-slate-100">
-                        <span>Modules du cours « {selectedCourse.title} »</span>
-                        <BookOpen className="h-5 w-5 text-cyan-300" />
+                  <Card className="border border-slate-200 bg-white shadow-sm">
+                    <CardHeader className="pb-4">
+                      <CardTitle className="flex items-center gap-2 text-lg text-slate-900">
+                        <BookOpen className="h-5 w-5 text-blue-500" />
+                        Modules du cours « {selectedCourse.title} »
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-3">
-                      {modules.length === 0 && <p className="text-sm text-slate-400">Aucun module pour le moment.</p>}
                       {modules.map((module) => (
-                        <div key={module.id} className="rounded-3xl border border-white/10 bg-white/5 p-4">
-                          <div className="flex items-center justify-between">
+                        <div key={module.id} className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                          <div className="flex flex-wrap items-center justify-between gap-3">
                             <div>
-                              <p className="text-sm font-medium text-white">{module.title}</p>
-                              <p className="text-xs text-slate-400">
-                                {module.module_type} · {module.duration_seconds || 0} sec
-                              </p>
+                              <p className="text-sm font-semibold text-slate-900">{module.title}</p>
+                              <p className="text-xs text-slate-500">{module.module_type} • {module.duration_seconds ? `${module.duration_seconds}s` : 'Durée libre'}</p>
                             </div>
-                            <span className="text-xs uppercase tracking-wide text-slate-400">#{module.position}</span>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="border-slate-200 text-xs text-slate-700 hover:bg-slate-100"
+                              onClick={() => handleStartModuleEdit(module)}
+                            >
+                              Modifier
+                            </Button>
                           </div>
                         </div>
                       ))}
+                      {modules.length === 0 && (
+                        <p className="text-sm text-slate-500">Aucun module pour le moment.</p>
+                      )}
                     </CardContent>
                   </Card>
                 )}
               </div>
 
-              <div className="space-y-6">
-                <Card className="glass-card border-white/10">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-lg text-slate-100">
-                      <PlusCircle className="h-5 w-5 text-cyan-300" />
-                      Nouveau cours
-                    </CardTitle>
+              <div className="grid gap-6">
+                <Card className="border border-slate-200 bg-white shadow-sm">
+                  <CardHeader className="pb-4">
+                    <CardTitle className="text-lg text-slate-900">Créer un cours</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <form onSubmit={handleCourseSubmit} className="space-y-4">
                       <div className="space-y-2">
-                        <label className="text-xs font-semibold uppercase tracking-wide text-slate-100">Titre</label>
+                        <label className="text-sm font-medium text-slate-700">Titre</label>
                         <Input
                           value={courseForm.title}
-                          onChange={(event) =>
-                            setCourseForm((prev) => ({
-                              ...prev,
-                              title: event.target.value,
-                              slug: prev.slug ? prev.slug : slugify(event.target.value),
-                            }))
-                          }
-                          className="revolut-input"
-                          placeholder="Onboarding digital"
-                          required
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-xs font-semibold uppercase tracking-wide text-slate-100">Slug</label>
-                        <Input
-                          value={courseForm.slug}
-                          onChange={(event) => setCourseForm((prev) => ({ ...prev, slug: event.target.value }))}
-                          className="revolut-input"
-                          placeholder="onboarding-digital"
-                          required
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-xs font-semibold uppercase tracking-wide text-slate-100">Description</label>
-                        <textarea
-                          value={courseForm.description}
-                          onChange={(event) => setCourseForm((prev) => ({ ...prev, description: event.target.value }))}
-                          className="revolut-input min-h-[90px]"
-                          placeholder="Décrivez la proposition de valeur du cours"
+                          onChange={(event) => setCourseForm((prev) => ({ ...prev, title: event.target.value }))}
+                          className="bg-white"
+                          placeholder="Formation produit"
                           required
                         />
                       </div>
                       <div className="grid gap-4 sm:grid-cols-2">
                         <div className="space-y-2">
-                          <label className="text-xs font-semibold uppercase tracking-wide text-slate-100">Durée estimée (heures)</label>
+                          <label className="text-sm font-medium text-slate-700">Slug</label>
+                          <Input
+                            value={courseForm.slug}
+                            onChange={(event) => setCourseForm((prev) => ({ ...prev, slug: event.target.value }))}
+                            className="bg-white"
+                            placeholder="formation-produit"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-slate-700">Durée estimée (heures)</label>
                           <Input
                             type="number"
                             min={0}
                             value={courseForm.duration_hours}
                             onChange={(event) => setCourseForm((prev) => ({ ...prev, duration_hours: event.target.value }))}
-                            className="revolut-input"
+                            className="bg-white"
                             placeholder="6"
                           />
                         </div>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-slate-700">Description</label>
+                        <textarea
+                          value={courseForm.description}
+                          onChange={(event) => setCourseForm((prev) => ({ ...prev, description: event.target.value }))}
+                          className={`${baseFieldClasses} min-h-[80px]`}
+                          placeholder="Objectifs, public visé…"
+                          required
+                        />
+                      </div>
+                      <div className="grid gap-4 sm:grid-cols-2">
                         <div className="space-y-2">
-                          <label className="text-xs font-semibold uppercase tracking-wide text-slate-100">Niveau</label>
+                          <label className="text-sm font-medium text-slate-700">Niveau</label>
                           <select
                             value={courseForm.level}
                             onChange={(event) => setCourseForm((prev) => ({ ...prev, level: event.target.value }))}
-                            className="revolut-input"
+                            className={baseFieldClasses}
                           >
                             <option value="beginner">Débutant</option>
                             <option value="intermediate">Intermédiaire</option>
                             <option value="advanced">Avancé</option>
                           </select>
                         </div>
-                      </div>
-                      <div className="grid gap-4 sm:grid-cols-2">
                         <div className="space-y-2">
-                          <label className="text-xs font-semibold uppercase tracking-wide text-slate-100">Visibilité</label>
+                          <label className="text-sm font-medium text-slate-700">Visibilité</label>
                           <select
                             value={courseForm.visibility}
                             onChange={(event) => setCourseForm((prev) => ({ ...prev, visibility: event.target.value }))}
-                            className="revolut-input"
+                            className={baseFieldClasses}
                           >
                             <option value="private">Privé</option>
                             <option value="public">Public</option>
                           </select>
                         </div>
-                        <div className="space-y-2">
-                          <label className="text-xs font-semibold uppercase tracking-wide text-slate-100">Tags</label>
-                          <Input
-                            value={courseForm.tags}
-                            onChange={(event) => setCourseForm((prev) => ({ ...prev, tags: event.target.value }))}
-                            className="revolut-input"
-                            placeholder="onboarding, produit, équipe"
-                          />
-                        </div>
                       </div>
                       <div className="space-y-2">
-                        <label className="text-xs font-semibold uppercase tracking-wide text-slate-100">Métadonnées (JSON)</label>
+                        <label className="text-sm font-medium text-slate-700">Tags</label>
+                        <Input
+                          value={courseForm.tags}
+                          onChange={(event) => setCourseForm((prev) => ({ ...prev, tags: event.target.value }))}
+                          className="bg-white"
+                          placeholder="onboarding, produit, équipe"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-slate-700">Métadonnées (JSON)</label>
                         <textarea
                           value={courseForm.metadata}
                           onChange={(event) => setCourseForm((prev) => ({ ...prev, metadata: event.target.value }))}
-                          className="revolut-input min-h-[70px] font-mono text-xs"
+                          className={`${baseFieldClasses} min-h-[70px] font-mono text-xs`}
                           placeholder='{"audience":"Managers"}'
                         />
                       </div>
-                      <Button type="submit" className="revolut-button w-full justify-center" disabled={isSubmittingCourse}>
+                      <Button
+                        type="submit"
+                        className="w-full justify-center bg-blue-600 text-white hover:bg-blue-700"
+                        disabled={isSubmittingCourse}
+                      >
                         {isSubmittingCourse ? "Création…" : "Créer le cours"}
                       </Button>
                     </form>
@@ -933,189 +1167,342 @@ export default function AdminPage() {
                 </Card>
 
                 {selectedCourse && (
-                  <Card className="glass-card border-white/10">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2 text-lg text-slate-100">
-                        <Layers className="h-5 w-5 text-cyan-300" />
-                        Ajouter un module
+                  <Card className="border border-slate-200 bg-white shadow-sm">
+                    <CardHeader className="pb-4">
+                      <CardTitle className="flex items-center gap-2 text-lg text-slate-900">
+                        <LayoutGrid className="h-5 w-5 text-blue-500" />
+                        Modifier le cours
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <form onSubmit={handleModuleSubmit} className="space-y-4">
+                      <form onSubmit={handleCourseUpdate} className="space-y-4">
                         <div className="space-y-2">
-                          <label className="text-xs font-semibold uppercase tracking-wide text-slate-100">Titre</label>
+                          <label className="text-sm font-medium text-slate-700">Titre</label>
                           <Input
-                            value={moduleForm.title}
-                            onChange={(event) => setModuleForm((prev) => ({ ...prev, title: event.target.value }))}
-                            className="revolut-input"
-                            placeholder="Vidéo de bienvenue"
+                            value={courseEditForm.title}
+                            onChange={(event) => setCourseEditForm((prev) => ({ ...prev, title: event.target.value }))}
+                            className="bg-white"
                             required
                           />
                         </div>
                         <div className="space-y-2">
-                          <label className="text-xs font-semibold uppercase tracking-wide text-slate-100">Type</label>
-                          <select
-                            value={moduleForm.module_type}
-                            onChange={(event) => setModuleForm((prev) => ({ ...prev, module_type: event.target.value }))}
-                            className="revolut-input"
-                          >
-                            {moduleTypes.map((type) => (
-                              <option key={type.value} value={type.value} className="bg-slate-900">
-                                {type.label}
-                              </option>
-                            ))}
-                          </select>
+                          <label className="text-sm font-medium text-slate-700">Description</label>
+                          <textarea
+                            value={courseEditForm.description}
+                            onChange={(event) => setCourseEditForm((prev) => ({ ...prev, description: event.target.value }))}
+                            className={`${baseFieldClasses} min-h-[90px]`}
+                            required
+                          />
                         </div>
-                        <div className="grid gap-4 md:grid-cols-2">
+                        <div className="grid gap-4 sm:grid-cols-2">
                           <div className="space-y-2">
-                            <label className="text-xs font-semibold uppercase tracking-wide text-slate-100">Contenu associé</label>
+                            <label className="text-sm font-medium text-slate-700">Durée estimée (heures)</label>
+                            <Input
+                              type="number"
+                              min={0}
+                              value={courseEditForm.duration_hours}
+                              onChange={(event) => setCourseEditForm((prev) => ({ ...prev, duration_hours: event.target.value }))}
+                              className="bg-white"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium text-slate-700">Niveau</label>
                             <select
-                              value={moduleForm.content_id}
-                              onChange={(event) => setModuleForm((prev) => ({ ...prev, content_id: event.target.value }))}
-                              className="revolut-input"
+                              value={courseEditForm.level}
+                              onChange={(event) => setCourseEditForm((prev) => ({ ...prev, level: event.target.value }))}
+                              className={baseFieldClasses}
                             >
-                              <option value="">Aucun contenu</option>
-                              {contents.map((content) => (
-                                <option key={content.id} value={content.id} className="bg-slate-900">
-                                  {content.name}
+                              <option value="beginner">Débutant</option>
+                              <option value="intermediate">Intermédiaire</option>
+                              <option value="advanced">Avancé</option>
+                            </select>
+                          </div>
+                        </div>
+                        <div className="grid gap-4 sm:grid-cols-2">
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium text-slate-700">Visibilité</label>
+                            <select
+                              value={courseEditForm.visibility}
+                              onChange={(event) => setCourseEditForm((prev) => ({ ...prev, visibility: event.target.value }))}
+                              className={baseFieldClasses}
+                            >
+                              <option value="private">Privé</option>
+                              <option value="public">Public</option>
+                            </select>
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium text-slate-700">Tags</label>
+                            <Input
+                              value={courseEditForm.tags}
+                              onChange={(event) => setCourseEditForm((prev) => ({ ...prev, tags: event.target.value }))}
+                              className="bg-white"
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-slate-700">Métadonnées additionnelles (JSON)</label>
+                          <textarea
+                            value={courseEditForm.metadata}
+                            onChange={(event) => setCourseEditForm((prev) => ({ ...prev, metadata: event.target.value }))}
+                            className={`${baseFieldClasses} min-h-[70px] font-mono text-xs`}
+                          />
+                        </div>
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          <Button
+                            type="submit"
+                            className="justify-center bg-blue-600 text-white hover:bg-blue-700"
+                            disabled={isUpdatingCourse}
+                          >
+                            {isUpdatingCourse ? "Enregistrement…" : "Enregistrer"}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="justify-center border-slate-200 text-slate-700 hover:bg-slate-100"
+                            onClick={() => handlePublishCourse(selectedCourse)}
+                          >
+                            Publier
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="justify-center border-slate-200 text-slate-700 hover:bg-slate-100"
+                            onClick={() => handleUnpublishCourse(selectedCourse)}
+                          >
+                            Dépublier
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="justify-center border-red-200 text-red-600 hover:bg-red-50"
+                            onClick={() => handleArchiveCourse(selectedCourse)}
+                          >
+                            Archiver
+                          </Button>
+                        </div>
+                      </form>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {selectedCourse && (
+                  <Card className="border border-slate-200 bg-white shadow-sm">
+                    <CardHeader className="pb-4">
+                      <CardTitle className="flex items-center gap-2 text-lg text-slate-900">
+                        <Layers className="h-5 w-5 text-blue-500" />
+                        {editingModule ? 'Modifier un module' : 'Ajouter un module'}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <form
+                        onSubmit={(event) => {
+                          if (editingModule) {
+                            handleModuleUpdate(event);
+                          } else {
+                            handleModuleSubmit(event);
+                          }
+                        }}
+                        className="space-y-4"
+                      >
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-slate-700">Titre</label>
+                          <Input
+                            value={editingModule ? moduleEditForm.title : moduleForm.title}
+                            onChange={(event) =>
+                              editingModule
+                                ? setModuleEditForm((prev) => ({ ...prev, title: event.target.value }))
+                                : setModuleForm((prev) => ({ ...prev, title: event.target.value }))
+                            }
+                            className="bg-white"
+                            placeholder="Vidéo de bienvenue"
+                            required
+                          />
+                        </div>
+                        <div className="grid gap-4 sm:grid-cols-2">
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium text-slate-700">Type</label>
+                            <select
+                              value={editingModule ? moduleEditForm.module_type : moduleForm.module_type}
+                              onChange={(event) =>
+                                editingModule
+                                  ? setModuleEditForm((prev) => ({ ...prev, module_type: event.target.value }))
+                                  : setModuleForm((prev) => ({ ...prev, module_type: event.target.value }))
+                              }
+                              className={baseFieldClasses}
+                            >
+                              {moduleTypes.map((type) => (
+                                <option key={type.value} value={type.value}>
+                                  {type.label}
                                 </option>
                               ))}
                             </select>
                           </div>
                           <div className="space-y-2">
-                            <label className="text-xs font-semibold uppercase tracking-wide text-slate-100">Durée (secondes)</label>
+                            <label className="text-sm font-medium text-slate-700">Durée (secondes)</label>
                             <Input
                               type="number"
                               min={0}
-                              value={moduleForm.duration_seconds}
-                              onChange={(event) => setModuleForm((prev) => ({ ...prev, duration_seconds: event.target.value }))}
-                              className="revolut-input"
+                              value={editingModule ? moduleEditForm.duration_seconds : moduleForm.duration_seconds}
+                              onChange={(event) =>
+                                editingModule
+                                  ? setModuleEditForm((prev) => ({ ...prev, duration_seconds: event.target.value }))
+                                  : setModuleForm((prev) => ({ ...prev, duration_seconds: event.target.value }))
+                              }
+                              className="bg-white"
                               placeholder="300"
                             />
                           </div>
                         </div>
                         <div className="space-y-2">
-                          <label className="text-xs font-semibold uppercase tracking-wide text-slate-100">Métadonnées (JSON)</label>
+                          <label className="text-sm font-medium text-slate-700">Contenu associé</label>
+                          <select
+                            value={editingModule ? moduleEditForm.content_id : moduleForm.content_id}
+                            onChange={(event) =>
+                              editingModule
+                                ? setModuleEditForm((prev) => ({ ...prev, content_id: event.target.value }))
+                                : setModuleForm((prev) => ({ ...prev, content_id: event.target.value }))
+                            }
+                            className={baseFieldClasses}
+                          >
+                            <option value="">Aucun contenu</option>
+                            {contents.map((content) => (
+                              <option key={content.id} value={content.id}>
+                                {content.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-slate-700">Métadonnées (JSON)</label>
                           <textarea
-                            value={moduleForm.data}
-                            onChange={(event) => setModuleForm((prev) => ({ ...prev, data: event.target.value }))}
-                            className="revolut-input min-h-[70px] font-mono text-xs"
-                            placeholder='{"duration":5}'
+                            value={editingModule ? moduleEditForm.data : moduleForm.data}
+                            onChange={(event) =>
+                              editingModule
+                                ? setModuleEditForm((prev) => ({ ...prev, data: event.target.value }))
+                                : setModuleForm((prev) => ({ ...prev, data: event.target.value }))
+                            }
+                            className={`${baseFieldClasses} min-h-[70px] font-mono text-xs`}
                           />
                         </div>
-                        <Button type="submit" className="revolut-button w-full justify-center" disabled={isSubmittingModule}>
-                          {isSubmittingModule ? "Ajout…" : "Ajouter le module"}
-                        </Button>
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            type="submit"
+                            className="flex-1 justify-center bg-blue-600 text-white hover:bg-blue-700"
+                            disabled={editingModule ? isUpdatingModule : isSubmittingModule}
+                          >
+                            {editingModule
+                              ? isUpdatingModule
+                                ? "Enregistrement…"
+                                : "Mettre à jour"
+                              : isSubmittingModule
+                              ? "Création…"
+                              : "Ajouter le module"}
+                          </Button>
+                          {editingModule && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className="flex-1 justify-center border-slate-200 text-slate-700 hover:bg-slate-100"
+                              onClick={handleCancelModuleEdit}
+                            >
+                              Annuler
+                            </Button>
+                          )}
+                        </div>
                       </form>
-                      <div className="mt-4 flex gap-2">
-                        <Button
-                          onClick={() => handlePublishCourse(selectedCourse)}
-                          className="revolut-button flex-1 justify-center bg-gradient-to-r from-indigo-500 to-cyan-400"
-                        >
-                          Publier
-                        </Button>
-                        <Button
-                          onClick={() => handleUnpublishCourse(selectedCourse)}
-                          className="revolut-button flex-1 justify-center bg-white/5"
-                        >
-                          Dépublier
-                        </Button>
-                      </div>
-                      <Button
-                        onClick={() => handleArchiveCourse(selectedCourse)}
-                        className="mt-2 w-full rounded-full border border-white/20 bg-white/0 px-4 py-2 text-sm text-rose-200 hover:bg-white/10"
-                      >
-                        Archiver le cours
-                      </Button>
                     </CardContent>
                   </Card>
                 )}
               </div>
-            </motion.section>
-          )}
+            </div>
+          </TabsContent>
 
-          {activeSection === "learners" && (
-            <motion.section
-              key="learners"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.4 }}
-              className="grid gap-6 lg:grid-cols-[1.4fr,1fr]"
-            >
-              <Card className="glass-card border-white/10">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-lg text-slate-100">
-                    <Users className="h-5 w-5 text-cyan-300" />
+          <TabsContent value="learners" className="space-y-6">
+            <div className="grid gap-6 xl:grid-cols-[1.2fr,0.8fr]">
+              <Card className="border border-slate-200 bg-white shadow-sm">
+                <CardHeader className="pb-4">
+                  <CardTitle className="flex items-center gap-2 text-lg text-slate-900">
+                    <Users className="h-5 w-5 text-blue-500" />
                     Apprenants
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {users.map((item) => (
-                    <div
-                      key={item.id}
-                      className="flex items-center justify-between rounded-3xl border border-white/10 bg-white/5 px-4 py-3"
-                    >
+                    <div key={item.id} className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
                       <div>
-                        <p className="text-sm font-medium text-white">{item.email}</p>
-                        <p className="text-xs text-slate-400">{item.role}</p>
+                        <p className="text-sm font-medium text-slate-900">{item.email}</p>
+                        <p className="text-xs text-slate-500">{item.role}</p>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className={`revolut-badge ${item.status === "active" ? "text-emerald-200" : "text-amber-200"}`}>
+                        <span className={`rounded-full px-3 py-1 text-xs font-medium ${item.status === 'active' ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'}`}>
                           {item.status}
                         </span>
-                        {item.status === "active" ? (
-                          <Button onClick={() => handleDeactivateUser(item.id)} className="revolut-button bg-white/5 px-3 text-xs">
+                        {item.status === 'active' ? (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="border-slate-200 text-xs text-slate-700 hover:bg-slate-100"
+                            onClick={() => handleDeactivateUser(item.id)}
+                          >
                             Désactiver
                           </Button>
                         ) : (
-                          <Button onClick={() => handleActivateUser(item.id)} className="revolut-button bg-white/5 px-3 text-xs">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="border-slate-200 text-xs text-slate-700 hover:bg-slate-100"
+                            onClick={() => handleActivateUser(item.id)}
+                          >
                             Réactiver
                           </Button>
                         )}
                       </div>
                     </div>
                   ))}
-                  {users.length === 0 && <p className="text-sm text-slate-400">Aucun utilisateur enregistré.</p>}
+                  {users.length === 0 && (
+                    <p className="text-sm text-slate-500">Aucun utilisateur enregistré.</p>
+                  )}
                 </CardContent>
               </Card>
 
-              <Card className="glass-card border-white/10">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-lg text-slate-100">
-                    <UserPlus className="h-5 w-5 text-cyan-300" />
+              <Card className="border border-slate-200 bg-white shadow-sm">
+                <CardHeader className="pb-4">
+                  <CardTitle className="flex items-center gap-2 text-lg text-slate-900">
+                    <UserPlus className="h-5 w-5 text-blue-500" />
                     Nouvel utilisateur
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <form onSubmit={handleUserSubmit} className="space-y-4">
                     <div className="space-y-2">
-                      <label className="text-xs font-semibold uppercase tracking-wide text-slate-100">Email</label>
+                      <label className="text-sm font-medium text-slate-700">Email</label>
                       <Input
                         type="email"
                         value={userForm.email}
                         onChange={(event) => setUserForm((prev) => ({ ...prev, email: event.target.value }))}
-                        className="revolut-input"
+                        className="bg-white"
                         required
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-xs font-semibold uppercase tracking-wide text-slate-100">Mot de passe</label>
+                      <label className="text-sm font-medium text-slate-700">Mot de passe</label>
                       <Input
                         type="password"
                         value={userForm.password}
                         onChange={(event) => setUserForm((prev) => ({ ...prev, password: event.target.value }))}
-                        className="revolut-input"
+                        className="bg-white"
                         required
                       />
                     </div>
-                    <div className="grid gap-4 md:grid-cols-2">
+                    <div className="grid gap-4 sm:grid-cols-2">
                       <div className="space-y-2">
-                        <label className="text-xs font-semibold uppercase tracking-wide text-slate-100">Rôle</label>
+                        <label className="text-sm font-medium text-slate-700">Rôle</label>
                         <select
                           value={userForm.role}
                           onChange={(event) => setUserForm((prev) => ({ ...prev, role: event.target.value }))}
-                          className="revolut-input"
+                          className={baseFieldClasses}
                         >
                           <option value="learner">Apprenant</option>
                           <option value="instructor">Formateur</option>
@@ -1123,11 +1510,11 @@ export default function AdminPage() {
                         </select>
                       </div>
                       <div className="space-y-2">
-                        <label className="text-xs font-semibold uppercase tracking-wide text-slate-100">Statut</label>
+                        <label className="text-sm font-medium text-slate-700">Statut</label>
                         <select
                           value={userForm.status}
                           onChange={(event) => setUserForm((prev) => ({ ...prev, status: event.target.value }))}
-                          className="revolut-input"
+                          className={baseFieldClasses}
                         >
                           <option value="active">Actif</option>
                           <option value="inactive">Inactif</option>
@@ -1135,35 +1522,32 @@ export default function AdminPage() {
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <label className="text-xs font-semibold uppercase tracking-wide text-slate-100">Métadonnées (JSON)</label>
+                      <label className="text-sm font-medium text-slate-700">Métadonnées (JSON)</label>
                       <textarea
                         value={userForm.metadata}
                         onChange={(event) => setUserForm((prev) => ({ ...prev, metadata: event.target.value }))}
-                        className="revolut-input min-h-[70px] font-mono text-xs"
+                        className={`${baseFieldClasses} min-h-[70px] font-mono text-xs`}
                       />
                     </div>
-                    <Button type="submit" className="revolut-button w-full justify-center" disabled={isSubmittingUser}>
+                    <Button
+                      type="submit"
+                      className="w-full justify-center bg-blue-600 text-white hover:bg-blue-700"
+                      disabled={isSubmittingUser}
+                    >
                       {isSubmittingUser ? "Invitation…" : "Créer l'utilisateur"}
                     </Button>
                   </form>
                 </CardContent>
               </Card>
-            </motion.section>
-          )}
+            </div>
+          </TabsContent>
 
-          {activeSection === "enrollments" && (
-            <motion.section
-              key="enrollments"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.4 }}
-              className="grid gap-6 lg:grid-cols-[1.4fr,1fr]"
-            >
-              <Card className="glass-card border-white/10">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-lg text-slate-100">
-                    <GraduationCap className="h-5 w-5 text-cyan-300" />
+          <TabsContent value="enrollments" className="space-y-6">
+            <div className="grid gap-6 xl:grid-cols-[1.2fr,0.8fr]">
+              <Card className="border border-slate-200 bg-white shadow-sm">
+                <CardHeader className="pb-4">
+                  <CardTitle className="flex items-center gap-2 text-lg text-slate-900">
+                    <Layers className="h-5 w-5 text-blue-500" />
                     Inscriptions
                   </CardTitle>
                 </CardHeader>
@@ -1174,145 +1558,168 @@ export default function AdminPage() {
                     return (
                       <div
                         key={enrollment.id}
-                        className="flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-white/10 bg-white/5 px-4 py-3"
+                        className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3"
                       >
                         <div>
-                          <p className="text-sm font-medium text-white">{course?.title || "Cours"}</p>
-                          <p className="text-xs text-slate-400">{learner?.email}</p>
+                          <p className="text-sm font-medium text-slate-900">{course?.title || 'Cours'}</p>
+                          <p className="text-xs text-slate-500">{learner?.email}</p>
                         </div>
                         <div className="flex items-center gap-3">
-                          <span className="revolut-badge text-cyan-200">{enrollment.status}</span>
-                          <Button onClick={() => handleCancelEnrollment(enrollment.id)} className="revolut-button bg-white/5 px-3 text-xs">
+                          <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-600">{enrollment.status}</span>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="border-slate-200 text-xs text-slate-700 hover:bg-slate-100"
+                            onClick={() => handleCancelEnrollment(enrollment.id)}
+                          >
                             Annuler
                           </Button>
                         </div>
                       </div>
                     );
                   })}
-                  {enrollments.length === 0 && <p className="text-sm text-slate-400">Aucune inscription enregistrée.</p>}
+                  {enrollments.length === 0 && (
+                    <p className="text-sm text-slate-500">Aucune inscription enregistrée.</p>
+                  )}
                 </CardContent>
               </Card>
 
-              <div className="space-y-6">
-                <Card className="glass-card border-white/10">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-lg text-slate-100">
-                      <PlusCircle className="h-5 w-5 text-cyan-300" />
+              <div className="grid gap-6">
+                <Card className="border border-slate-200 bg-white shadow-sm">
+                  <CardHeader className="pb-4">
+                    <CardTitle className="flex items-center gap-2 text-lg text-slate-900">
+                      <PlusCircle className="h-5 w-5 text-blue-500" />
                       Nouvelle inscription
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <form onSubmit={handleEnrollmentSubmit} className="space-y-4">
                       <div className="space-y-2">
-                        <label className="text-xs font-semibold uppercase tracking-wide text-slate-100">Cours</label>
+                        <label className="text-sm font-medium text-slate-700">Cours</label>
                         <select
                           value={enrollmentForm.course_id}
                           onChange={(event) => setEnrollmentForm((prev) => ({ ...prev, course_id: event.target.value }))}
-                          className="revolut-input"
+                          className={baseFieldClasses}
                           required
                         >
                           <option value="">Choisir un cours</option>
                           {courses.map((course) => (
-                            <option key={course.id} value={course.id} className="bg-slate-900">
+                            <option key={course.id} value={course.id}>
                               {course.title}
                             </option>
                           ))}
                         </select>
                       </div>
                       <div className="space-y-2">
-                        <label className="text-xs font-semibold uppercase tracking-wide text-slate-100">Apprenant</label>
+                        <label className="text-sm font-medium text-slate-700">Apprenant</label>
                         <select
                           value={enrollmentForm.user_id}
                           onChange={(event) => setEnrollmentForm((prev) => ({ ...prev, user_id: event.target.value }))}
-                          className="revolut-input"
+                          className={baseFieldClasses}
                           required
                         >
                           <option value="">Choisir un utilisateur</option>
                           {users.map((item) => (
-                            <option key={item.id} value={item.id} className="bg-slate-900">
+                            <option key={item.id} value={item.id}>
                               {item.email}
                             </option>
                           ))}
                         </select>
                       </div>
                       <div className="space-y-2">
-                        <label className="text-xs font-semibold uppercase tracking-wide text-slate-100">Groupe</label>
+                        <label className="text-sm font-medium text-slate-700">Groupe</label>
                         <select
                           value={enrollmentForm.group_id}
                           onChange={(event) => setEnrollmentForm((prev) => ({ ...prev, group_id: event.target.value }))}
-                          className="revolut-input"
+                          className={baseFieldClasses}
                         >
                           <option value="">Aucun</option>
                           {groups.map((group) => (
-                            <option key={group.id} value={group.id} className="bg-slate-900">
+                            <option key={group.id} value={group.id}>
                               {group.name}
                             </option>
                           ))}
                         </select>
                       </div>
                       <div className="space-y-2">
-                        <label className="text-xs font-semibold uppercase tracking-wide text-slate-100">Métadonnées (JSON)</label>
+                        <label className="text-sm font-medium text-slate-700">Métadonnées (JSON)</label>
                         <textarea
                           value={enrollmentForm.metadata}
                           onChange={(event) => setEnrollmentForm((prev) => ({ ...prev, metadata: event.target.value }))}
-                          className="revolut-input min-h-[70px] font-mono text-xs"
+                          className={`${baseFieldClasses} min-h-[70px] font-mono text-xs`}
                         />
                       </div>
-                      <Button type="submit" className="revolut-button w-full justify-center" disabled={isSubmittingEnrollment}>
+                      <Button
+                        type="submit"
+                        className="w-full justify-center bg-blue-600 text-white hover:bg-blue-700"
+                        disabled={isSubmittingEnrollment}
+                      >
                         {isSubmittingEnrollment ? "Création…" : "Créer l'inscription"}
                       </Button>
                     </form>
                   </CardContent>
                 </Card>
 
-                <Card className="glass-card border-white/10">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-lg text-slate-100">
-                      <Layers className="h-5 w-5 text-cyan-300" />
+                <Card className="border border-slate-200 bg-white shadow-sm">
+                  <CardHeader className="pb-4">
+                    <CardTitle className="flex items-center gap-2 text-lg text-slate-900">
+                      <ShieldCheck className="h-5 w-5 text-blue-500" />
                       Groupes
                     </CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-3">
+                      {groups.map((group) => (
+                        <div key={group.id} className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+                          <p className="text-sm font-medium text-slate-900">{group.name}</p>
+                          <p className="text-xs text-slate-500">{group.description}</p>
+                        </div>
+                      ))}
+                      {groups.length === 0 && (
+                        <p className="text-sm text-slate-500">Aucun groupe défini.</p>
+                      )}
+                    </div>
                     <form onSubmit={handleGroupSubmit} className="space-y-4">
                       <div className="space-y-2">
-                        <label className="text-xs font-semibold uppercase tracking-wide text-slate-100">Nom</label>
+                        <label className="text-sm font-medium text-slate-700">Nom</label>
                         <Input
                           value={groupForm.name}
                           onChange={(event) => setGroupForm((prev) => ({ ...prev, name: event.target.value }))}
-                          className="revolut-input"
+                          className="bg-white"
                           required
                         />
                       </div>
                       <div className="space-y-2">
-                        <label className="text-xs font-semibold uppercase tracking-wide text-slate-100">Description</label>
+                        <label className="text-sm font-medium text-slate-700">Description</label>
                         <textarea
                           value={groupForm.description}
                           onChange={(event) => setGroupForm((prev) => ({ ...prev, description: event.target.value }))}
-                          className="revolut-input min-h-[70px]"
+                          className={`${baseFieldClasses} min-h-[70px]`}
                           required
                         />
                       </div>
-                      <div className="grid gap-4 md:grid-cols-2">
+                      <div className="grid gap-4 sm:grid-cols-2">
                         <div className="space-y-2">
-                          <label className="text-xs font-semibold uppercase tracking-wide text-slate-100">Capacité</label>
+                          <label className="text-sm font-medium text-slate-700">Capacité</label>
                           <Input
                             type="number"
                             min={1}
                             value={groupForm.capacity}
                             onChange={(event) => setGroupForm((prev) => ({ ...prev, capacity: event.target.value }))}
-                            className="revolut-input"
+                            className="bg-white"
                           />
                         </div>
                         <div className="space-y-2">
-                          <label className="text-xs font-semibold uppercase tracking-wide text-slate-100">Cours lié</label>
+                          <label className="text-sm font-medium text-slate-700">Cours lié</label>
                           <select
                             value={groupForm.course_id}
                             onChange={(event) => setGroupForm((prev) => ({ ...prev, course_id: event.target.value }))}
-                            className="revolut-input"
+                            className={baseFieldClasses}
                           >
                             <option value="">Optionnel</option>
                             {courses.map((course) => (
-                              <option key={course.id} value={course.id} className="bg-slate-900">
+                              <option key={course.id} value={course.id}>
                                 {course.title}
                               </option>
                             ))}
@@ -1320,95 +1727,112 @@ export default function AdminPage() {
                         </div>
                       </div>
                       <div className="space-y-2">
-                        <label className="text-xs font-semibold uppercase tracking-wide text-slate-100">Métadonnées (JSON)</label>
+                        <label className="text-sm font-medium text-slate-700">Métadonnées (JSON)</label>
                         <textarea
                           value={groupForm.metadata}
                           onChange={(event) => setGroupForm((prev) => ({ ...prev, metadata: event.target.value }))}
-                          className="revolut-input min-h-[70px] font-mono text-xs"
+                          className={`${baseFieldClasses} min-h-[70px] font-mono text-xs`}
                         />
                       </div>
-                      <Button type="submit" className="revolut-button w-full justify-center" disabled={isSubmittingGroup}>
+                      <Button
+                        type="submit"
+                        className="w-full justify-center bg-blue-600 text-white hover:bg-blue-700"
+                        disabled={isSubmittingGroup}
+                      >
                         {isSubmittingGroup ? "Création…" : "Créer le groupe"}
                       </Button>
                     </form>
                   </CardContent>
                 </Card>
               </div>
-            </motion.section>
-          )}
+            </div>
+          </TabsContent>
 
-          {activeSection === "content" && (
-            <motion.section
-              key="content"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.4 }}
-              className="grid gap-6 lg:grid-cols-[1.5fr,1fr]"
-            >
-              <Card className="glass-card border-white/10">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-lg text-slate-100">
-                    <FileStack className="h-5 w-5 text-cyan-300" />
+          <TabsContent value="content" className="space-y-6">
+            <div className="grid gap-6 xl:grid-cols-[1.2fr,0.8fr]">
+              <Card className="border border-slate-200 bg-white shadow-sm">
+                <CardHeader className="pb-4">
+                  <CardTitle className="flex items-center gap-2 text-lg text-slate-900">
+                    <FileStack className="h-5 w-5 text-blue-500" />
                     Bibliothèque de contenus
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {contents.map((content) => (
-                    <div key={content.id} className="rounded-3xl border border-white/10 bg-white/5 p-4">
+                    <div key={content.id} className="rounded-lg border border-slate-200 bg-slate-50 p-4">
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
-                          <p className="text-sm font-medium text-white">{content.name}</p>
-                          <p className="text-xs text-slate-400">{content.mime_type}</p>
+                          <p className="text-sm font-medium text-slate-900">{content.name}</p>
+                          <p className="text-xs text-slate-500">{content.mime_type}</p>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Button onClick={() => handleDownloadLink(content.id)} className="revolut-button bg-white/5 px-3 text-xs">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="border-slate-200 text-xs text-slate-700 hover:bg-slate-100"
+                            onClick={() => handleDownloadLink(content.id)}
+                          >
                             Télécharger
                           </Button>
-                          <Button onClick={() => handleFinalizeContent(content.id)} className="revolut-button bg-white/5 px-3 text-xs">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="border-slate-200 text-xs text-slate-700 hover:bg-slate-100"
+                            onClick={() => handleFinalizeContent(content.id)}
+                          >
                             Finaliser
                           </Button>
-                          <Button onClick={() => handleArchiveContent(content.id)} className="revolut-button bg-white/5 px-3 text-xs text-rose-200">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="border-red-200 text-xs text-red-600 hover:bg-red-50"
+                            onClick={() => handleArchiveContent(content.id)}
+                          >
                             Archiver
                           </Button>
                         </div>
                       </div>
                     </div>
                   ))}
-                  {contents.length === 0 && <p className="text-sm text-slate-400">Aucun contenu disponible.</p>}
+                  {contents.length === 0 && (
+                    <p className="text-sm text-slate-500">Aucun contenu disponible.</p>
+                  )}
                 </CardContent>
               </Card>
 
-              <Card className="glass-card border-white/10">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-lg text-slate-100">
-                    <UploadCloud className="h-5 w-5 text-cyan-300" />
+              <Card className="border border-slate-200 bg-white shadow-sm">
+                <CardHeader className="pb-4">
+                  <CardTitle className="flex items-center gap-2 text-lg text-slate-900">
+                    <UploadCloud className="h-5 w-5 text-blue-500" />
                     Nouveau contenu
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <form onSubmit={handleContentSubmit} className="space-y-4">
                     <div className="space-y-2">
-                      <label className="text-xs font-semibold uppercase tracking-wide text-slate-100">Nom</label>
+                      <label className="text-sm font-medium text-slate-700">Nom</label>
                       <Input
                         value={contentForm.name}
                         onChange={(event) => setContentForm((prev) => ({ ...prev, name: event.target.value }))}
-                        className="revolut-input"
+                        className="bg-white"
                         required
                       />
                     </div>
-                    <div className="grid gap-4 md:grid-cols-2">
+                    <div className="grid gap-4 sm:grid-cols-2">
                       <div className="space-y-2">
-                        <label className="text-xs font-semibold uppercase tracking-wide text-slate-100">Type MIME</label>
+                        <label className="text-sm font-medium text-slate-700">Type MIME</label>
                         <Input
                           value={contentForm.mime_type}
                           onChange={(event) => setContentForm((prev) => ({ ...prev, mime_type: event.target.value }))}
-                          className="revolut-input"
+                          className="bg-white"
                           required
                         />
                       </div>
                       <div className="space-y-2">
-                        <label className="text-xs font-semibold uppercase tracking-wide text-slate-100">Fichier</label>
+                        <label className="text-sm font-medium text-slate-700">Fichier</label>
                         <input
                           type="file"
                           onChange={(event) => {
@@ -1417,177 +1841,153 @@ export default function AdminPage() {
                             if (file) {
                               setContentForm((prev) => ({
                                 ...prev,
-                                name: prev.name || file.name.replace(/\.[^/.]+$/, ""),
+                                name: prev.name || file.name.replace(/\.[^/.]+$/, ''),
                                 mime_type: file.type || prev.mime_type,
                               }));
                             }
                           }}
-                          className="revolut-input cursor-pointer file:mr-4 file:rounded-full file:border-0 file:bg-cyan-500 file:px-4 file:py-1 file:text-xs file:font-semibold file:text-white"
+                          className={`${baseFieldClasses} cursor-pointer file:mr-4 file:rounded-full file:border-0 file:bg-blue-600 file:px-4 file:py-1 file:text-xs file:font-medium file:text-white`}
                           required
                         />
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <label className="text-xs font-semibold uppercase tracking-wide text-slate-100">Métadonnées (JSON)</label>
+                      <label className="text-sm font-medium text-slate-700">Métadonnées (JSON)</label>
                       <textarea
                         value={contentForm.metadata}
                         onChange={(event) => setContentForm((prev) => ({ ...prev, metadata: event.target.value }))}
-                        className="revolut-input min-h-[70px] font-mono text-xs"
+                        className={`${baseFieldClasses} min-h-[70px] font-mono text-xs`}
                       />
                     </div>
                     {isSubmittingContent && (
-                      <div className="rounded-2xl border border-cyan-400/40 bg-cyan-400/10 p-3 text-xs text-cyan-200">
+                      <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-700">
                         Téléversement en cours… {uploadProgress}%
-                        <div className="mt-2 h-2 w-full rounded-full bg-slate-800">
+                        <div className="mt-2 h-2 w-full rounded-full bg-slate-200">
                           <div
-                            className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-blue-400 transition-all"
+                            className="h-full rounded-full bg-blue-500 transition-all"
                             style={{ width: `${uploadProgress}%` }}
                           />
                         </div>
                       </div>
                     )}
                     {lastUploadLink && (
-                      <div className="rounded-2xl border border-white/10 bg-white/5 p-3 text-xs text-slate-300">
+                      <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
                         Dernier lien de téléversement :
                         <br />
-                        <span className="break-all text-cyan-200">{lastUploadLink}</span>
+                        <span className="break-all text-blue-600">{lastUploadLink}</span>
                       </div>
                     )}
-                    <Button type="submit" className="revolut-button w-full justify-center" disabled={isSubmittingContent}>
+                    <Button
+                      type="submit"
+                      className="w-full justify-center bg-blue-600 text-white hover:bg-blue-700"
+                      disabled={isSubmittingContent}
+                    >
                       {isSubmittingContent ? "Téléversement…" : "Créer et téléverser"}
                     </Button>
                   </form>
                 </CardContent>
               </Card>
-            </motion.section>
-          )}
+            </div>
+          </TabsContent>
 
-          {activeSection === "organizations" && user?.role === "super_admin" && (
-            <motion.section
-              key="organizations"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.4 }}
-              className="grid gap-6 lg:grid-cols-[1.5fr,1fr]"
-            >
-              <Card className="glass-card border-white/10">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-lg text-slate-100">
-                    <ShieldCheck className="h-5 w-5 text-cyan-300" />
-                    Organisations
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {organizations.map((org) => (
-                    <div key={org.id} className="rounded-3xl border border-white/10 bg-white/5 p-4">
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <div>
-                          <p className="text-sm font-semibold text-white">{org.name}</p>
-                          <p className="text-xs text-slate-400">{org.slug}</p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="revolut-badge text-cyan-200">{org.status}</span>
-                          <Button onClick={() => handleActivateOrganization(org.id)} className="revolut-button bg-white/5 px-3 text-xs">
-                            Activer
-                          </Button>
-                          <Button onClick={() => handleArchiveOrganization(org.id)} className="revolut-button bg-white/5 px-3 text-xs text-rose-200">
-                            Archiver
-                          </Button>
+          {user?.role === 'super_admin' && (
+            <TabsContent value="organizations" className="space-y-6">
+              <div className="grid gap-6 xl:grid-cols-[1.2fr,0.8fr]">
+                <Card className="border border-slate-200 bg-white shadow-sm">
+                  <CardHeader className="pb-4">
+                    <CardTitle className="flex items-center gap-2 text-lg text-slate-900">
+                      <Building2 className="h-5 w-5 text-blue-500" />
+                      Organisations
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {organizations.map((org) => (
+                      <div key={org.id} className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-semibold text-slate-900">{org.name}</p>
+                            <p className="text-xs text-slate-500">{org.slug}</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-600">{org.status}</span>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="border-slate-200 text-xs text-slate-700 hover:bg-slate-100"
+                              onClick={() => handleActivateOrganization(org.id)}
+                            >
+                              Activer
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="border-red-200 text-xs text-red-600 hover:bg-red-50"
+                              onClick={() => handleArchiveOrganization(org.id)}
+                            >
+                              Archiver
+                            </Button>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
-                  {organizations.length === 0 && <p className="text-sm text-slate-400">Aucune organisation disponible.</p>}
-                </CardContent>
-              </Card>
+                    ))}
+                    {organizations.length === 0 && (
+                      <p className="text-sm text-slate-500">Aucune organisation disponible.</p>
+                    )}
+                  </CardContent>
+                </Card>
 
-              <Card className="glass-card border-white/10">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-lg text-slate-100">
-                    <PlusCircle className="h-5 w-5 text-cyan-300" />
-                    Nouvelle organisation
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <form onSubmit={handleOrganizationSubmit} className="space-y-4">
-                    <div className="space-y-2">
-                      <label className="text-xs font-semibold uppercase tracking-wide text-slate-100">Nom</label>
-                      <Input
-                        value={organizationForm.name}
-                        onChange={(event) => setOrganizationForm((prev) => ({ ...prev, name: event.target.value }))}
-                        className="revolut-input"
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-xs font-semibold uppercase tracking-wide text-slate-100">Slug</label>
-                      <Input
-                        value={organizationForm.slug}
-                        onChange={(event) => setOrganizationForm((prev) => ({ ...prev, slug: event.target.value }))}
-                        className="revolut-input"
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-xs font-semibold uppercase tracking-wide text-slate-100">Paramètres (JSON)</label>
-                      <textarea
-                        value={organizationForm.settings}
-                        onChange={(event) => setOrganizationForm((prev) => ({ ...prev, settings: event.target.value }))}
-                        className="revolut-input min-h-[70px] font-mono text-xs"
-                      />
-                    </div>
-                    <Button type="submit" className="revolut-button w-full justify-center" disabled={isSubmittingOrganization}>
-                      {isSubmittingOrganization ? "Création…" : "Créer l'organisation"}
-                    </Button>
-                  </form>
-                </CardContent>
-              </Card>
-            </motion.section>
+                <Card className="border border-slate-200 bg-white shadow-sm">
+                  <CardHeader className="pb-4">
+                    <CardTitle className="flex items-center gap-2 text-lg text-slate-900">
+                      <PlusCircle className="h-5 w-5 text-blue-500" />
+                      Nouvelle organisation
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <form onSubmit={handleOrganizationSubmit} className="space-y-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-slate-700">Nom</label>
+                        <Input
+                          value={organizationForm.name}
+                          onChange={(event) => setOrganizationForm((prev) => ({ ...prev, name: event.target.value }))}
+                          className="bg-white"
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-slate-700">Slug</label>
+                        <Input
+                          value={organizationForm.slug}
+                          onChange={(event) => setOrganizationForm((prev) => ({ ...prev, slug: event.target.value }))}
+                          className="bg-white"
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-slate-700">Paramètres (JSON)</label>
+                        <textarea
+                          value={organizationForm.settings}
+                          onChange={(event) => setOrganizationForm((prev) => ({ ...prev, settings: event.target.value }))}
+                          className={`${baseFieldClasses} min-h-[70px] font-mono text-xs`}
+                        />
+                      </div>
+                      <Button
+                        type="submit"
+                        className="w-full justify-center bg-blue-600 text-white hover:bg-blue-700"
+                        disabled={isSubmittingOrganization}
+                      >
+                        {isSubmittingOrganization ? "Création…" : "Créer l'organisation"}
+                      </Button>
+                    </form>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
           )}
-        </AnimatePresence>
+        </Tabs>
       </main>
-
-      <nav className="glass-nav fixed bottom-8 left-1/2 z-50 flex -translate-x-1/2 items-center gap-4 rounded-full border border-slate-800/60 bg-slate-950/70 px-6 py-3 backdrop-blur-xl">
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const isLink = Boolean(item.href);
-          const isActive = !isLink && activeSection === item.id;
-          const baseClasses = `flex flex-col items-center gap-1 rounded-2xl px-3 py-2 text-xs font-medium transition-all duration-300 ${
-            isActive
-              ? "bg-slate-800/80 text-white shadow-lg shadow-black/30"
-              : isLink
-              ? "border border-cyan-500/20 bg-cyan-500/10 text-cyan-100 hover:border-cyan-400/30 hover:bg-cyan-500/15"
-              : "text-slate-300 hover:text-white hover:bg-slate-800/60"
-          }`;
-
-          return (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => {
-                if (item.href) {
-                  router.push(item.href);
-                  return;
-                }
-                setActiveSection(item.id);
-              }}
-              className={baseClasses}
-            >
-              <Icon
-                className={`h-5 w-5 ${
-                  isLink
-                    ? "text-cyan-300"
-                    : isActive
-                    ? "text-cyan-300"
-                    : "text-slate-400"
-                }`}
-              />
-              {item.label}
-            </button>
-          );
-        })}
-      </nav>
     </div>
   );
 }

@@ -2,15 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { GraduationCap, LayoutDashboard, Settings, LogOut, Menu, X } from "lucide-react";
-import { useState } from "react";
+import { GraduationCap, LayoutDashboard, LogOut, Menu, X } from "lucide-react";
+import { useState, type ElementType } from "react";
 import { useAuth } from "@/lib/auth/context";
 import { apiClient } from "@/lib/api/client";
 
 interface NavItem {
   href: string;
   label: string;
-  icon: React.ElementType;
+  icon: ElementType;
   adminOnly?: boolean;
 }
 
@@ -46,151 +46,122 @@ export function Navigation() {
   };
 
   return (
-    <nav className="glass-nav fixed top-6 left-6 right-6 z-50 rounded-3xl">
+    <nav className="fixed inset-x-0 top-0 z-50 border-b border-slate-200 bg-white/90 backdrop-blur">
       <div className="container-custom">
-        <div className="flex items-center justify-between h-16">
+        <div className="flex h-16 items-center justify-between gap-4">
           {/* Logo */}
-          <Link href="/learn" className="flex items-center gap-3 group">
-            <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 to-cyan-500 rounded-2xl blur-md opacity-50 group-hover:opacity-75 transition-opacity" />
-              <div className="relative h-10 w-10 rounded-2xl bg-gradient-to-br from-indigo-500 to-cyan-500 flex items-center justify-center">
-                <GraduationCap className="h-6 w-6 text-white" strokeWidth={2.5} />
-              </div>
-            </div>
+          <Link href="/learn" className="flex items-center gap-3">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm">
+              <GraduationCap className="h-5 w-5" strokeWidth={2.4} />
+            </span>
             <div className="hidden sm:block">
-              <h1 className="text-lg font-bold text-[var(--text-primary)]">
-                LMS Go
-              </h1>
-              <p className="text-xs text-[var(--text-tertiary)]">
-                {organization?.name || "Learning Platform"}
-              </p>
+              <p className="text-sm font-semibold text-slate-900">LMS Go</p>
+              <p className="text-xs text-slate-500">{organization?.name || "Learning Platform"}</p>
             </div>
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-2">
-            {filteredNavItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = pathname.startsWith(item.href);
-
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`
-                    flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200
-                    ${
+          <div className="hidden md:flex items-center gap-4">
+            <div className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-100 p-1">
+              {filteredNavItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = pathname.startsWith(item.href);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
                       isActive
-                        ? "bg-white/15 text-[var(--text-primary)] shadow-lg"
-                        : "text-[var(--text-secondary)] hover:bg-white/8 hover:text-[var(--text-primary)]"
-                    }
-                  `}
-                >
-                  <Icon className="h-4 w-4" strokeWidth={2} />
-                  <span>{item.label}</span>
-                </Link>
-              );
-            })}
+                        ? "bg-white text-slate-900 shadow-sm"
+                        : "text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    <Icon className={`h-4 w-4 ${isActive ? "text-blue-600" : "text-slate-400"}`} />
+                    <span>{item.label}</span>
+                  </Link>
+                );
+              })}
+            </div>
           </div>
 
           {/* User Menu */}
           <div className="hidden md:flex items-center gap-3">
-            {/* User Avatar */}
-            <div className="flex items-center gap-3 px-4 py-2 rounded-full bg-white/5 border border-white/10">
-              <div className="h-8 w-8 rounded-full bg-gradient-to-br from-indigo-500 to-cyan-500 flex items-center justify-center text-sm font-semibold text-white">
+            <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-sm">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-100 text-sm font-semibold text-blue-700">
                 {user?.email?.substring(0, 2).toUpperCase() || "U"}
               </div>
-              <div className="text-sm">
-                <p className="font-medium text-[var(--text-primary)] leading-none">
-                  {user?.email?.split("@")[0]}
-                </p>
-                <p className="text-xs text-[var(--text-tertiary)] capitalize mt-0.5">
-                  {user?.role || "User"}
-                </p>
+              <div className="text-sm leading-tight">
+                <p className="font-medium text-slate-900">{user?.email?.split("@")[0]}</p>
+                <p className="text-xs capitalize text-slate-500">{user?.role || "User"}</p>
               </div>
             </div>
-
-            {/* Logout Button */}
             <button
               onClick={handleLogout}
-              className="btn-ghost btn-sm"
-              aria-label="Déconnexion"
+              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
             >
               <LogOut className="h-4 w-4" />
+              <span>Déconnexion</span>
             </button>
           </div>
 
           {/* Mobile Menu Button */}
           <button
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="md:hidden btn-ghost btn-sm"
+            onClick={() => setIsMobileMenuOpen((prev) => !prev)}
+            className="md:hidden inline-flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 text-slate-600 transition-colors hover:bg-slate-100"
             aria-label="Menu"
           >
-            {isMobileMenuOpen ? (
-              <X className="h-5 w-5" />
-            ) : (
-              <Menu className="h-5 w-5" />
-            )}
+            {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
         </div>
+      </div>
 
-        {/* Mobile Menu */}
-        {isMobileMenuOpen && (
-          <div className="md:hidden py-4 border-t border-white/10 animate-slide-in">
-            <div className="space-y-2">
+      {/* Mobile Menu */}
+      {isMobileMenuOpen && (
+        <div className="md:hidden border-t border-slate-200 bg-white/95 backdrop-blur">
+          <div className="container-custom space-y-4 py-4">
+            <div className="flex flex-col gap-2">
               {filteredNavItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = pathname.startsWith(item.href);
-
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
                     onClick={() => setIsMobileMenuOpen(false)}
-                    className={`
-                      flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium transition-all duration-200
-                      ${
-                        isActive
-                          ? "bg-white/15 text-[var(--text-primary)]"
-                          : "text-[var(--text-secondary)] hover:bg-white/8 hover:text-[var(--text-primary)]"
-                      }
-                    `}
+                    className={`flex items-center gap-3 rounded-xl border px-4 py-3 text-sm font-medium transition-colors ${
+                      isActive
+                        ? "border-blue-500/30 bg-blue-50 text-blue-700"
+                        : "border-slate-200 bg-white text-slate-600 hover:border-blue-400/40 hover:bg-blue-50 hover:text-blue-700"
+                    }`}
                   >
-                    <Icon className="h-5 w-5" strokeWidth={2} />
+                    <Icon className={`h-5 w-5 ${isActive ? "text-blue-600" : "text-slate-400"}`} />
                     <span>{item.label}</span>
                   </Link>
                 );
               })}
+            </div>
 
-              <div className="divider my-4" />
-
-              {/* User Info Mobile */}
-              <div className="px-4 py-3 rounded-2xl bg-white/5">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="h-10 w-10 rounded-full bg-gradient-to-br from-indigo-500 to-cyan-500 flex items-center justify-center text-sm font-semibold text-white">
-                    {user?.email?.substring(0, 2).toUpperCase() || "U"}
-                  </div>
-                  <div>
-                    <p className="font-medium text-[var(--text-primary)] text-sm">
-                      {user?.email}
-                    </p>
-                    <p className="text-xs text-[var(--text-tertiary)] capitalize">
-                      {user?.role || "User"}
-                    </p>
-                  </div>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-sm font-semibold text-blue-700">
+                  {user?.email?.substring(0, 2).toUpperCase() || "U"}
                 </div>
-                <button
-                  onClick={handleLogout}
-                  className="w-full btn-danger btn-sm"
-                >
-                  <LogOut className="h-4 w-4" />
-                  <span>Déconnexion</span>
-                </button>
+                <div>
+                  <p className="text-sm font-medium text-slate-900">{user?.email}</p>
+                  <p className="text-xs capitalize text-slate-500">{user?.role || "User"}</p>
+                </div>
               </div>
+              <button
+                onClick={handleLogout}
+                className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+              >
+                <LogOut className="h-4 w-4" />
+                <span>Déconnexion</span>
+              </button>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </nav>
   );
 }
