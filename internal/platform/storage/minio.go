@@ -13,17 +13,19 @@ import (
 
 // Config regroupe les paramètres nécessaires pour se connecter à MinIO/S3.
 type Config struct {
-	Endpoint  string
-	AccessKey string
-	SecretKey string
-	Bucket    string
-	UseSSL    bool
+	Endpoint       string
+	AccessKey      string
+	SecretKey      string
+	Bucket         string
+	UseSSL         bool
+	PublicEndpoint string
 }
 
 // Client encapsule un client MinIO et le bucket ciblé.
 type Client struct {
-	minio  *minio.Client
-	bucket string
+	minio          *minio.Client
+	bucket         string
+	publicEndpoint *url.URL
 }
 
 // NewMinioClient instancie un client MinIO prêt à l'emploi et vérifie le bucket.
@@ -63,11 +65,55 @@ func NewMinioClient(ctx context.Context, cfg Config) (*Client, error) {
 		return nil, fmt.Errorf("storage: init minio: %w", err)
 	}
 
-	s := &Client{minio: client, bucket: cfg.Bucket}
+	var publicURL *url.URL
+	if strings.TrimSpace(cfg.PublicEndpoint) != "" {
+		parsed, err := parsePublicEndpoint(cfg.PublicEndpoint, useSSL)
+		if err != nil {
+			return nil, err
+		}
+		publicURL = parsed
+	}
+
+	s := &Client{minio: client, bucket: cfg.Bucket, publicEndpoint: publicURL}
 	if err := s.ensureBucket(ctx); err != nil {
 		return nil, err
 	}
 	return s, nil
+}
+
+func parsePublicEndpoint(endpoint string, useSSL bool) (*url.URL, error) {
+	trimmed := strings.TrimSpace(endpoint)
+	var parsed *url.URL
+	var err error
+
+	if strings.Contains(trimmed, "://") {
+		parsed, err = url.Parse(trimmed)
+		if err != nil {
+			return nil, fmt.Errorf("storage: parse public endpoint: %w", err)
+		}
+		if parsed.Host == "" {
+			return nil, fmt.Errorf("storage: public endpoint host missing")
+		}
+	} else {
+		scheme := "http"
+		if useSSL {
+			scheme = "https"
+		}
+		parsed, err = url.Parse(fmt.Sprintf("%s://%s", scheme, trimmed))
+		if err != nil {
+			return nil, fmt.Errorf("storage: parse public endpoint: %w", err)
+		}
+	}
+
+	if parsed.Scheme == "" {
+		if useSSL {
+			parsed.Scheme = "https"
+		} else {
+			parsed.Scheme = "http"
+		}
+	}
+
+	return parsed, nil
 }
 
 func (c *Client) ensureBucket(ctx context.Context) error {
@@ -100,6 +146,7 @@ func (c *Client) PresignUpload(ctx context.Context, object string, contentType s
 		q.Set("content-type", contentType)
 		u.RawQuery = q.Encode()
 	}
+	c.applyPublicEndpoint(u)
 	return u.String(), nil
 }
 
@@ -109,6 +156,7 @@ func (c *Client) PresignDownload(ctx context.Context, object string, expires tim
 	if err != nil {
 		return "", fmt.Errorf("storage: presign download: %w", err)
 	}
+	c.applyPublicEndpoint(u)
 	return u.String(), nil
 }
 
@@ -118,4 +166,16 @@ func (c *Client) Remove(ctx context.Context, object string) error {
 		return fmt.Errorf("storage: remove object: %w", err)
 	}
 	return nil
+}
+
+func (c *Client) applyPublicEndpoint(u *url.URL) {
+	if c.publicEndpoint == nil {
+		return
+	}
+	u.Scheme = c.publicEndpoint.Scheme
+	u.Host = c.publicEndpoint.Host
+	basePath := strings.TrimSuffix(c.publicEndpoint.Path, "/")
+	if basePath != "" {
+		u.Path = basePath + u.Path
+	}
 }

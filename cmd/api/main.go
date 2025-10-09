@@ -54,11 +54,12 @@ func main() {
 	}
 
 	storageClient, err := storage.NewMinioClient(ctx, storage.Config{
-		Endpoint:  cfg.StorageEndpoint,
-		AccessKey: cfg.StorageAccessKey,
-		SecretKey: cfg.StorageSecretKey,
-		Bucket:    cfg.StorageBucket,
-		UseSSL:    cfg.StorageUseSSL,
+		Endpoint:       cfg.StorageEndpoint,
+		AccessKey:      cfg.StorageAccessKey,
+		SecretKey:      cfg.StorageSecretKey,
+		Bucket:         cfg.StorageBucket,
+		UseSSL:         cfg.StorageUseSSL,
+		PublicEndpoint: cfg.StoragePublicEndpoint,
 	})
 	if err != nil {
 		log.Fatalf("api: storage init: %v", err)
