@@ -90,13 +90,16 @@ export default function CourseDetailPage() {
 
         // Check if user is enrolled
         try {
-          const enrollments = await apiClient.getEnrollments(organization.id, user?.id);
+          const enrollments = await apiClient.getEnrollments(
+            organization.id,
+            user ? { user_id: user.id } : {}
+          );
           const userEnrollment = enrollments.find((e: any) => e.course_id === courseId);
 
           if (userEnrollment) {
             // Fetch detailed progress
             const progress = await apiClient.getProgress(organization.id, userEnrollment.id);
-            setEnrollment({ ...userEnrollment, module_progress: progress.module_progress });
+            setEnrollment({ ...userEnrollment, module_progress: progress });
           }
         } catch (error) {
           console.error('Error fetching enrollment:', error);
@@ -112,12 +115,16 @@ export default function CourseDetailPage() {
   }, [isAuthenticated, organization, user, courseId, router]);
 
   const handleEnroll = async () => {
-    if (!organization) return;
+    if (!organization || !user) return;
 
     setIsEnrolling(true);
     try {
-      const newEnrollment = await apiClient.enrollInCourse(organization.id, courseId);
-      setEnrollment(newEnrollment);
+      const created = await apiClient.createEnrollment(organization.id, {
+        course_id: courseId,
+        user_id: user.id,
+      });
+      const progress = await apiClient.getProgress(organization.id, created.id);
+      setEnrollment({ ...created, module_progress: progress });
     } catch (error) {
       console.error('Error enrolling:', error);
     } finally {
@@ -136,12 +143,9 @@ export default function CourseDetailPage() {
     // Update progress to in_progress if not started
     if (!moduleProgress || moduleProgress.status === 'not_started') {
       try {
-        await apiClient.updateProgress(
-          organization.id,
-          enrollment.id,
-          module.id,
-          'in_progress'
-        );
+        await apiClient.startModule(organization.id, enrollment.id, module.id);
+        const fresh = await apiClient.getProgress(organization.id, enrollment.id);
+        setEnrollment((prev) => prev ? { ...prev, module_progress: fresh } : prev);
       } catch (error) {
         console.error('Error updating progress:', error);
       }

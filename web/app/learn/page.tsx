@@ -28,7 +28,10 @@ export default function LearnPage() {
       try {
         const [coursesData, enrollmentsData] = await Promise.all([
           apiClient.getCourses(organization.id),
-          apiClient.getEnrollments(organization.id, user?.id),
+          apiClient.getEnrollments(
+            organization.id,
+            user ? { user_id: user.id } : {}
+          ),
         ]);
 
         setCourses(coursesData || []);
