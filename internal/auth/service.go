@@ -62,7 +62,12 @@ func (s *Service) Register(ctx context.Context, input RegisterInput) (*ent.User,
 		return nil, ErrInvalidCredentials
 	}
 
-	passwordHash, err := HashPassword(strings.TrimSpace(input.Password))
+	password := strings.TrimSpace(input.Password)
+	if len(password) < 8 {
+		return nil, ErrInvalidCredentials
+	}
+
+	passwordHash, err := HashPassword(password)
 	if err != nil {
 		return nil, err
 	}
@@ -189,6 +194,46 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string) (TokenPair, 
 	return tokens, nil
 }
 
+// Profile retourne l'utilisateur et son organisation à partir d'un access token.
+func (s *Service) Profile(ctx context.Context, accessToken string) (*ent.User, *ent.Organization, error) {
+	claims, err := s.tokens.ParseClaims(accessToken)
+	if err != nil {
+		return nil, nil, ErrInvalidToken
+	}
+	if claims.TokenType != "access" {
+		return nil, nil, ErrInvalidToken
+	}
+
+	userID, err := uuid.Parse(claims.Subject)
+	if err != nil {
+		return nil, nil, ErrInvalidToken
+	}
+	orgID, err := uuid.Parse(claims.OrganizationID)
+	if err != nil {
+		return nil, nil, ErrInvalidToken
+	}
+
+	user, err := s.client.User.Query().
+		Where(
+			entuser.IDEQ(userID),
+			entuser.OrganizationIDEQ(orgID),
+		).
+		WithOrganization().
+		Only(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, nil, ErrInvalidToken
+		}
+		return nil, nil, err
+	}
+
+	if user.Edges.Organization == nil {
+		return nil, nil, ErrInvalidToken
+	}
+
+	return user, user.Edges.Organization, nil
+}
+
 // ClearRefreshToken met à jour l'utilisateur pour invalider les tokens actifs (logout).
 func (s *Service) ClearRefreshToken(ctx context.Context, userID uuid.UUID) error {
 	return s.client.User.UpdateOneID(userID).
@@ -215,7 +260,12 @@ func (s *Service) Signup(ctx context.Context, input SignupInput) (*ent.Organizat
 	}
 
 	// Hash du mot de passe
-	passwordHash, err := HashPassword(strings.TrimSpace(input.Password))
+	password := strings.TrimSpace(input.Password)
+	if len(password) < 8 {
+		return nil, nil, TokenPair{}, ErrInvalidCredentials
+	}
+
+	passwordHash, err := HashPassword(password)
 	if err != nil {
 		return nil, nil, TokenPair{}, err
 	}

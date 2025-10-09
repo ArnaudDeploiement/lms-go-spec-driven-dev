@@ -23,7 +23,6 @@ import (
 	"lms-go/internal/ent"
 	httpapi "lms-go/internal/http/api"
 	httpmiddleware "lms-go/internal/http/middleware"
-	"lms-go/internal/http/ui"
 	"lms-go/internal/organization"
 	"lms-go/internal/platform/database"
 	"lms-go/internal/platform/storage"
@@ -136,8 +135,12 @@ func newRouter(client *ent.Client, orgService *organization.Service, userService
 	}))
 
 	// ---------- Routes ----------
-	r.Handle("/static/*", http.StripPrefix("/static/", ui.StaticHandler()))
-	r.Get("/", ui.HomeHandler())
+	r.Get("/", func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, http.StatusOK, map[string]string{
+			"service": "lms-go-api",
+			"status":  "ok",
+		})
+	})
 	r.Get("/healthz", healthHandler)
 	r.Get("/readyz", readinessHandler(client))
 
@@ -174,12 +177,6 @@ func newRouter(client *ent.Client, orgService *organization.Service, userService
 			progressHandler.Mount(pr)
 		})
 	})
-
-	learnerHandler := ui.NewLearnerHandler(orgService, userService, courseService, contentService, enrollmentService, progressService)
-	r.Route("/learn", learnerHandler.Mount)
-
-	adminHandler := ui.NewAdminHandler(orgService, userService, courseService, contentService, enrollmentService)
-	r.Route("/admin", adminHandler.Mount)
 
 	return r
 }
