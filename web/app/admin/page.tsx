@@ -51,6 +51,17 @@ const moduleTypes = [
   { value: "scorm", label: "SCORM" },
 ];
 
+function slugify(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9\s-]/g, "")
+    .trim()
+    .replace(/[\s_-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .toLowerCase();
+}
+
 function parseJsonInput(input: string): Record<string, any> | undefined {
   if (!input.trim()) return undefined;
   try {
@@ -59,6 +70,35 @@ function parseJsonInput(input: string): Record<string, any> | undefined {
     console.error("Invalid JSON", error);
     throw new Error("Le champ métadonnées doit contenir du JSON valide");
   }
+}
+
+async function uploadFileToSignedUrl(url: string, file: File, onProgress: (value: number) => void) {
+  return new Promise<void>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("PUT", url, true);
+    xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream");
+
+    xhr.upload.onprogress = (event) => {
+      if (!event.lengthComputable) return;
+      const percent = Math.round((event.loaded / event.total) * 100);
+      onProgress(percent);
+    };
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        onProgress(100);
+        resolve();
+      } else {
+        reject(new Error("Le téléversement a échoué"));
+      }
+    };
+
+    xhr.onerror = () => {
+      reject(new Error("Impossible de téléverser le fichier"));
+    };
+
+    xhr.send(file);
+  });
 }
 
 
@@ -88,11 +128,16 @@ export default function AdminPage() {
   const [isSubmittingContent, setIsSubmittingContent] = useState(false);
   const [isSubmittingOrganization, setIsSubmittingOrganization] = useState(false);
   const [lastUploadLink, setLastUploadLink] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   const [courseForm, setCourseForm] = useState({
     title: "",
     slug: "",
     description: "",
+    tags: "",
+    duration_hours: "",
+    level: "beginner",
+    visibility: "private",
     metadata: "",
   });
 
@@ -129,10 +174,10 @@ export default function AdminPage() {
 
   const [contentForm, setContentForm] = useState({
     name: "",
-    mime_type: "video/mp4",
-    size_bytes: "",
+    mime_type: "application/pdf",
     metadata: "",
   });
+  const [contentFile, setContentFile] = useState<File | null>(null);
 
   const [organizationForm, setOrganizationForm] = useState({
     name: "",
@@ -227,15 +272,37 @@ export default function AdminPage() {
     if (!organization) return;
     try {
       setIsSubmittingCourse(true);
-      const metadata = parseJsonInput(courseForm.metadata || "");
+      setError(null);
+      setFeedback(null);
+      const baseMetadata = parseJsonInput(courseForm.metadata || "") || {};
+      const tags = courseForm.tags
+        .split(",")
+        .map((tag) => tag.trim())
+        .filter(Boolean);
+      const durationHours = courseForm.duration_hours ? Number(courseForm.duration_hours) : undefined;
       const newCourse = await apiClient.createCourse(organization.id, {
         title: courseForm.title,
-        slug: courseForm.slug,
+        slug: courseForm.slug || slugify(courseForm.title),
         description: courseForm.description,
-        metadata,
+        metadata: {
+          ...baseMetadata,
+          tags,
+          level: courseForm.level,
+          visibility: courseForm.visibility,
+          duration_hours: durationHours,
+        },
       });
       setCourses((prev) => [newCourse, ...prev]);
-      setCourseForm({ title: "", slug: "", description: "", metadata: "" });
+      setCourseForm({
+        title: "",
+        slug: "",
+        description: "",
+        metadata: "",
+        tags: "",
+        duration_hours: "",
+        level: "beginner",
+        visibility: "private",
+      });
       setSelectedCourse(newCourse);
       setFeedback(`Cours "${newCourse.title}" créé avec succès`);
     } catch (err: any) {
@@ -377,22 +444,31 @@ export default function AdminPage() {
   const handleContentSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!organization) return;
+    if (!contentFile) {
+      setError("Veuillez sélectionner un fichier à téléverser");
+      return;
+    }
     try {
       setIsSubmittingContent(true);
-      const metadata = parseJsonInput(contentForm.metadata || "");
-      const size = contentForm.size_bytes ? Number(contentForm.size_bytes) : 0;
+      setError(null);
+      setFeedback(null);
+      setUploadProgress(0);
+      const metadata = parseJsonInput(contentForm.metadata || "") || {};
       const response = await apiClient.createContent(organization.id, {
-        name: contentForm.name,
-        mime_type: contentForm.mime_type,
-        size_bytes: size,
+        name: contentForm.name || contentFile.name,
+        mime_type: contentForm.mime_type || contentFile.type || "application/octet-stream",
+        size_bytes: contentFile.size,
         metadata,
       });
+      await uploadFileToSignedUrl(response.upload_url, contentFile, setUploadProgress);
+      await apiClient.finalizeContent(organization.id, response.content.id, {});
       setContents((prev) => [response.content, ...prev]);
-      setContentForm({ name: "", mime_type: "video/mp4", size_bytes: "", metadata: "" });
+      setContentForm({ name: "", mime_type: "application/pdf", metadata: "" });
+      setContentFile(null);
       setLastUploadLink(response.upload_url);
-      setFeedback(`Contenu "${response.content.name}" créé. Téléversement disponible.`);
+      setFeedback(`Contenu "${response.content.name}" téléversé avec succès.`);
     } catch (err: any) {
-      setError(err?.error || "Impossible de créer le contenu");
+      setError(err?.error || err?.message || "Impossible de créer le contenu");
     } finally {
       setIsSubmittingContent(false);
     }
@@ -759,7 +835,13 @@ export default function AdminPage() {
                         <label className="text-xs uppercase tracking-wide text-slate-300">Titre</label>
                         <Input
                           value={courseForm.title}
-                          onChange={(event) => setCourseForm((prev) => ({ ...prev, title: event.target.value }))}
+                          onChange={(event) =>
+                            setCourseForm((prev) => ({
+                              ...prev,
+                              title: event.target.value,
+                              slug: prev.slug ? prev.slug : slugify(event.target.value),
+                            }))
+                          }
                           className="revolut-input"
                           placeholder="Onboarding digital"
                           required
@@ -785,13 +867,60 @@ export default function AdminPage() {
                           required
                         />
                       </div>
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <div className="space-y-2">
+                          <label className="text-xs uppercase tracking-wide text-slate-300">Durée estimée (heures)</label>
+                          <Input
+                            type="number"
+                            min={0}
+                            value={courseForm.duration_hours}
+                            onChange={(event) => setCourseForm((prev) => ({ ...prev, duration_hours: event.target.value }))}
+                            className="revolut-input"
+                            placeholder="6"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-xs uppercase tracking-wide text-slate-300">Niveau</label>
+                          <select
+                            value={courseForm.level}
+                            onChange={(event) => setCourseForm((prev) => ({ ...prev, level: event.target.value }))}
+                            className="revolut-input"
+                          >
+                            <option value="beginner">Débutant</option>
+                            <option value="intermediate">Intermédiaire</option>
+                            <option value="advanced">Avancé</option>
+                          </select>
+                        </div>
+                      </div>
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <div className="space-y-2">
+                          <label className="text-xs uppercase tracking-wide text-slate-300">Visibilité</label>
+                          <select
+                            value={courseForm.visibility}
+                            onChange={(event) => setCourseForm((prev) => ({ ...prev, visibility: event.target.value }))}
+                            className="revolut-input"
+                          >
+                            <option value="private">Privé</option>
+                            <option value="public">Public</option>
+                          </select>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-xs uppercase tracking-wide text-slate-300">Tags</label>
+                          <Input
+                            value={courseForm.tags}
+                            onChange={(event) => setCourseForm((prev) => ({ ...prev, tags: event.target.value }))}
+                            className="revolut-input"
+                            placeholder="onboarding, produit, équipe"
+                          />
+                        </div>
+                      </div>
                       <div className="space-y-2">
                         <label className="text-xs uppercase tracking-wide text-slate-300">Métadonnées (JSON)</label>
                         <textarea
                           value={courseForm.metadata}
                           onChange={(event) => setCourseForm((prev) => ({ ...prev, metadata: event.target.value }))}
                           className="revolut-input min-h-[70px] font-mono text-xs"
-                          placeholder='{"level":"beginner"}'
+                          placeholder='{"audience":"Managers"}'
                         />
                       </div>
                       <Button type="submit" className="revolut-button w-full justify-center" disabled={isSubmittingCourse}>
@@ -1277,13 +1406,21 @@ export default function AdminPage() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <label className="text-xs uppercase tracking-wide text-slate-300">Taille estimée (octets)</label>
-                        <Input
-                          type="number"
-                          min={0}
-                          value={contentForm.size_bytes}
-                          onChange={(event) => setContentForm((prev) => ({ ...prev, size_bytes: event.target.value }))}
-                          className="revolut-input"
+                        <label className="text-xs uppercase tracking-wide text-slate-300">Fichier</label>
+                        <input
+                          type="file"
+                          onChange={(event) => {
+                            const file = event.target.files?.[0] || null;
+                            setContentFile(file);
+                            if (file) {
+                              setContentForm((prev) => ({
+                                ...prev,
+                                name: prev.name || file.name.replace(/\.[^/.]+$/, ""),
+                                mime_type: file.type || prev.mime_type,
+                              }));
+                            }
+                          }}
+                          className="revolut-input cursor-pointer file:mr-4 file:rounded-full file:border-0 file:bg-cyan-500 file:px-4 file:py-1 file:text-xs file:font-semibold file:text-white"
                           required
                         />
                       </div>
@@ -1296,6 +1433,17 @@ export default function AdminPage() {
                         className="revolut-input min-h-[70px] font-mono text-xs"
                       />
                     </div>
+                    {isSubmittingContent && (
+                      <div className="rounded-2xl border border-cyan-400/40 bg-cyan-400/10 p-3 text-xs text-cyan-200">
+                        Téléversement en cours… {uploadProgress}%
+                        <div className="mt-2 h-2 w-full rounded-full bg-slate-800">
+                          <div
+                            className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-blue-400 transition-all"
+                            style={{ width: `${uploadProgress}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
                     {lastUploadLink && (
                       <div className="rounded-2xl border border-white/10 bg-white/5 p-3 text-xs text-slate-300">
                         Dernier lien de téléversement :
@@ -1304,7 +1452,7 @@ export default function AdminPage() {
                       </div>
                     )}
                     <Button type="submit" className="revolut-button w-full justify-center" disabled={isSubmittingContent}>
-                      {isSubmittingContent ? "Génération…" : "Créer le contenu"}
+                      {isSubmittingContent ? "Téléversement…" : "Créer et téléverser"}
                     </Button>
                   </form>
                 </CardContent>
