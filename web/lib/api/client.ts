@@ -36,7 +36,6 @@ export interface SignupResponse extends AuthTokens {
 }
 
 export interface LoginRequest {
-  organization_id: string;
   email: string;
   password: string;
 }
