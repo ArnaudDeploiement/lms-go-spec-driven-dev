@@ -5,15 +5,7 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/lib/auth/context";
 import { Alert } from "@/components/ui/alert";
-import {
-  GraduationCap,
-  Mail,
-  Lock,
-  ArrowRight,
-  Sparkles,
-  Building2,
-  Key,
-} from "lucide-react";
+import { GraduationCap, Mail, Lock, ArrowRight, Sparkles, Building2 } from "lucide-react";
 
 type AuthMode = "login" | "signup";
 
@@ -34,7 +26,6 @@ export default function AuthPage() {
 
   // Login form
   const [loginData, setLoginData] = useState({
-    organization_id: "",
     email: "",
     password: "",
   });
@@ -280,31 +271,6 @@ export default function AuthPage() {
                 onSubmit={handleLogin}
                 className="space-y-5"
               >
-                {/* Organization ID */}
-                <div className="space-y-2">
-                  <label htmlFor="org_id" className="text-label">
-                    ID Organisation
-                  </label>
-                  <div className="relative">
-                    <Key className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[var(--text-tertiary)]" />
-                    <input
-                      id="org_id"
-                      type="text"
-                      value={loginData.organization_id}
-                      onChange={(e) =>
-                        setLoginData({ ...loginData, organization_id: e.target.value })
-                      }
-                      className="input pl-12 font-mono text-xs"
-                      placeholder="550e8400-e29b-41d4-a716-446655440000"
-                      required
-                      disabled={isSubmitting}
-                    />
-                  </div>
-                  <p className="text-xs text-[var(--text-tertiary)]">
-                    UUID fourni lors de la création de votre organisation
-                  </p>
-                </div>
-
                 {/* Email */}
                 <div className="space-y-2">
                   <label htmlFor="login_email" className="text-label">
