@@ -2,57 +2,74 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Revolut-inspired theme */
+/* Revolut-inspired dark glassmorphism theme */
 :root {
-  --background: #FAFAFA;
-  --foreground: #000000;
-  --muted: #6B7280;
-  --card: #FFFFFF;
-  --card-foreground: #000000;
-  --revolut-gradient: linear-gradient(135deg, #8B5CF6 0%, #A855F7 100%);
+  --background: radial-gradient(circle at 20% 20%, rgba(37, 99, 235, 0.2), transparent 45%),
+    radial-gradient(circle at 80% 0%, rgba(14, 165, 233, 0.25), transparent 45%),
+    #0f1729;
+  --foreground: #f8fafc;
+  --muted: #94a3b8;
+  --card: rgba(15, 23, 42, 0.65);
+  --card-foreground: #f8fafc;
+  --glass-border: rgba(148, 163, 184, 0.25);
+  --accent: linear-gradient(135deg, #6366f1 0%, #22d3ee 100%);
 }
 
 .dark {
-  --background: #000000;
-  --foreground: #FFFFFF;
-  --card: #1A1A1A;
-  --card-foreground: #FFFFFF;
+  --background: radial-gradient(circle at 20% 20%, rgba(59, 130, 246, 0.2), transparent 45%),
+    radial-gradient(circle at 80% 0%, rgba(56, 189, 248, 0.25), transparent 45%),
+    #020617;
+  --foreground: #f8fafc;
+  --card: rgba(15, 23, 42, 0.7);
+  --card-foreground: #f8fafc;
 }
 
 body {
-  @apply bg-[var(--background)] text-[var(--foreground)] antialiased;
+  @apply min-h-screen bg-slate-950 text-[var(--foreground)] antialiased;
+  background-image: linear-gradient(to bottom right, rgba(15, 23, 42, 0.95), rgba(2, 6, 23, 0.95));
   font-feature-settings: "rlig" 1, "calt" 1;
 }
 
-/* Revolut-style glass effect */
 .glass-panel {
-  @apply bg-white/80 backdrop-blur-xl border border-black/5 shadow-revolut;
+  @apply border border-white/10 bg-white/10 backdrop-blur-2xl shadow-[0_10px_40px_-15px_rgba(15,23,42,0.6)];
 }
 
-/* Revolut-style gradient backgrounds */
-.gradient-revolut {
-  background: var(--revolut-gradient);
+.glass-card {
+  @apply rounded-3xl border border-white/10 bg-white/10 backdrop-blur-2xl shadow-[0_25px_50px_-12px_rgba(15,23,42,0.65)];
 }
 
-.gradient-revolut-radial {
-  background: radial-gradient(circle at top right, #A855F7 0%, #8B5CF6 50%, #7C3AED 100%);
+.glass-nav {
+  @apply border border-white/10 bg-white/5 backdrop-blur-xl shadow-[0_10px_30px_-12px_rgba(15,23,42,0.7)];
 }
 
-/* Smooth transitions for all interactive elements */
+.glow-hover {
+  @apply transition-all duration-300 hover:shadow-[0_0_25px_rgba(94,234,212,0.35)] hover:border-cyan-300/50;
+}
+
+.gradient-ring {
+  background: linear-gradient(120deg, rgba(99, 102, 241, 0.5), rgba(20, 184, 166, 0.35));
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+}
+
 @layer components {
   .revolut-card {
-    @apply bg-white rounded-2xl border border-black/5 shadow-revolut-card transition-all duration-200;
-  }
-
-  .revolut-card:hover {
-    @apply shadow-revolut-hover -translate-y-0.5;
+    @apply glass-card glow-hover transition-all duration-300;
   }
 
   .revolut-button {
-    @apply rounded-xl font-medium transition-all duration-200 active:scale-95;
+    @apply rounded-full bg-white/10 px-4 py-2 text-sm font-medium text-white shadow-[0_10px_40px_-20px_rgba(94,234,212,0.65)] transition-all duration-300 hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400/60 active:scale-[0.98];
   }
 
   .revolut-input {
-    @apply rounded-xl border-2 border-black/10 focus:border-revolut-purple focus:ring-4 focus:ring-revolut-purple/10 transition-all duration-200;
+    @apply w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-slate-100 placeholder:text-slate-400 focus:border-cyan-300/60 focus:outline-none focus:ring-2 focus:ring-cyan-400/40;
+  }
+
+  .revolut-badge {
+    @apply inline-flex items-center rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium uppercase tracking-wide text-slate-200;
   }
 }

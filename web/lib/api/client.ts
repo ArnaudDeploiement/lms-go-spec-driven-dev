@@ -59,6 +59,228 @@ export interface ProfileResponse {
   };
 }
 
+export interface OrganizationResponse {
+  id: string;
+  name: string;
+  slug: string;
+  status: string;
+  settings: Record<string, any> | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateOrganizationRequest {
+  name: string;
+  slug: string;
+  settings?: Record<string, any>;
+}
+
+export interface UpdateOrganizationRequest {
+  name?: string;
+  slug?: string;
+  status?: string;
+  settings?: Record<string, any>;
+}
+
+export interface UserResponse {
+  id: string;
+  email: string;
+  role: string;
+  status: string;
+  metadata: Record<string, any> | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateUserRequest {
+  email: string;
+  password: string;
+  role: string;
+  status?: string;
+  metadata?: Record<string, any>;
+}
+
+export interface UpdateUserRequest {
+  email?: string;
+  password?: string;
+  role?: string;
+  status?: string;
+  metadata?: Record<string, any>;
+}
+
+export interface UserFilter {
+  role?: string;
+  status?: string;
+}
+
+export interface CourseResponse {
+  id: string;
+  title: string;
+  slug: string;
+  description: string;
+  status: string;
+  version: number;
+  metadata: Record<string, any> | null;
+  published_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateCourseRequest {
+  title: string;
+  slug: string;
+  description: string;
+  metadata?: Record<string, any>;
+}
+
+export interface UpdateCourseRequest {
+  title?: string;
+  description?: string;
+  metadata?: Record<string, any>;
+}
+
+export interface CourseFilter {
+  status?: string;
+}
+
+export interface ModuleResponse {
+  id: string;
+  course_id: string;
+  title: string;
+  module_type: string;
+  content_id?: string | null;
+  position: number;
+  duration_seconds: number;
+  status: string;
+  data: Record<string, any> | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ModuleRequest {
+  title: string;
+  module_type: string;
+  content_id?: string | null;
+  duration_seconds?: number;
+  data?: Record<string, any>;
+}
+
+export interface EnrollmentResponse {
+  id: string;
+  course_id: string;
+  user_id: string;
+  group_id?: string | null;
+  status: string;
+  progress: number;
+  metadata: Record<string, any> | null;
+  started_at?: string | null;
+  completed_at?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface EnrollRequest {
+  course_id: string;
+  user_id: string;
+  group_id?: string | null;
+  metadata?: Record<string, any>;
+}
+
+export interface UpdateEnrollmentRequest {
+  status?: string;
+  progress?: number;
+  metadata?: Record<string, any>;
+  group_id?: string | null;
+  started_at?: string | null;
+  completed_at?: string | null;
+}
+
+export interface EnrollmentFilter {
+  course_id?: string;
+  user_id?: string;
+  group_id?: string;
+  status?: string;
+}
+
+export interface GroupResponse {
+  id: string;
+  course_id?: string | null;
+  name: string;
+  description: string;
+  capacity?: number | null;
+  metadata: Record<string, any> | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateGroupRequest {
+  course_id?: string | null;
+  name: string;
+  description: string;
+  capacity?: number | null;
+  metadata?: Record<string, any>;
+}
+
+export interface UpdateGroupRequest {
+  name?: string;
+  description?: string;
+  capacity?: number | null;
+  metadata?: Record<string, any>;
+}
+
+export interface GroupFilter {
+  course_id?: string;
+}
+
+export interface ContentResponse {
+  id: string;
+  name: string;
+  mime_type: string;
+  size_bytes: number;
+  status: string;
+  metadata: Record<string, any> | null;
+  created_at: string;
+  updated_at: string;
+  storage_key: string;
+}
+
+export interface CreateContentRequest {
+  name: string;
+  mime_type: string;
+  size_bytes: number;
+  metadata?: Record<string, any>;
+}
+
+export interface FinalizeContentRequest {
+  name?: string;
+  mime_type?: string;
+  size_bytes?: number;
+  metadata?: Record<string, any>;
+}
+
+export interface UploadLinkResponse {
+  content: ContentResponse;
+  upload_url: string;
+  expires_at: string;
+}
+
+export interface DownloadLinkResponse {
+  download_url: string;
+  expires_at: string;
+}
+
+export interface ProgressResponse {
+  module_id: string;
+  title: string;
+  module_type: string;
+  position: number;
+  status: string;
+  score: number;
+  attempts: number;
+  started_at?: string | null;
+  completed_at?: string | null;
+}
+
 class ApiClient {
   private baseUrl: string;
   private isRefreshing = false;
@@ -215,17 +437,51 @@ class ApiClient {
     });
   }
 
+  // ============ ORGANIZATION ENDPOINTS ============
+
+  async listOrganizations(status?: string): Promise<OrganizationResponse[]> {
+    const query = status ? `?status=${encodeURIComponent(status)}` : '';
+    return this.request(`/orgs${query}`);
+  }
+
+  async createOrganization(data: CreateOrganizationRequest): Promise<OrganizationResponse> {
+    return this.request('/orgs', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getOrganization(id: string): Promise<OrganizationResponse> {
+    return this.request(`/orgs/${id}`);
+  }
+
+  async updateOrganization(id: string, data: UpdateOrganizationRequest): Promise<OrganizationResponse> {
+    return this.request(`/orgs/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async archiveOrganization(id: string): Promise<void> {
+    await this.request(`/orgs/${id}`, { method: 'DELETE' });
+  }
+
+  async activateOrganization(id: string): Promise<void> {
+    await this.request(`/orgs/${id}/activate`, { method: 'POST' });
+  }
+
   // ============ COURSE ENDPOINTS ============
 
-  async getCourses(orgId: string): Promise<any[]> {
-    return this.request('/courses', {
+  async getCourses(orgId: string, filter: CourseFilter = {}): Promise<CourseResponse[]> {
+    const query = filter.status ? `?status=${encodeURIComponent(filter.status)}` : '';
+    return this.request(`/courses${query}`, {
       headers: {
         'X-Org-ID': orgId,
       },
     });
   }
 
-  async getCourse(orgId: string, courseId: string): Promise<any> {
+  async getCourse(orgId: string, courseId: string): Promise<CourseResponse> {
     return this.request(`/courses/${courseId}`, {
       headers: {
         'X-Org-ID': orgId,
@@ -233,10 +489,109 @@ class ApiClient {
     });
   }
 
+  async createCourse(orgId: string, data: CreateCourseRequest): Promise<CourseResponse> {
+    return this.request('/courses', {
+      method: 'POST',
+      headers: {
+        'X-Org-ID': orgId,
+      },
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateCourse(orgId: string, courseId: string, data: UpdateCourseRequest): Promise<CourseResponse> {
+    return this.request(`/courses/${courseId}`, {
+      method: 'PATCH',
+      headers: {
+        'X-Org-ID': orgId,
+      },
+      body: JSON.stringify(data),
+    });
+  }
+
+  async publishCourse(orgId: string, courseId: string): Promise<void> {
+    await this.request(`/courses/${courseId}/publish`, {
+      method: 'POST',
+      headers: { 'X-Org-ID': orgId },
+    });
+  }
+
+  async unpublishCourse(orgId: string, courseId: string): Promise<void> {
+    await this.request(`/courses/${courseId}/unpublish`, {
+      method: 'POST',
+      headers: { 'X-Org-ID': orgId },
+    });
+  }
+
+  async archiveCourse(orgId: string, courseId: string): Promise<void> {
+    await this.request(`/courses/${courseId}`, {
+      method: 'DELETE',
+      headers: { 'X-Org-ID': orgId },
+    });
+  }
+
+  async listModules(orgId: string, courseId: string): Promise<ModuleResponse[]> {
+    return this.request(`/courses/${courseId}/modules`, {
+      headers: { 'X-Org-ID': orgId },
+    });
+  }
+
+  async createModule(orgId: string, courseId: string, data: ModuleRequest): Promise<ModuleResponse> {
+    const payload: Record<string, any> = {
+      title: data.title,
+      module_type: data.module_type,
+    };
+    if (data.content_id !== undefined) payload.content_id = data.content_id;
+    if (data.duration_seconds !== undefined) payload.duration_seconds = data.duration_seconds;
+    if (data.data !== undefined) payload.data = data.data;
+
+    return this.request(`/courses/${courseId}/modules`, {
+      method: 'POST',
+      headers: { 'X-Org-ID': orgId },
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async updateModule(orgId: string, moduleId: string, data: ModuleRequest): Promise<ModuleResponse> {
+    const payload: Record<string, any> = {
+      title: data.title,
+      module_type: data.module_type,
+    };
+    if (data.content_id !== undefined) payload.content_id = data.content_id;
+    if (data.duration_seconds !== undefined) payload.duration_seconds = data.duration_seconds;
+    if (data.data !== undefined) payload.data = data.data;
+
+    return this.request(`/courses/modules/${moduleId}`, {
+      method: 'PATCH',
+      headers: { 'X-Org-ID': orgId },
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async deleteModule(orgId: string, moduleId: string): Promise<void> {
+    await this.request(`/courses/modules/${moduleId}`, {
+      method: 'DELETE',
+      headers: { 'X-Org-ID': orgId },
+    });
+  }
+
+  async reorderModules(orgId: string, courseId: string, moduleIds: string[]): Promise<void> {
+    await this.request(`/courses/${courseId}/modules/reorder`, {
+      method: 'POST',
+      headers: { 'X-Org-ID': orgId },
+      body: JSON.stringify({ module_ids: moduleIds }),
+    });
+  }
+
   // ============ ENROLLMENT ENDPOINTS ============
 
-  async getEnrollments(orgId: string, userId?: string): Promise<any[]> {
-    const query = userId ? `?user_id=${userId}` : '';
+  async getEnrollments(orgId: string, filter: EnrollmentFilter = {}): Promise<EnrollmentResponse[]> {
+    const params = new URLSearchParams();
+    if (filter.user_id) params.set('user_id', filter.user_id);
+    if (filter.course_id) params.set('course_id', filter.course_id);
+    if (filter.group_id) params.set('group_id', filter.group_id);
+    if (filter.status) params.set('status', filter.status);
+    const query = params.toString() ? `?${params.toString()}` : '';
     return this.request(`/enrollments${query}`, {
       headers: {
         'X-Org-ID': orgId,
@@ -244,18 +599,122 @@ class ApiClient {
     });
   }
 
-  async enrollInCourse(orgId: string, courseId: string): Promise<any> {
-    return this.request(`/courses/${courseId}/enroll`, {
+  async createEnrollment(orgId: string, data: EnrollRequest): Promise<EnrollmentResponse> {
+    return this.request('/enrollments', {
       method: 'POST',
       headers: {
         'X-Org-ID': orgId,
       },
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateEnrollment(orgId: string, enrollmentId: string, data: UpdateEnrollmentRequest): Promise<EnrollmentResponse> {
+    return this.request(`/enrollments/${enrollmentId}`, {
+      method: 'PATCH',
+      headers: {
+        'X-Org-ID': orgId,
+      },
+      body: JSON.stringify(data),
+    });
+  }
+
+  async cancelEnrollment(orgId: string, enrollmentId: string): Promise<void> {
+    await this.request(`/enrollments/${enrollmentId}`, {
+      method: 'DELETE',
+      headers: {
+        'X-Org-ID': orgId,
+      },
+    });
+  }
+
+  async listGroups(orgId: string, filter: GroupFilter = {}): Promise<GroupResponse[]> {
+    const params = new URLSearchParams();
+    if (filter.course_id) params.set('course_id', filter.course_id);
+    const query = params.toString() ? `?${params.toString()}` : '';
+    return this.request(`/enrollments/groups${query}`, {
+      headers: {
+        'X-Org-ID': orgId,
+      },
+    });
+  }
+
+  async createGroup(orgId: string, data: CreateGroupRequest): Promise<GroupResponse> {
+    return this.request('/enrollments/groups', {
+      method: 'POST',
+      headers: { 'X-Org-ID': orgId },
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateGroup(orgId: string, groupId: string, data: UpdateGroupRequest): Promise<GroupResponse> {
+    return this.request(`/enrollments/groups/${groupId}`, {
+      method: 'PATCH',
+      headers: { 'X-Org-ID': orgId },
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteGroup(orgId: string, groupId: string): Promise<void> {
+    await this.request(`/enrollments/groups/${groupId}`, {
+      method: 'DELETE',
+      headers: { 'X-Org-ID': orgId },
+    });
+  }
+
+  // ============ USER ENDPOINTS ============
+
+  async listUsers(orgId: string, filter: UserFilter = {}): Promise<UserResponse[]> {
+    const params = new URLSearchParams();
+    if (filter.role) params.set('role', filter.role);
+    if (filter.status) params.set('status', filter.status);
+    const query = params.toString() ? `?${params.toString()}` : '';
+    return this.request(`/users${query}`, {
+      headers: {
+        'X-Org-ID': orgId,
+      },
+    });
+  }
+
+  async createUser(orgId: string, data: CreateUserRequest): Promise<UserResponse> {
+    return this.request('/users', {
+      method: 'POST',
+      headers: { 'X-Org-ID': orgId },
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getUser(orgId: string, userId: string): Promise<UserResponse> {
+    return this.request(`/users/${userId}`, {
+      headers: { 'X-Org-ID': orgId },
+    });
+  }
+
+  async updateUser(orgId: string, userId: string, data: UpdateUserRequest): Promise<UserResponse> {
+    return this.request(`/users/${userId}`, {
+      method: 'PATCH',
+      headers: { 'X-Org-ID': orgId },
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deactivateUser(orgId: string, userId: string): Promise<void> {
+    await this.request(`/users/${userId}`, {
+      method: 'DELETE',
+      headers: { 'X-Org-ID': orgId },
+    });
+  }
+
+  async activateUser(orgId: string, userId: string): Promise<void> {
+    await this.request(`/users/${userId}/activate`, {
+      method: 'POST',
+      headers: { 'X-Org-ID': orgId },
     });
   }
 
   // ============ PROGRESS ENDPOINTS ============
 
-  async getProgress(orgId: string, enrollmentId: string): Promise<any> {
+  async getProgress(orgId: string, enrollmentId: string): Promise<ProgressResponse[]> {
     return this.request(`/enrollments/${enrollmentId}/progress`, {
       headers: {
         'X-Org-ID': orgId,
@@ -263,18 +722,69 @@ class ApiClient {
     });
   }
 
-  async updateProgress(
-    orgId: string,
-    enrollmentId: string,
-    moduleId: string,
-    status: 'in_progress' | 'completed'
-  ): Promise<any> {
-    return this.request(`/enrollments/${enrollmentId}/progress`, {
+  async startModule(orgId: string, enrollmentId: string, moduleId: string): Promise<any> {
+    return this.request(`/enrollments/${enrollmentId}/progress/start`, {
       method: 'POST',
       headers: {
         'X-Org-ID': orgId,
       },
-      body: JSON.stringify({ module_id: moduleId, status }),
+      body: JSON.stringify({ module_id: moduleId }),
+    });
+  }
+
+  async completeModule(orgId: string, enrollmentId: string, moduleId: string, score?: number): Promise<any> {
+    return this.request(`/enrollments/${enrollmentId}/progress/complete`, {
+      method: 'POST',
+      headers: {
+        'X-Org-ID': orgId,
+      },
+      body: JSON.stringify({
+        module_id: moduleId,
+        score,
+      }),
+    });
+  }
+
+  // ============ CONTENT ENDPOINTS ============
+
+  async listContents(orgId: string): Promise<ContentResponse[]> {
+    return this.request('/contents', {
+      headers: { 'X-Org-ID': orgId },
+    });
+  }
+
+  async createContent(orgId: string, data: CreateContentRequest): Promise<UploadLinkResponse> {
+    return this.request('/contents', {
+      method: 'POST',
+      headers: { 'X-Org-ID': orgId },
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getContent(orgId: string, contentId: string): Promise<ContentResponse> {
+    return this.request(`/contents/${contentId}`, {
+      headers: { 'X-Org-ID': orgId },
+    });
+  }
+
+  async finalizeContent(orgId: string, contentId: string, data: FinalizeContentRequest): Promise<ContentResponse> {
+    return this.request(`/contents/${contentId}/finalize`, {
+      method: 'POST',
+      headers: { 'X-Org-ID': orgId },
+      body: JSON.stringify(data),
+    });
+  }
+
+  async archiveContent(orgId: string, contentId: string): Promise<void> {
+    await this.request(`/contents/${contentId}`, {
+      method: 'DELETE',
+      headers: { 'X-Org-ID': orgId },
+    });
+  }
+
+  async getDownloadLink(orgId: string, contentId: string): Promise<DownloadLinkResponse> {
+    return this.request(`/contents/${contentId}/download`, {
+      headers: { 'X-Org-ID': orgId },
     });
   }
 }
