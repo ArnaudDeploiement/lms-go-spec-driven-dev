@@ -106,9 +106,8 @@ func (h *AuthHandler) handleRegister(w http.ResponseWriter, r *http.Request) {
 }
 
 type loginRequest struct {
-	OrganizationID string `json:"organization_id"`
-	Email          string `json:"email"`
-	Password       string `json:"password"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
 }
 
 type refreshRequest struct {
@@ -122,19 +121,15 @@ func (h *AuthHandler) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	orgID, err := uuid.Parse(req.OrganizationID)
-	if err != nil {
-		respondError(w, http.StatusBadRequest, "organization_id invalide")
-		return
-	}
-
-	tokens, err := h.service.Login(r.Context(), orgID, req.Email, req.Password)
+	tokens, err := h.service.Login(r.Context(), req.Email, req.Password)
 	if err != nil {
 		switch {
 		case errors.Is(err, auth.ErrInvalidCredentials):
 			respondError(w, http.StatusUnauthorized, "identifiants invalides")
 		case errors.Is(err, auth.ErrUserInactive):
 			respondError(w, http.StatusForbidden, "compte inactif")
+		case errors.Is(err, auth.ErrAmbiguousIdentity):
+			respondError(w, http.StatusConflict, "plusieurs organisations associées à ce compte, contactez votre administrateur")
 		default:
 			respondError(w, http.StatusInternalServerError, "erreur serveur")
 		}

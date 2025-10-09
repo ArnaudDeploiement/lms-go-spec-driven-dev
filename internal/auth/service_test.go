@@ -62,7 +62,7 @@ func TestService_RegisterLoginRefresh(t *testing.T) {
 	require.NotNil(t, user)
 	require.NotEqual(t, "supersecret", user.PasswordHash)
 
-	tokens, err := svc.Login(ctx, org.ID, "admin@example.com", "supersecret")
+	tokens, err := svc.Login(ctx, "admin@example.com", "supersecret")
 	require.NoError(t, err)
 	require.NotEmpty(t, tokens.AccessToken)
 	require.NotEmpty(t, tokens.RefreshToken)
@@ -84,7 +84,7 @@ func TestService_RegisterLoginRefresh(t *testing.T) {
 	require.ErrorIs(t, err, ErrInvalidToken)
 
 	// Wrong password should fail
-	_, err = svc.Login(ctx, org.ID, "admin@example.com", "wrong")
+	_, err = svc.Login(ctx, "admin@example.com", "wrong")
 	require.ErrorIs(t, err, ErrInvalidCredentials)
 
 	// Duplicate register should fail
@@ -94,6 +94,45 @@ func TestService_RegisterLoginRefresh(t *testing.T) {
 		Password:       "anotherpass",
 	})
 	require.ErrorIs(t, err, ErrEmailAlreadyUsed)
+}
+
+func TestService_LoginAmbiguousIdentity(t *testing.T) {
+	client := newTestClient(t)
+	ctx := context.Background()
+
+	org1, err := client.Organization.Create().
+		SetName("Org1").
+		SetSlug("org1").
+		Save(ctx)
+	require.NoError(t, err)
+
+	org2, err := client.Organization.Create().
+		SetName("Org2").
+		SetSlug("org2").
+		Save(ctx)
+	require.NoError(t, err)
+
+	svc := NewService(client, Config{
+		JWTSecret:       "test-secret",
+		AccessTokenTTL:  time.Minute,
+		RefreshTokenTTL: time.Hour,
+	})
+
+	for _, org := range []struct {
+		id   uuid.UUID
+		role string
+	}{{org1.ID, "admin"}, {org2.ID, "learner"}} {
+		_, err = svc.Register(ctx, RegisterInput{
+			OrganizationID: org.id,
+			Email:          "shared@example.com",
+			Password:       "supersecret",
+			Role:           org.role,
+		})
+		require.NoError(t, err)
+	}
+
+	_, err = svc.Login(ctx, "shared@example.com", "supersecret")
+	require.ErrorIs(t, err, ErrAmbiguousIdentity)
 }
 
 func TestService_ClearRefreshToken(t *testing.T) {

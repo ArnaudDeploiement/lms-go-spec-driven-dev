@@ -100,24 +100,28 @@ func (s *Service) Register(ctx context.Context, input RegisterInput) (*ent.User,
 }
 
 // Login authentifie l'utilisateur et renvoie un couple de tokens.
-func (s *Service) Login(ctx context.Context, organizationID uuid.UUID, email, password string) (TokenPair, error) {
+func (s *Service) Login(ctx context.Context, email, password string) (TokenPair, error) {
 	normalized := strings.TrimSpace(strings.ToLower(email))
 	if normalized == "" {
 		return TokenPair{}, ErrInvalidCredentials
 	}
 
-	user, err := s.client.User.Query().
+	users, err := s.client.User.Query().
 		Where(
 			entuser.EmailEQ(normalized),
-			entuser.OrganizationIDEQ(organizationID),
 		).
-		Only(ctx)
+		All(ctx)
 	if err != nil {
-		if ent.IsNotFound(err) {
-			return TokenPair{}, ErrInvalidCredentials
-		}
 		return TokenPair{}, err
 	}
+	if len(users) == 0 {
+		return TokenPair{}, ErrInvalidCredentials
+	}
+	if len(users) > 1 {
+		return TokenPair{}, ErrAmbiguousIdentity
+	}
+
+	user := users[0]
 
 	if user.Status != "active" {
 		return TokenPair{}, ErrUserInactive
@@ -127,7 +131,7 @@ func (s *Service) Login(ctx context.Context, organizationID uuid.UUID, email, pa
 		return TokenPair{}, ErrInvalidCredentials
 	}
 
-	tokens, refreshID, err := s.tokens.IssuePair(user.ID, organizationID, user.Role)
+	tokens, refreshID, err := s.tokens.IssuePair(user.ID, user.OrganizationID, user.Role)
 	if err != nil {
 		return TokenPair{}, err
 	}

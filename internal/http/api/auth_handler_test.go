@@ -75,9 +75,8 @@ func TestAuthHandler_RegisterAndLogin(t *testing.T) {
 	require.Equal(t, http.StatusCreated, rec.Code)
 
 	loginPayload := map[string]any{
-		"organization_id": orgID.String(),
-		"email":           "user@example.com",
-		"password":        "supersecret",
+		"email":    "user@example.com",
+		"password": "supersecret",
 	}
 	loginBody, _ := json.Marshal(loginPayload)
 
@@ -291,9 +290,8 @@ func TestAuthHandler_LoginWithCookies(t *testing.T) {
 
 	t.Run("login with cookies enabled", func(t *testing.T) {
 		loginPayload := map[string]any{
-			"organization_id": orgID.String(),
-			"email":           "user@cookie.com",
-			"password":        "password123",
+			"email":    "user@cookie.com",
+			"password": "password123",
 		}
 		body, _ := json.Marshal(loginPayload)
 
@@ -308,6 +306,51 @@ func TestAuthHandler_LoginWithCookies(t *testing.T) {
 		cookies := rec.Result().Cookies()
 		require.Len(t, cookies, 2)
 	})
+}
+
+func TestAuthHandler_LoginAmbiguousIdentity(t *testing.T) {
+	client, svc, orgID := setupAuthTest(t)
+	handler := NewAuthHandler(svc)
+	r := chi.NewRouter()
+	handler.Mount(r)
+
+	ctx := context.Background()
+	_, err := svc.Register(ctx, auth.RegisterInput{
+		OrganizationID: orgID,
+		Email:          "shared@login.com",
+		Password:       "password123",
+	})
+	require.NoError(t, err)
+
+	otherOrg, err := client.Organization.Create().
+		SetName("Other").
+		SetSlug("other").
+		Save(ctx)
+	require.NoError(t, err)
+
+	_, err = svc.Register(ctx, auth.RegisterInput{
+		OrganizationID: otherOrg.ID,
+		Email:          "shared@login.com",
+		Password:       "password123",
+	})
+	require.NoError(t, err)
+
+	payload := map[string]any{
+		"email":    "shared@login.com",
+		"password": "password123",
+	}
+	body, _ := json.Marshal(payload)
+
+	req := httptest.NewRequest(http.MethodPost, "/login", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+
+	r.ServeHTTP(rec, req)
+	require.Equal(t, http.StatusConflict, rec.Code)
+
+	var resp map[string]string
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &resp))
+	require.Equal(t, "plusieurs organisations associées à ce compte, contactez votre administrateur", resp["error"])
 }
 
 func TestAuthHandler_RefreshWithCookie(t *testing.T) {
@@ -326,7 +369,7 @@ func TestAuthHandler_RefreshWithCookie(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	tokens, err := svc.Login(ctx, orgID, "user@refresh.com", "password123")
+	tokens, err := svc.Login(ctx, "user@refresh.com", "password123")
 	require.NoError(t, err)
 
 	t.Run("refresh with token in cookie", func(t *testing.T) {
@@ -396,7 +439,7 @@ func TestAuthHandler_MeAndLogout(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	tokens, err := svc.Login(ctx, orgID, "learner@example.com", "supersecret")
+	tokens, err := svc.Login(ctx, "learner@example.com", "supersecret")
 	require.NoError(t, err)
 
 	t.Run("missing token returns unauthorized", func(t *testing.T) {
