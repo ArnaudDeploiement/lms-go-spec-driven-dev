@@ -33,6 +33,7 @@ import {
   FileStack,
   UploadCloud,
   Building2,
+  ArrowLeft,
 } from "lucide-react";
 
 const baseNavItems = [
@@ -41,6 +42,7 @@ const baseNavItems = [
   { id: "learners", label: "Apprenants", icon: Users },
   { id: "enrollments", label: "Inscriptions", icon: Layers },
   { id: "content", label: "Contenus", icon: FileStack },
+  { id: "back-to-learn", label: "Retour Learn", icon: ArrowLeft, href: "/learn" },
 ];
 
 const moduleTypes = [
@@ -832,7 +834,7 @@ export default function AdminPage() {
                   <CardContent>
                     <form onSubmit={handleCourseSubmit} className="space-y-4">
                       <div className="space-y-2">
-                        <label className="text-xs uppercase tracking-wide text-slate-300">Titre</label>
+                        <label className="text-xs font-semibold uppercase tracking-wide text-slate-100">Titre</label>
                         <Input
                           value={courseForm.title}
                           onChange={(event) =>
@@ -848,7 +850,7 @@ export default function AdminPage() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <label className="text-xs uppercase tracking-wide text-slate-300">Slug</label>
+                        <label className="text-xs font-semibold uppercase tracking-wide text-slate-100">Slug</label>
                         <Input
                           value={courseForm.slug}
                           onChange={(event) => setCourseForm((prev) => ({ ...prev, slug: event.target.value }))}
@@ -858,7 +860,7 @@ export default function AdminPage() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <label className="text-xs uppercase tracking-wide text-slate-300">Description</label>
+                        <label className="text-xs font-semibold uppercase tracking-wide text-slate-100">Description</label>
                         <textarea
                           value={courseForm.description}
                           onChange={(event) => setCourseForm((prev) => ({ ...prev, description: event.target.value }))}
@@ -869,7 +871,7 @@ export default function AdminPage() {
                       </div>
                       <div className="grid gap-4 sm:grid-cols-2">
                         <div className="space-y-2">
-                          <label className="text-xs uppercase tracking-wide text-slate-300">Durée estimée (heures)</label>
+                          <label className="text-xs font-semibold uppercase tracking-wide text-slate-100">Durée estimée (heures)</label>
                           <Input
                             type="number"
                             min={0}
@@ -880,7 +882,7 @@ export default function AdminPage() {
                           />
                         </div>
                         <div className="space-y-2">
-                          <label className="text-xs uppercase tracking-wide text-slate-300">Niveau</label>
+                          <label className="text-xs font-semibold uppercase tracking-wide text-slate-100">Niveau</label>
                           <select
                             value={courseForm.level}
                             onChange={(event) => setCourseForm((prev) => ({ ...prev, level: event.target.value }))}
@@ -894,7 +896,7 @@ export default function AdminPage() {
                       </div>
                       <div className="grid gap-4 sm:grid-cols-2">
                         <div className="space-y-2">
-                          <label className="text-xs uppercase tracking-wide text-slate-300">Visibilité</label>
+                          <label className="text-xs font-semibold uppercase tracking-wide text-slate-100">Visibilité</label>
                           <select
                             value={courseForm.visibility}
                             onChange={(event) => setCourseForm((prev) => ({ ...prev, visibility: event.target.value }))}
@@ -905,7 +907,7 @@ export default function AdminPage() {
                           </select>
                         </div>
                         <div className="space-y-2">
-                          <label className="text-xs uppercase tracking-wide text-slate-300">Tags</label>
+                          <label className="text-xs font-semibold uppercase tracking-wide text-slate-100">Tags</label>
                           <Input
                             value={courseForm.tags}
                             onChange={(event) => setCourseForm((prev) => ({ ...prev, tags: event.target.value }))}
@@ -915,7 +917,7 @@ export default function AdminPage() {
                         </div>
                       </div>
                       <div className="space-y-2">
-                        <label className="text-xs uppercase tracking-wide text-slate-300">Métadonnées (JSON)</label>
+                        <label className="text-xs font-semibold uppercase tracking-wide text-slate-100">Métadonnées (JSON)</label>
                         <textarea
                           value={courseForm.metadata}
                           onChange={(event) => setCourseForm((prev) => ({ ...prev, metadata: event.target.value }))}
@@ -941,7 +943,7 @@ export default function AdminPage() {
                     <CardContent>
                       <form onSubmit={handleModuleSubmit} className="space-y-4">
                         <div className="space-y-2">
-                          <label className="text-xs uppercase tracking-wide text-slate-300">Titre</label>
+                          <label className="text-xs font-semibold uppercase tracking-wide text-slate-100">Titre</label>
                           <Input
                             value={moduleForm.title}
                             onChange={(event) => setModuleForm((prev) => ({ ...prev, title: event.target.value }))}
@@ -951,7 +953,7 @@ export default function AdminPage() {
                           />
                         </div>
                         <div className="space-y-2">
-                          <label className="text-xs uppercase tracking-wide text-slate-300">Type</label>
+                          <label className="text-xs font-semibold uppercase tracking-wide text-slate-100">Type</label>
                           <select
                             value={moduleForm.module_type}
                             onChange={(event) => setModuleForm((prev) => ({ ...prev, module_type: event.target.value }))}
@@ -966,7 +968,7 @@ export default function AdminPage() {
                         </div>
                         <div className="grid gap-4 md:grid-cols-2">
                           <div className="space-y-2">
-                            <label className="text-xs uppercase tracking-wide text-slate-300">Contenu associé</label>
+                            <label className="text-xs font-semibold uppercase tracking-wide text-slate-100">Contenu associé</label>
                             <select
                               value={moduleForm.content_id}
                               onChange={(event) => setModuleForm((prev) => ({ ...prev, content_id: event.target.value }))}
@@ -981,7 +983,7 @@ export default function AdminPage() {
                             </select>
                           </div>
                           <div className="space-y-2">
-                            <label className="text-xs uppercase tracking-wide text-slate-300">Durée (secondes)</label>
+                            <label className="text-xs font-semibold uppercase tracking-wide text-slate-100">Durée (secondes)</label>
                             <Input
                               type="number"
                               min={0}
@@ -993,7 +995,7 @@ export default function AdminPage() {
                           </div>
                         </div>
                         <div className="space-y-2">
-                          <label className="text-xs uppercase tracking-wide text-slate-300">Métadonnées (JSON)</label>
+                          <label className="text-xs font-semibold uppercase tracking-wide text-slate-100">Métadonnées (JSON)</label>
                           <textarea
                             value={moduleForm.data}
                             onChange={(event) => setModuleForm((prev) => ({ ...prev, data: event.target.value }))}
@@ -1088,7 +1090,7 @@ export default function AdminPage() {
                 <CardContent>
                   <form onSubmit={handleUserSubmit} className="space-y-4">
                     <div className="space-y-2">
-                      <label className="text-xs uppercase tracking-wide text-slate-300">Email</label>
+                      <label className="text-xs font-semibold uppercase tracking-wide text-slate-100">Email</label>
                       <Input
                         type="email"
                         value={userForm.email}
@@ -1098,7 +1100,7 @@ export default function AdminPage() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-xs uppercase tracking-wide text-slate-300">Mot de passe</label>
+                      <label className="text-xs font-semibold uppercase tracking-wide text-slate-100">Mot de passe</label>
                       <Input
                         type="password"
                         value={userForm.password}
@@ -1109,7 +1111,7 @@ export default function AdminPage() {
                     </div>
                     <div className="grid gap-4 md:grid-cols-2">
                       <div className="space-y-2">
-                        <label className="text-xs uppercase tracking-wide text-slate-300">Rôle</label>
+                        <label className="text-xs font-semibold uppercase tracking-wide text-slate-100">Rôle</label>
                         <select
                           value={userForm.role}
                           onChange={(event) => setUserForm((prev) => ({ ...prev, role: event.target.value }))}
@@ -1121,7 +1123,7 @@ export default function AdminPage() {
                         </select>
                       </div>
                       <div className="space-y-2">
-                        <label className="text-xs uppercase tracking-wide text-slate-300">Statut</label>
+                        <label className="text-xs font-semibold uppercase tracking-wide text-slate-100">Statut</label>
                         <select
                           value={userForm.status}
                           onChange={(event) => setUserForm((prev) => ({ ...prev, status: event.target.value }))}
@@ -1133,7 +1135,7 @@ export default function AdminPage() {
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <label className="text-xs uppercase tracking-wide text-slate-300">Métadonnées (JSON)</label>
+                      <label className="text-xs font-semibold uppercase tracking-wide text-slate-100">Métadonnées (JSON)</label>
                       <textarea
                         value={userForm.metadata}
                         onChange={(event) => setUserForm((prev) => ({ ...prev, metadata: event.target.value }))}
@@ -1202,7 +1204,7 @@ export default function AdminPage() {
                   <CardContent>
                     <form onSubmit={handleEnrollmentSubmit} className="space-y-4">
                       <div className="space-y-2">
-                        <label className="text-xs uppercase tracking-wide text-slate-300">Cours</label>
+                        <label className="text-xs font-semibold uppercase tracking-wide text-slate-100">Cours</label>
                         <select
                           value={enrollmentForm.course_id}
                           onChange={(event) => setEnrollmentForm((prev) => ({ ...prev, course_id: event.target.value }))}
@@ -1218,7 +1220,7 @@ export default function AdminPage() {
                         </select>
                       </div>
                       <div className="space-y-2">
-                        <label className="text-xs uppercase tracking-wide text-slate-300">Apprenant</label>
+                        <label className="text-xs font-semibold uppercase tracking-wide text-slate-100">Apprenant</label>
                         <select
                           value={enrollmentForm.user_id}
                           onChange={(event) => setEnrollmentForm((prev) => ({ ...prev, user_id: event.target.value }))}
@@ -1234,7 +1236,7 @@ export default function AdminPage() {
                         </select>
                       </div>
                       <div className="space-y-2">
-                        <label className="text-xs uppercase tracking-wide text-slate-300">Groupe</label>
+                        <label className="text-xs font-semibold uppercase tracking-wide text-slate-100">Groupe</label>
                         <select
                           value={enrollmentForm.group_id}
                           onChange={(event) => setEnrollmentForm((prev) => ({ ...prev, group_id: event.target.value }))}
@@ -1249,7 +1251,7 @@ export default function AdminPage() {
                         </select>
                       </div>
                       <div className="space-y-2">
-                        <label className="text-xs uppercase tracking-wide text-slate-300">Métadonnées (JSON)</label>
+                        <label className="text-xs font-semibold uppercase tracking-wide text-slate-100">Métadonnées (JSON)</label>
                         <textarea
                           value={enrollmentForm.metadata}
                           onChange={(event) => setEnrollmentForm((prev) => ({ ...prev, metadata: event.target.value }))}
@@ -1273,7 +1275,7 @@ export default function AdminPage() {
                   <CardContent>
                     <form onSubmit={handleGroupSubmit} className="space-y-4">
                       <div className="space-y-2">
-                        <label className="text-xs uppercase tracking-wide text-slate-300">Nom</label>
+                        <label className="text-xs font-semibold uppercase tracking-wide text-slate-100">Nom</label>
                         <Input
                           value={groupForm.name}
                           onChange={(event) => setGroupForm((prev) => ({ ...prev, name: event.target.value }))}
@@ -1282,7 +1284,7 @@ export default function AdminPage() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <label className="text-xs uppercase tracking-wide text-slate-300">Description</label>
+                        <label className="text-xs font-semibold uppercase tracking-wide text-slate-100">Description</label>
                         <textarea
                           value={groupForm.description}
                           onChange={(event) => setGroupForm((prev) => ({ ...prev, description: event.target.value }))}
@@ -1292,7 +1294,7 @@ export default function AdminPage() {
                       </div>
                       <div className="grid gap-4 md:grid-cols-2">
                         <div className="space-y-2">
-                          <label className="text-xs uppercase tracking-wide text-slate-300">Capacité</label>
+                          <label className="text-xs font-semibold uppercase tracking-wide text-slate-100">Capacité</label>
                           <Input
                             type="number"
                             min={1}
@@ -1302,7 +1304,7 @@ export default function AdminPage() {
                           />
                         </div>
                         <div className="space-y-2">
-                          <label className="text-xs uppercase tracking-wide text-slate-300">Cours lié</label>
+                          <label className="text-xs font-semibold uppercase tracking-wide text-slate-100">Cours lié</label>
                           <select
                             value={groupForm.course_id}
                             onChange={(event) => setGroupForm((prev) => ({ ...prev, course_id: event.target.value }))}
@@ -1318,7 +1320,7 @@ export default function AdminPage() {
                         </div>
                       </div>
                       <div className="space-y-2">
-                        <label className="text-xs uppercase tracking-wide text-slate-300">Métadonnées (JSON)</label>
+                        <label className="text-xs font-semibold uppercase tracking-wide text-slate-100">Métadonnées (JSON)</label>
                         <textarea
                           value={groupForm.metadata}
                           onChange={(event) => setGroupForm((prev) => ({ ...prev, metadata: event.target.value }))}
@@ -1387,7 +1389,7 @@ export default function AdminPage() {
                 <CardContent>
                   <form onSubmit={handleContentSubmit} className="space-y-4">
                     <div className="space-y-2">
-                      <label className="text-xs uppercase tracking-wide text-slate-300">Nom</label>
+                      <label className="text-xs font-semibold uppercase tracking-wide text-slate-100">Nom</label>
                       <Input
                         value={contentForm.name}
                         onChange={(event) => setContentForm((prev) => ({ ...prev, name: event.target.value }))}
@@ -1397,7 +1399,7 @@ export default function AdminPage() {
                     </div>
                     <div className="grid gap-4 md:grid-cols-2">
                       <div className="space-y-2">
-                        <label className="text-xs uppercase tracking-wide text-slate-300">Type MIME</label>
+                        <label className="text-xs font-semibold uppercase tracking-wide text-slate-100">Type MIME</label>
                         <Input
                           value={contentForm.mime_type}
                           onChange={(event) => setContentForm((prev) => ({ ...prev, mime_type: event.target.value }))}
@@ -1406,7 +1408,7 @@ export default function AdminPage() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <label className="text-xs uppercase tracking-wide text-slate-300">Fichier</label>
+                        <label className="text-xs font-semibold uppercase tracking-wide text-slate-100">Fichier</label>
                         <input
                           type="file"
                           onChange={(event) => {
@@ -1426,7 +1428,7 @@ export default function AdminPage() {
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <label className="text-xs uppercase tracking-wide text-slate-300">Métadonnées (JSON)</label>
+                      <label className="text-xs font-semibold uppercase tracking-wide text-slate-100">Métadonnées (JSON)</label>
                       <textarea
                         value={contentForm.metadata}
                         onChange={(event) => setContentForm((prev) => ({ ...prev, metadata: event.target.value }))}
@@ -1510,7 +1512,7 @@ export default function AdminPage() {
                 <CardContent>
                   <form onSubmit={handleOrganizationSubmit} className="space-y-4">
                     <div className="space-y-2">
-                      <label className="text-xs uppercase tracking-wide text-slate-300">Nom</label>
+                      <label className="text-xs font-semibold uppercase tracking-wide text-slate-100">Nom</label>
                       <Input
                         value={organizationForm.name}
                         onChange={(event) => setOrganizationForm((prev) => ({ ...prev, name: event.target.value }))}
@@ -1519,7 +1521,7 @@ export default function AdminPage() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-xs uppercase tracking-wide text-slate-300">Slug</label>
+                      <label className="text-xs font-semibold uppercase tracking-wide text-slate-100">Slug</label>
                       <Input
                         value={organizationForm.slug}
                         onChange={(event) => setOrganizationForm((prev) => ({ ...prev, slug: event.target.value }))}
@@ -1528,7 +1530,7 @@ export default function AdminPage() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-xs uppercase tracking-wide text-slate-300">Paramètres (JSON)</label>
+                      <label className="text-xs font-semibold uppercase tracking-wide text-slate-100">Paramètres (JSON)</label>
                       <textarea
                         value={organizationForm.settings}
                         onChange={(event) => setOrganizationForm((prev) => ({ ...prev, settings: event.target.value }))}
@@ -1546,19 +1548,41 @@ export default function AdminPage() {
         </AnimatePresence>
       </main>
 
-      <nav className="glass-nav fixed bottom-8 left-1/2 z-50 flex -translate-x-1/2 items-center gap-4 rounded-full px-6 py-3">
+      <nav className="glass-nav fixed bottom-8 left-1/2 z-50 flex -translate-x-1/2 items-center gap-4 rounded-full border border-slate-800/60 bg-slate-950/70 px-6 py-3 backdrop-blur-xl">
         {navItems.map((item) => {
           const Icon = item.icon;
-          const isActive = activeSection === item.id;
+          const isLink = Boolean(item.href);
+          const isActive = !isLink && activeSection === item.id;
+          const baseClasses = `flex flex-col items-center gap-1 rounded-2xl px-3 py-2 text-xs font-medium transition-all duration-300 ${
+            isActive
+              ? "bg-slate-800/80 text-white shadow-lg shadow-black/30"
+              : isLink
+              ? "border border-cyan-500/20 bg-cyan-500/10 text-cyan-100 hover:border-cyan-400/30 hover:bg-cyan-500/15"
+              : "text-slate-300 hover:text-white hover:bg-slate-800/60"
+          }`;
+
           return (
             <button
               key={item.id}
-              onClick={() => setActiveSection(item.id)}
-              className={`flex flex-col items-center gap-1 rounded-2xl px-3 py-2 text-xs transition-all duration-300 ${
-                isActive ? "bg-white/20 text-white" : "text-slate-300 hover:text-white"
-              }`}
+              type="button"
+              onClick={() => {
+                if (item.href) {
+                  router.push(item.href);
+                  return;
+                }
+                setActiveSection(item.id);
+              }}
+              className={baseClasses}
             >
-              <Icon className={`h-5 w-5 ${isActive ? "text-cyan-300" : "text-slate-400"}`} />
+              <Icon
+                className={`h-5 w-5 ${
+                  isLink
+                    ? "text-cyan-300"
+                    : isActive
+                    ? "text-cyan-300"
+                    : "text-slate-400"
+                }`}
+              />
               {item.label}
             </button>
           );
