@@ -7,4 +7,5 @@ var (
 	ErrInvalidCredentials = errors.New("auth: invalid credentials")
 	ErrUserInactive       = errors.New("auth: user inactive")
 	ErrInvalidToken       = errors.New("auth: invalid token")
+	ErrAmbiguousIdentity  = errors.New("auth: ambiguous identity")
 )
