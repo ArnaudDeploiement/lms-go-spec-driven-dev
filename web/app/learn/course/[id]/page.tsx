@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth/context';
 import { apiClient } from '@/lib/api/client';
+import type { EnrollmentResponse, ProgressResponse } from '@/lib/api/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -43,17 +44,53 @@ interface Course {
   modules?: Module[];
 }
 
-interface ModuleProgress {
-  module_id: string;
-  status: string;
-}
-
-interface Enrollment {
-  id: string;
-  status: string;
+type Enrollment = EnrollmentResponse & {
   progress_pct: number;
-  module_progress?: ModuleProgress[];
-}
+  module_progress?: ProgressResponse[];
+};
+
+const deriveProgressPercentage = ({
+  progressValue,
+  moduleProgress,
+  totalModules,
+}: {
+  progressValue?: number;
+  moduleProgress?: ProgressResponse[];
+  totalModules?: number;
+}) => {
+  if (moduleProgress && moduleProgress.length > 0) {
+    const completed = moduleProgress.filter((module) => module.status === 'completed').length;
+    const denominator = totalModules && totalModules > 0 ? totalModules : moduleProgress.length;
+
+    if (denominator > 0) {
+      return Math.round((completed / denominator) * 100);
+    }
+  }
+
+  if (typeof progressValue === 'number' && !Number.isNaN(progressValue)) {
+    if (progressValue <= 1) {
+      return Math.round(progressValue * 100);
+    }
+
+    return Math.round(progressValue);
+  }
+
+  return 0;
+};
+
+const normalizeEnrollment = (
+  base: EnrollmentResponse,
+  moduleProgress: ProgressResponse[] = [],
+  totalModules?: number,
+): Enrollment => ({
+  ...base,
+  module_progress: moduleProgress,
+  progress_pct: deriveProgressPercentage({
+    progressValue: base.progress,
+    moduleProgress,
+    totalModules,
+  }),
+});
 
 const moduleTypeIcons: Record<string, any> = {
   video: Video,
@@ -94,12 +131,18 @@ export default function CourseDetailPage() {
             organization.id,
             user ? { user_id: user.id } : {}
           );
-          const userEnrollment = enrollments.find((e: any) => e.course_id === courseId);
+          const userEnrollment = enrollments.find((e: EnrollmentResponse) => e.course_id === courseId);
 
           if (userEnrollment) {
             // Fetch detailed progress
             const progress = await apiClient.getProgress(organization.id, userEnrollment.id);
-            setEnrollment({ ...userEnrollment, module_progress: progress });
+            setEnrollment(
+              normalizeEnrollment(
+                userEnrollment,
+                progress,
+                courseData.modules?.length ?? progress.length,
+              ),
+            );
           }
         } catch (error) {
           console.error('Error fetching enrollment:', error);
@@ -124,7 +167,9 @@ export default function CourseDetailPage() {
         user_id: user.id,
       });
       const progress = await apiClient.getProgress(organization.id, created.id);
-      setEnrollment({ ...created, module_progress: progress });
+      setEnrollment(
+        normalizeEnrollment(created, progress, course?.modules?.length ?? progress.length),
+      );
     } catch (error) {
       console.error('Error enrolling:', error);
     } finally {
@@ -145,7 +190,19 @@ export default function CourseDetailPage() {
       try {
         await apiClient.startModule(organization.id, enrollment.id, module.id);
         const fresh = await apiClient.getProgress(organization.id, enrollment.id);
-        setEnrollment((prev) => prev ? { ...prev, module_progress: fresh } : prev);
+        setEnrollment((prev) =>
+          prev
+            ? {
+                ...prev,
+                module_progress: fresh,
+                progress_pct: deriveProgressPercentage({
+                  progressValue: prev.progress,
+                  moduleProgress: fresh,
+                  totalModules: course?.modules?.length ?? fresh.length,
+                }),
+              }
+            : prev,
+        );
       } catch (error) {
         console.error('Error updating progress:', error);
       }
