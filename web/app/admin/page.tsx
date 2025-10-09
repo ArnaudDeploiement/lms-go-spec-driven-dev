@@ -1,26 +1,29 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import {
   apiClient,
-  CourseResponse,
-  ModuleResponse,
-  UserResponse,
-  EnrollmentResponse,
-  GroupResponse,
-  ContentResponse,
-  OrganizationResponse,
+  type ContentResponse,
+  type CourseResponse,
+  type EnrollmentResponse,
+  type GroupResponse,
+  type ModuleResponse,
+  type OrganizationResponse,
+  type UserResponse,
 } from "@/lib/api/client";
 import { useAuth } from "@/lib/auth/context";
 import { Navigation } from "@/components/layout/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  LayoutGrid,
+  ArrowLeft,
+  BookOpen,
+  Building2,
+  FileStack,
   GraduationCap,
-  Users,
   Layers,
   LineChart,
   PlusCircle,
@@ -29,8 +32,7 @@ import {
   UserPlus,
   FileStack,
   UploadCloud,
-  Building2,
-  ArrowLeft,
+  Users,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -47,7 +49,7 @@ const backToLearnNav = { id: "back-to-learn", label: "Retour Learn", icon: Arrow
 const moduleTypes = [
   { value: "video", label: "Vidéo" },
   { value: "article", label: "Article" },
-  { value: "pdf", label: "Document" },
+  { value: "pdf", label: "PDF" },
   { value: "quiz", label: "Quiz" },
   { value: "scorm", label: "SCORM" },
 ];
@@ -127,10 +129,9 @@ function slugify(value: string) {
 function parseJsonInput(input: string): Record<string, any> | undefined {
   if (!input.trim()) return undefined;
   try {
-    return JSON.parse(input);
+    return JSON.parse(value);
   } catch (error) {
-    console.error("Invalid JSON", error);
-    throw new Error("Le champ métadonnées doit contenir du JSON valide");
+    throw new Error("Le JSON fourni est invalide");
   }
 }
 
@@ -183,31 +184,36 @@ async function uploadFileToSignedUrl(url: string, file: File, onProgress: (value
 
 export default function AdminPage() {
   const router = useRouter();
-  const { user, organization, isAuthenticated, isLoading: isAuthLoading } = useAuth();
+  const { session, user, organization, loading } = useAuth();
 
-  const [activeSection, setActiveSection] = useState<string>("overview");
-  const [isLoading, setIsLoading] = useState(true);
-  const [feedback, setFeedback] = useState<string | null>(null);
+  const [isBootstrapping, setIsBootstrapping] = useState(true);
+  const [isLoadingModules, setIsLoadingModules] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState("overview");
 
   const [courses, setCourses] = useState<CourseResponse[]>([]);
-  const [selectedCourse, setSelectedCourse] = useState<CourseResponse | null>(null);
   const [modules, setModules] = useState<ModuleResponse[]>([]);
   const [users, setUsers] = useState<UserResponse[]>([]);
-  const [enrollments, setEnrollments] = useState<EnrollmentResponse[]>([]);
   const [groups, setGroups] = useState<GroupResponse[]>([]);
+  const [enrollments, setEnrollments] = useState<EnrollmentResponse[]>([]);
   const [contents, setContents] = useState<ContentResponse[]>([]);
   const [organizations, setOrganizations] = useState<OrganizationResponse[]>([]);
 
-  const [isSubmittingCourse, setIsSubmittingCourse] = useState(false);
-  const [isSubmittingModule, setIsSubmittingModule] = useState(false);
-  const [isSubmittingUser, setIsSubmittingUser] = useState(false);
-  const [isSubmittingEnrollment, setIsSubmittingEnrollment] = useState(false);
-  const [isSubmittingGroup, setIsSubmittingGroup] = useState(false);
-  const [isSubmittingContent, setIsSubmittingContent] = useState(false);
-  const [isSubmittingOrganization, setIsSubmittingOrganization] = useState(false);
-  const [lastUploadLink, setLastUploadLink] = useState<string | null>(null);
-  const [uploadProgress, setUploadProgress] = useState(0);
+  const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
+  const [selectedModuleId, setSelectedModuleId] = useState<string | null>(null);
+
+  const [courseForm, setCourseForm] = useState<CourseFormState>(emptyCourseForm);
+  const [moduleForm, setModuleForm] = useState<ModuleFormState>(emptyModuleForm);
+  const [userForm, setUserForm] = useState<UserFormState>(emptyUserForm);
+  const [groupForm, setGroupForm] = useState<GroupFormState>(emptyGroupForm);
+  const [contentForm, setContentForm] = useState<ContentFormState>(emptyContentForm);
+
+  const [isSavingCourse, setIsSavingCourse] = useState(false);
+  const [isSavingModule, setIsSavingModule] = useState(false);
+  const [isSavingUser, setIsSavingUser] = useState(false);
+  const [isSavingGroup, setIsSavingGroup] = useState(false);
+  const [isSavingContent, setIsSavingContent] = useState(false);
 
   const [courseForm, setCourseForm] = useState<CourseFormState>(createEmptyCourseForm());
   const [courseEditForm, setCourseEditForm] = useState<CourseEditFormState>(createEmptyCourseEditForm());
@@ -247,71 +253,114 @@ export default function AdminPage() {
     metadata: "",
   });
   const [contentFile, setContentFile] = useState<File | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [lastUploadUrl, setLastUploadUrl] = useState<string | null>(null);
 
-  const [organizationForm, setOrganizationForm] = useState({
-    name: "",
-    slug: "",
-    settings: "",
-  });
+  const selectedCourse = useMemo(
+    () => courses.find((course) => course.id === selectedCourseId) ?? null,
+    [courses, selectedCourseId],
+  );
+
+  const selectedModule = useMemo(
+    () => modules.find((module) => module.id === selectedModuleId) ?? null,
+    [modules, selectedModuleId],
+  );
 
   useEffect(() => {
-    if (!isAuthLoading && !isAuthenticated) {
-      router.push("/auth");
+    if (!loading) {
+      if (!session) {
+        router.replace("/auth");
+        return;
+      }
+      if (organization) {
+        void loadWorkspace();
+      } else {
+        setIsBootstrapping(false);
+      }
     }
-  }, [isAuthenticated, isAuthLoading, router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, session, organization?.id]);
 
   useEffect(() => {
-    if (!organization || !isAuthenticated) return;
+    if (selectedCourseId && organization) {
+      void loadModules(selectedCourseId, organization.id);
+    } else {
+      setModules([]);
+      setSelectedModuleId(null);
+    }
+  }, [selectedCourseId, organization]);
 
-    const loadData = async () => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const [coursesData, usersData, enrollmentsData, groupsData, contentsData] = await Promise.all([
-          apiClient.getCourses(organization.id),
-          apiClient.listUsers(organization.id),
-          apiClient.getEnrollments(organization.id),
-          apiClient.listGroups(organization.id),
-          apiClient.listContents(organization.id),
-        ]);
+  const loadWorkspace = async () => {
+    if (!organization) return;
+    setIsBootstrapping(true);
+    setError(null);
+    try {
+      const [coursesData, usersData, groupsData, enrollmentsData, contentsData] = await Promise.all([
+        apiClient.getCourses(organization.id),
+        apiClient.listUsers(organization.id),
+        apiClient.listGroups(organization.id),
+        apiClient.getEnrollments(organization.id),
+        apiClient.listContents(organization.id),
+      ]);
 
-        setCourses(coursesData);
-        setUsers(usersData);
-        setEnrollments(enrollmentsData);
-        setGroups(groupsData);
-        setContents(contentsData);
+      setCourses(coursesData);
+      setUsers(usersData);
+      setGroups(groupsData);
+      setEnrollments(enrollmentsData);
+      setContents(contentsData);
 
-        if (coursesData.length > 0) {
-          setSelectedCourse(coursesData[0]);
-        }
-
-        if (user?.role === "super_admin") {
-          const orgs = await apiClient.listOrganizations();
-          setOrganizations(orgs);
-        }
-      } catch (err: any) {
-        console.error("Dashboard loading error", err);
-        setError(err?.error || "Impossible de charger les données du LMS");
-      } finally {
-        setIsLoading(false);
+      if (coursesData.length > 0) {
+        setSelectedCourseId(coursesData[0].id);
+        setCourseForm({
+          title: coursesData[0].title,
+          slug: coursesData[0].slug,
+          description: coursesData[0].description,
+          metadata: coursesData[0].metadata ? JSON.stringify(coursesData[0].metadata, null, 2) : "",
+        });
+      } else {
+        setSelectedCourseId(null);
+        setCourseForm(emptyCourseForm);
       }
-    };
 
-    loadData();
-  }, [organization, isAuthenticated, user]);
-
-  useEffect(() => {
-    if (!organization || !selectedCourse) return;
-    const loadModules = async () => {
-      try {
-        const data = await apiClient.listModules(organization.id, selectedCourse.id);
-        setModules(data);
-      } catch (err) {
-        console.error("Module loading error", err);
+      if (user?.role === "super_admin") {
+        const orgs = await apiClient.listOrganizations();
+        setOrganizations(orgs);
       }
-    };
-    loadModules();
-  }, [organization, selectedCourse]);
+    } catch (err: any) {
+      console.error(err);
+      setError(err?.error || "Impossible de charger l'espace administrateur");
+    } finally {
+      setIsBootstrapping(false);
+    }
+  };
+
+  const loadModules = async (courseId: string, orgId: string) => {
+    setIsLoadingModules(true);
+    setError(null);
+    try {
+      const moduleData = await apiClient.listModules(orgId, courseId);
+      setModules(moduleData);
+      if (moduleData.length > 0) {
+        setSelectedModuleId(moduleData[0].id);
+        const module = moduleData[0];
+        setModuleForm({
+          title: module.title,
+          module_type: module.module_type,
+          content_id: module.content_id || "",
+          duration_seconds: module.duration_seconds ? String(module.duration_seconds) : "",
+          data: module.data ? JSON.stringify(module.data, null, 2) : "",
+        });
+      } else {
+        setSelectedModuleId(null);
+        setModuleForm(emptyModuleForm);
+      }
+    } catch (err: any) {
+      console.error(err);
+      setError(err?.error || "Impossible de charger les modules");
+    } finally {
+      setIsLoadingModules(false);
+    }
+  };
 
   useEffect(() => {
     if (!selectedCourse) {
@@ -359,25 +408,40 @@ export default function AdminPage() {
     const publishedCourses = courses.filter((c) => c.status === "published").length;
     const progressPercentage = total === 0 ? 0 : Math.round((completed / total) * 100);
 
+  const stats = useMemo(() => {
+    const publishedCourses = courses.filter((course) => course.status === "published").length;
+    const draftCourses = courses.length - publishedCourses;
+    const activeLearners = enrollments.filter((enrollment) => enrollment.status === "active").length;
+    const completedCourses = enrollments.filter((enrollment) => enrollment.status === "completed").length;
     return {
-      completed,
-      total,
-      activeLearners,
       publishedCourses,
-      progressPercentage,
+      draftCourses,
+      activeLearners,
+      completedCourses,
     };
-  }, [courses, enrollments, users]);
+  }, [courses, enrollments]);
 
-  const navItems = useMemo(() => {
-    if (user?.role === "super_admin") {
-      return [...baseNavItems, { id: "organizations", label: "Organisations", icon: Building2 }];
-    }
-    return baseNavItems;
-  }, [user]);
+  const showFeedback = (message: string) => {
+    setFeedback(message);
+    setTimeout(() => setFeedback(null), 4000);
+  };
 
-  const handleCourseSubmit = async (event: React.FormEvent) => {
+  const handleSelectCourse = (course: CourseResponse) => {
+    setSelectedCourseId(course.id);
+    setCourseForm({
+      title: course.title,
+      slug: course.slug,
+      description: course.description,
+      metadata: course.metadata ? JSON.stringify(course.metadata, null, 2) : "",
+    });
+  };
+
+  const handleCourseSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!organization) return;
+
+    setIsSavingCourse(true);
+    setError(null);
     try {
       setIsSubmittingCourse(true);
       setError(null);
@@ -405,9 +469,10 @@ export default function AdminPage() {
       setSelectedCourse(newCourse);
       setFeedback(`Cours "${newCourse.title}" créé avec succès`);
     } catch (err: any) {
-      setError(err?.error || "Impossible de créer le cours");
+      console.error(err);
+      setError(err?.error || "Impossible d'enregistrer le cours");
     } finally {
-      setIsSubmittingCourse(false);
+      setIsSavingCourse(false);
     }
   };
 
@@ -522,173 +587,117 @@ export default function AdminPage() {
   const handlePublishCourse = async (course: CourseResponse) => {
     if (!organization) return;
     try {
-      await apiClient.publishCourse(organization.id, course.id);
-      setCourses((prev) => prev.map((c) => (c.id === course.id ? { ...c, status: "published" } : c)));
-      setFeedback(`Cours "${course.title}" publié`);
+      await apiClient.publishCourse(organization.id, courseId);
+      setCourses((prev) =>
+        prev.map((course) =>
+          course.id === courseId ? { ...course, status: "published", published_at: new Date().toISOString() } : course,
+        ),
+      );
+      showFeedback("Cours publié");
     } catch (err: any) {
+      console.error(err);
       setError(err?.error || "Impossible de publier le cours");
     }
   };
 
-  const handleUnpublishCourse = async (course: CourseResponse) => {
+  const handleUnpublishCourse = async (courseId: string) => {
     if (!organization) return;
     try {
-      await apiClient.unpublishCourse(organization.id, course.id);
-      setCourses((prev) => prev.map((c) => (c.id === course.id ? { ...c, status: "draft" } : c)));
-      setFeedback(`Cours "${course.title}" remis en brouillon`);
+      await apiClient.unpublishCourse(organization.id, courseId);
+      setCourses((prev) => prev.map((course) => (course.id === courseId ? { ...course, status: "draft" } : course)));
+      showFeedback("Cours dépublié");
     } catch (err: any) {
+      console.error(err);
       setError(err?.error || "Impossible de dépublier le cours");
     }
   };
 
-  const handleArchiveCourse = async (course: CourseResponse) => {
+  const handleArchiveCourse = async (courseId: string) => {
     if (!organization) return;
     try {
-      await apiClient.archiveCourse(organization.id, course.id);
-      setCourses((prev) => prev.filter((c) => c.id !== course.id));
-      if (selectedCourse?.id === course.id) {
-        setSelectedCourse(null);
+      await apiClient.archiveCourse(organization.id, courseId);
+      setCourses((prev) => prev.filter((course) => course.id !== courseId));
+      if (selectedCourseId === courseId) {
+        setSelectedCourseId(null);
+        setModules([]);
       }
-      setFeedback(`Cours "${course.title}" archivé`);
+      showFeedback("Cours archivé");
     } catch (err: any) {
+      console.error(err);
       setError(err?.error || "Impossible d'archiver le cours");
     }
   };
 
-  const handleUserSubmit = async (event: React.FormEvent) => {
+  const handleModuleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!organization || !selectedCourseId) return;
+
+    setIsSavingModule(true);
+    setError(null);
+    try {
+      const payload = {
+        title: moduleForm.title,
+        module_type: moduleForm.module_type,
+        content_id: moduleForm.content_id || undefined,
+        duration_seconds: moduleForm.duration_seconds ? Number(moduleForm.duration_seconds) : undefined,
+        data: moduleForm.data ? parseJsonInput(moduleForm.data) : undefined,
+      };
+
+      let module: ModuleResponse;
+      if (selectedModuleId) {
+        module = await apiClient.updateModule(organization.id, selectedModuleId, payload);
+        setModules((prev) => prev.map((item) => (item.id === module.id ? module : item)));
+      } else {
+        module = await apiClient.createModule(organization.id, selectedCourseId, payload);
+        setModules((prev) => [module, ...prev]);
+      }
+
+      setSelectedModuleId(module.id);
+      showFeedback(`Module "${module.title}" enregistré`);
+    } catch (err: any) {
+      console.error(err);
+      setError(err?.error || "Impossible d'enregistrer le module");
+    } finally {
+      setIsSavingModule(false);
+    }
+  };
+
+  const handleDeleteModule = async (moduleId: string) => {
     if (!organization) return;
     try {
-      setIsSubmittingUser(true);
-      const metadata = parseJsonInput(userForm.metadata || "");
+      await apiClient.deleteModule(organization.id, moduleId);
+      setModules((prev) => prev.filter((module) => module.id !== moduleId));
+      if (selectedModuleId === moduleId) {
+        setSelectedModuleId(null);
+        setModuleForm(emptyModuleForm);
+      }
+      showFeedback("Module supprimé");
+    } catch (err: any) {
+      console.error(err);
+      setError(err?.error || "Impossible de supprimer le module");
+    }
+  };
+
+  const handleUserSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!organization) return;
+
+    setIsSavingUser(true);
+    setError(null);
+    try {
       const created = await apiClient.createUser(organization.id, {
         email: userForm.email,
         password: userForm.password,
         role: userForm.role,
-        status: userForm.status,
-        metadata,
       });
       setUsers((prev) => [created, ...prev]);
-      setUserForm({ email: "", password: "", role: "learner", status: "active", metadata: "" });
-      setFeedback(`Utilisateur ${created.email} créé`);
+      setUserForm(emptyUserForm);
+      showFeedback("Utilisateur créé");
     } catch (err: any) {
+      console.error(err);
       setError(err?.error || "Impossible de créer l'utilisateur");
     } finally {
-      setIsSubmittingUser(false);
-    }
-  };
-
-  const handleEnrollmentSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!organization) return;
-    try {
-      setIsSubmittingEnrollment(true);
-      const metadata = parseJsonInput(enrollmentForm.metadata || "");
-      const created = await apiClient.createEnrollment(organization.id, {
-        course_id: enrollmentForm.course_id,
-        user_id: enrollmentForm.user_id,
-        group_id: enrollmentForm.group_id ? enrollmentForm.group_id : undefined,
-        metadata,
-      });
-      setEnrollments((prev) => [created, ...prev]);
-      setEnrollmentForm({ course_id: "", user_id: "", group_id: "", metadata: "" });
-      setFeedback("Inscription créée");
-    } catch (err: any) {
-      setError(err?.error || "Impossible de créer l'inscription");
-    } finally {
-      setIsSubmittingEnrollment(false);
-    }
-  };
-
-  const handleGroupSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!organization) return;
-    try {
-      setIsSubmittingGroup(true);
-      const metadata = parseJsonInput(groupForm.metadata || "");
-      const capacity = groupForm.capacity ? Number(groupForm.capacity) : undefined;
-      const created = await apiClient.createGroup(organization.id, {
-        name: groupForm.name,
-        description: groupForm.description,
-        capacity,
-        course_id: groupForm.course_id ? groupForm.course_id : undefined,
-        metadata,
-      });
-      setGroups((prev) => [created, ...prev]);
-      setGroupForm({ name: "", description: "", capacity: "", course_id: "", metadata: "" });
-      setFeedback(`Groupe ${created.name} créé`);
-    } catch (err: any) {
-      setError(err?.error || "Impossible de créer le groupe");
-    } finally {
-      setIsSubmittingGroup(false);
-    }
-  };
-
-  const handleContentSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!organization) return;
-    if (!contentFile) {
-      setError("Veuillez sélectionner un fichier à téléverser");
-      return;
-    }
-    try {
-      setIsSubmittingContent(true);
-      setError(null);
-      setFeedback(null);
-      setUploadProgress(0);
-      const metadata = parseJsonInput(contentForm.metadata || "") || {};
-      const response = await apiClient.createContent(organization.id, {
-        name: contentForm.name || contentFile.name,
-        mime_type: contentForm.mime_type || contentFile.type || "application/octet-stream",
-        size_bytes: contentFile.size,
-        metadata,
-      });
-      await uploadFileToSignedUrl(response.upload_url, contentFile, setUploadProgress);
-      await apiClient.finalizeContent(organization.id, response.content.id, {});
-      setContents((prev) => [response.content, ...prev]);
-      setContentForm({ name: "", mime_type: "application/pdf", metadata: "" });
-      setContentFile(null);
-      setLastUploadLink(response.upload_url);
-      setFeedback(`Contenu "${response.content.name}" téléversé avec succès.`);
-    } catch (err: any) {
-      setError(err?.error || err?.message || "Impossible de créer le contenu");
-    } finally {
-      setIsSubmittingContent(false);
-    }
-  };
-
-  const handleDownloadLink = async (contentId: string) => {
-    if (!organization) return;
-    try {
-      const link = await apiClient.getDownloadLink(organization.id, contentId);
-      setFeedback(`Lien de téléchargement généré (expire ${new Date(link.expires_at).toLocaleString()})`);
-      if (typeof window !== "undefined") {
-        window.open(link.download_url, "_blank");
-      }
-    } catch (err: any) {
-      setError(err?.error || "Impossible de récupérer le lien de téléchargement");
-    }
-  };
-
-  const handleArchiveContent = async (contentId: string) => {
-    if (!organization) return;
-    try {
-      await apiClient.archiveContent(organization.id, contentId);
-      setContents((prev) => prev.filter((item) => item.id !== contentId));
-      setFeedback("Contenu archivé");
-    } catch (err: any) {
-      setError(err?.error || "Impossible d'archiver le contenu");
-    }
-  };
-
-  const handleFinalizeContent = async (contentId: string) => {
-    if (!organization) return;
-    try {
-      const finalized = await apiClient.finalizeContent(organization.id, contentId, {});
-      setContents((prev) => prev.map((item) => (item.id === finalized.id ? finalized : item)));
-      setFeedback(`Contenu "${finalized.name}" finalisé`);
-    } catch (err: any) {
-      setError(err?.error || "Impossible de finaliser le contenu");
+      setIsSavingUser(false);
     }
   };
 
@@ -697,9 +706,10 @@ export default function AdminPage() {
     try {
       await apiClient.activateUser(organization.id, userId);
       setUsers((prev) => prev.map((item) => (item.id === userId ? { ...item, status: "active" } : item)));
-      setFeedback("Utilisateur réactivé");
+      showFeedback("Utilisateur activé");
     } catch (err: any) {
-      setError(err?.error || "Impossible de réactiver l'utilisateur");
+      console.error(err);
+      setError(err?.error || "Impossible d'activer l'utilisateur");
     }
   };
 
@@ -708,9 +718,32 @@ export default function AdminPage() {
     try {
       await apiClient.deactivateUser(organization.id, userId);
       setUsers((prev) => prev.map((item) => (item.id === userId ? { ...item, status: "inactive" } : item)));
-      setFeedback("Utilisateur désactivé");
+      showFeedback("Utilisateur désactivé");
     } catch (err: any) {
+      console.error(err);
       setError(err?.error || "Impossible de désactiver l'utilisateur");
+    }
+  };
+
+  const handleGroupSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!organization) return;
+
+    setIsSavingGroup(true);
+    setError(null);
+    try {
+      const created = await apiClient.createGroup(organization.id, {
+        name: groupForm.name,
+        description: groupForm.description,
+      });
+      setGroups((prev) => [created, ...prev]);
+      setGroupForm(emptyGroupForm);
+      showFeedback("Groupe créé");
+    } catch (err: any) {
+      console.error(err);
+      setError(err?.error || "Impossible de créer le groupe");
+    } finally {
+      setIsSavingGroup(false);
     }
   };
 
@@ -719,18 +752,84 @@ export default function AdminPage() {
     try {
       await apiClient.cancelEnrollment(organization.id, enrollmentId);
       setEnrollments((prev) => prev.filter((item) => item.id !== enrollmentId));
-      setFeedback("Inscription annulée");
+      showFeedback("Inscription annulée");
     } catch (err: any) {
+      console.error(err);
       setError(err?.error || "Impossible d'annuler l'inscription");
+    }
+  };
+
+  const handleContentSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!organization || !contentFile) {
+      setError("Merci de sélectionner un fichier");
+      return;
+    }
+
+    setIsSavingContent(true);
+    setUploadProgress(0);
+    setError(null);
+    try {
+      const metadata = parseJsonInput(contentForm.metadata || "");
+      const upload = await apiClient.createContent(organization.id, {
+        name: contentForm.name || contentFile.name,
+        mime_type: contentForm.mime_type || contentFile.type,
+        size_bytes: contentFile.size,
+        metadata,
+      });
+
+      setUploadProgress(30);
+      await fetch(upload.upload_url, {
+        method: "PUT",
+        headers: {
+          "Content-Type": contentFile.type || "application/octet-stream",
+        },
+        body: contentFile,
+      });
+
+      setUploadProgress(80);
+      await apiClient.finalizeContent(organization.id, upload.content.id, {
+        name: contentForm.name || contentFile.name,
+        mime_type: contentForm.mime_type || contentFile.type,
+        size_bytes: contentFile.size,
+        metadata,
+      });
+
+      setUploadProgress(100);
+      const updatedContents = await apiClient.listContents(organization.id);
+      setContents(updatedContents);
+      setContentFile(null);
+      setContentForm(emptyContentForm);
+      setLastUploadUrl(upload.upload_url);
+      showFeedback("Contenu téléversé");
+    } catch (err: any) {
+      console.error(err);
+      setError(err?.error || "Impossible de téléverser le contenu");
+    } finally {
+      setIsSavingContent(false);
+      setUploadProgress(0);
+    }
+  };
+
+  const handleArchiveContent = async (contentId: string) => {
+    if (!organization) return;
+    try {
+      await apiClient.archiveContent(organization.id, contentId);
+      setContents((prev) => prev.filter((content) => content.id !== contentId));
+      showFeedback("Contenu archivé");
+    } catch (err: any) {
+      console.error(err);
+      setError(err?.error || "Impossible d'archiver le contenu");
     }
   };
 
   const handleActivateOrganization = async (orgId: string) => {
     try {
       await apiClient.activateOrganization(orgId);
-      setOrganizations((prev) => prev.map((item) => (item.id === orgId ? { ...item, status: "active" } : item)));
-      setFeedback("Organisation activée");
+      setOrganizations((prev) => prev.map((org) => (org.id === orgId ? { ...org, status: "active" } : org)));
+      showFeedback("Organisation activée");
     } catch (err: any) {
+      console.error(err);
       setError(err?.error || "Impossible d'activer l'organisation");
     }
   };
@@ -738,9 +837,10 @@ export default function AdminPage() {
   const handleArchiveOrganization = async (orgId: string) => {
     try {
       await apiClient.archiveOrganization(orgId);
-      setOrganizations((prev) => prev.filter((item) => item.id !== orgId));
-      setFeedback("Organisation archivée");
+      setOrganizations((prev) => prev.filter((org) => org.id !== orgId));
+      showFeedback("Organisation archivée");
     } catch (err: any) {
+      console.error(err);
       setError(err?.error || "Impossible d'archiver l'organisation");
     }
   };
@@ -786,6 +886,10 @@ export default function AdminPage() {
         </div>
       </div>
     );
+  }
+
+  if (!user || !organization) {
+    return null;
   }
 
   return (
@@ -2036,6 +2140,30 @@ export default function AdminPage() {
                         {isSubmittingContent ? "Téléversement…" : "Créer et téléverser"}
                       </Button>
                     </form>
+
+                    <div className="space-y-3">
+                      <p className="text-sm font-semibold text-slate-700">Inscriptions actives</p>
+                      {enrollments.map((enrollment) => (
+                        <div key={enrollment.id} className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm">
+                          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                            <div>
+                              <p className="font-semibold text-slate-900">{enrollment.course_id}</p>
+                              <p className="text-xs text-slate-500">Utilisateur : {enrollment.user_id}</p>
+                              <p className="text-xs text-slate-500">Statut : {enrollment.status}</p>
+                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="border-red-200 text-red-600 hover:bg-red-50"
+                              onClick={() => handleCancelEnrollment(enrollment.id)}
+                            >
+                              Annuler
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                      {enrollments.length === 0 && <p className="text-sm text-slate-500">Aucune inscription en cours.</p>}
+                    </div>
                   </CardContent>
                 </Card>
               </motion.section>
@@ -2090,6 +2218,8 @@ export default function AdminPage() {
                             </Button>
                           </div>
                         </div>
+                        <p className="text-xs text-slate-500">{content.mime_type}</p>
+                        <p className="text-xs text-slate-500">{(content.size_bytes / 1024 / 1024).toFixed(2)} Mo</p>
                       </div>
                     ))}
                     {organizations.length === 0 && (
