@@ -99,6 +99,9 @@ func (s *Service) Create(ctx context.Context, input CreateCourseInput) (*ent.Cou
 func (s *Service) Get(ctx context.Context, orgID, courseID uuid.UUID) (*ent.Course, error) {
 	course, err := s.client.Course.Query().
 		Where(entcourse.IDEQ(courseID), entcourse.OrganizationIDEQ(orgID)).
+		WithModules(func(q *ent.ModuleQuery) {
+			q.Order(entmodule.ByPosition())
+		}).
 		Only(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
