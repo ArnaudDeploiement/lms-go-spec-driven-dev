@@ -1,32 +1,34 @@
 package main
 
 import (
-    "context"
-    "encoding/json"
-    "log"
-    "net/http"
-    "os/signal"
-    "syscall"
-    "time"
+	"context"
+	"encoding/json"
+	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"strings"
+	"syscall"
+	"time"
 
-    "github.com/go-chi/chi/v5"
-    "github.com/go-chi/chi/v5/middleware"
-    "github.com/go-chi/cors"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
 
-    "lms-go/internal/app/config"
-    "lms-go/internal/auth"
-    "lms-go/internal/content"
-    "lms-go/internal/course"
-    "lms-go/internal/enrollment"
-    "lms-go/internal/ent"
-    httpapi "lms-go/internal/http/api"
-    httpmiddleware "lms-go/internal/http/middleware"
-    "lms-go/internal/http/ui"
-    "lms-go/internal/organization"
-    "lms-go/internal/platform/database"
-    "lms-go/internal/platform/storage"
-    "lms-go/internal/progress"
-    "lms-go/internal/user"
+	"lms-go/internal/app/config"
+	"lms-go/internal/auth"
+	"lms-go/internal/content"
+	"lms-go/internal/course"
+	"lms-go/internal/enrollment"
+	"lms-go/internal/ent"
+	httpapi "lms-go/internal/http/api"
+	httpmiddleware "lms-go/internal/http/middleware"
+	"lms-go/internal/http/ui"
+	"lms-go/internal/organization"
+	"lms-go/internal/platform/database"
+	"lms-go/internal/platform/storage"
+	"lms-go/internal/progress"
+	"lms-go/internal/user"
 )
 
 func main() {
@@ -71,13 +73,13 @@ func main() {
 		RefreshTokenTTL: cfg.RefreshTokenTTL,
 	})
 
-    userService := user.NewService(dbClient)
-    contentService := content.NewService(dbClient, storageClient, content.Config{})
-    courseService := course.NewService(dbClient)
-    enrollmentService := enrollment.NewService(dbClient)
-    progressService := progress.NewService(dbClient)
+	userService := user.NewService(dbClient)
+	contentService := content.NewService(dbClient, storageClient, content.Config{})
+	courseService := course.NewService(dbClient)
+	enrollmentService := enrollment.NewService(dbClient)
+	progressService := progress.NewService(dbClient)
 
-    router := newRouter(dbClient, orgService, userService, contentService, courseService, enrollmentService, progressService, authService)
+	router := newRouter(dbClient, orgService, userService, contentService, courseService, enrollmentService, progressService, authService)
 	server := &http.Server{
 		Addr:              cfg.APIAddr,
 		Handler:           router,
@@ -107,15 +109,33 @@ func newRouter(client *ent.Client, orgService *organization.Service, userService
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
+
+	// ---------- CORS ----------
+	// IMPORTANT :
+	// - Avec credentials (cookies), pas de wildcard '*'.
+	// - En dev, autorise explicitement le front (3000).
+	// - En prod, configure ALLOWED_ORIGINS="https://app.mondomaine.com,https://admin.mondomaine.com"
+	allowed := []string{"http://localhost:3000", "http://127.0.0.1:3000"}
+	if env := strings.TrimSpace(os.Getenv("ALLOWED_ORIGINS")); env != "" {
+		parts := strings.Split(env, ",")
+		allowed = allowed[:0]
+		for _, p := range parts {
+			if v := strings.TrimSpace(p); v != "" {
+				allowed = append(allowed, v)
+			}
+		}
+	}
+
 	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   []string{"*"},
+		AllowedOrigins:   allowed,
 		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token", "X-Org-ID"},
 		ExposedHeaders:   []string{"Link"},
-		AllowCredentials: true,
+		AllowCredentials: true, // tu utilises des cookies
 		MaxAge:           300,
 	}))
 
+	// ---------- Routes ----------
 	r.Handle("/static/*", http.StripPrefix("/static/", ui.StaticHandler()))
 	r.Get("/", ui.HomeHandler())
 	r.Get("/healthz", healthHandler)

@@ -50,7 +50,11 @@ class ApiClient {
   private isRefreshing = false;
   private refreshPromise: Promise<void> | null = null;
 
-  constructor(baseUrl: string = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080') {
+  /**
+   * ✅ En dev : tout passe par le proxy Next (/api → http://api:8080)
+   *   → plus besoin de NEXT_PUBLIC_API_URL ni de CORS
+   */
+  constructor(baseUrl: string = '/api') {
     this.baseUrl = baseUrl;
   }
 
@@ -65,7 +69,7 @@ class ApiClient {
 
     const config: RequestInit = {
       ...options,
-      credentials: 'include', // Include cookies
+      credentials: 'include', // include cookies (same-site)
       headers: {
         'Content-Type': 'application/json',
         ...options.headers,
@@ -172,8 +176,6 @@ class ApiClient {
   }
 
   async logout(): Promise<void> {
-    // Clear cookies by calling refresh with invalid token
-    // This will fail but clear the cookies on the server
     try {
       await fetch(`${this.baseUrl}/auth/logout`, {
         method: 'POST',
@@ -183,7 +185,6 @@ class ApiClient {
       // Ignore errors
     }
 
-    // Redirect to login
     if (typeof window !== 'undefined') {
       window.location.href = '/auth/login';
     }
