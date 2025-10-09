@@ -105,6 +105,17 @@ func TestCourseHandler_Modules(t *testing.T) {
 	router.ServeHTTP(listRec, listReq)
 	require.Equal(t, http.StatusOK, listRec.Code)
 
+	courseReq := reqOrg(http.MethodGet, "/"+created.ID.String(), orgID, nil)
+	courseRec := httptest.NewRecorder()
+	router.ServeHTTP(courseRec, courseReq)
+	require.Equal(t, http.StatusOK, courseRec.Code)
+
+	var coursePayload courseResponse
+	require.NoError(t, json.Unmarshal(courseRec.Body.Bytes(), &coursePayload))
+	require.Len(t, coursePayload.Modules, 1)
+	require.Equal(t, mod.ID, coursePayload.Modules[0].ID)
+	require.Equal(t, 0, coursePayload.Modules[0].OrderIndex)
+
 	reorderBody, _ := json.Marshal(map[string]any{"module_ids": []uuid.UUID{mod.ID}})
 	reorderReq := reqOrg(http.MethodPost, "/"+created.ID.String()+"/modules/reorder", orgID, reorderBody)
 	reorderRec := httptest.NewRecorder()

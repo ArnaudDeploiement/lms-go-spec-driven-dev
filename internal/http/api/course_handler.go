@@ -45,20 +45,21 @@ func (h *CourseHandler) Mount(r chi.Router) {
 }
 
 type courseResponse struct {
-	ID          uuid.UUID      `json:"id"`
-	Title       string         `json:"title"`
-	Slug        string         `json:"slug"`
-	Description string         `json:"description"`
-	Status      string         `json:"status"`
-	Version     int            `json:"version"`
-	Metadata    map[string]any `json:"metadata"`
-	PublishedAt *time.Time     `json:"published_at"`
-	CreatedAt   time.Time      `json:"created_at"`
-	UpdatedAt   time.Time      `json:"updated_at"`
+	ID          uuid.UUID        `json:"id"`
+	Title       string           `json:"title"`
+	Slug        string           `json:"slug"`
+	Description string           `json:"description"`
+	Status      string           `json:"status"`
+	Version     int              `json:"version"`
+	Metadata    map[string]any   `json:"metadata"`
+	PublishedAt *time.Time       `json:"published_at"`
+	CreatedAt   time.Time        `json:"created_at"`
+	UpdatedAt   time.Time        `json:"updated_at"`
+	Modules     []moduleResponse `json:"modules,omitempty"`
 }
 
 func toCourseResponse(c *ent.Course) courseResponse {
-	return courseResponse{
+	resp := courseResponse{
 		ID:          c.ID,
 		Title:       c.Title,
 		Slug:        c.Slug,
@@ -70,6 +71,15 @@ func toCourseResponse(c *ent.Course) courseResponse {
 		CreatedAt:   c.CreatedAt,
 		UpdatedAt:   c.UpdatedAt,
 	}
+
+	if modules := c.Edges.Modules; len(modules) > 0 {
+		resp.Modules = make([]moduleResponse, 0, len(modules))
+		for _, m := range modules {
+			resp.Modules = append(resp.Modules, toModuleResponse(m))
+		}
+	}
+
+	return resp
 }
 
 type createCourseRequest struct {
@@ -243,6 +253,7 @@ type moduleResponse struct {
 	ModuleType      string         `json:"module_type"`
 	ContentID       *uuid.UUID     `json:"content_id,omitempty"`
 	Position        int            `json:"position"`
+	OrderIndex      int            `json:"order_index"`
 	DurationSeconds int            `json:"duration_seconds"`
 	Status          string         `json:"status"`
 	Data            map[string]any `json:"data"`
@@ -258,6 +269,7 @@ func toModuleResponse(m *ent.Module) moduleResponse {
 		ModuleType:      m.ModuleType,
 		ContentID:       m.ContentID,
 		Position:        m.Position,
+		OrderIndex:      m.Position,
 		DurationSeconds: m.DurationSeconds,
 		Status:          m.Status,
 		Data:            m.Data,
