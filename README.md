@@ -34,6 +34,7 @@ Variables clés du fichier `.env` :
 - `DATABASE_URL` : chaîne de connexion PostgreSQL utilisée par l'API et les workers.
 - `JWT_SECRET` : clé de signature JWT (changer la valeur par défaut avant de déployer).
 - `ACCESS_TOKEN_TTL` et `REFRESH_TOKEN_TTL` : durées de vie des tokens d'accès et de rafraîchissement.
+- `NEXT_API_PROXY_TARGET` : URL utilisée par le proxy Next.js pour joindre l'API (ex. `http://localhost:8080` en dev, `http://api:8080` dans Docker).
 - `MINIO_ENDPOINT`, `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD`, `MINIO_BUCKET`, `MINIO_USE_SSL` : configuration stockage objets (MinIO/S3).
 - `MINIO_PUBLIC_ENDPOINT` : hôte public utilisé pour générer les URL pré-signées accessibles depuis le navigateur (ex. `http://localhost:9000`).
 - `MINIO_PUBLIC_CONSOLE_ENDPOINT` : URL publique de la console MinIO (ex. `http://localhost:9001`) utilisée pour les redirections du navigateur.
