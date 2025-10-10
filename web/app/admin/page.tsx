@@ -37,13 +37,13 @@ import {
 const fieldClass =
   "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60";
 
-const moduleTypes = [
-  { value: "video", label: "Vidéo" },
-  { value: "article", label: "Article" },
-  { value: "pdf", label: "PDF" },
-  { value: "quiz", label: "Quiz" },
-  { value: "scorm", label: "SCORM" },
-];
+const moduleTypeLabels: Record<string, string> = {
+  video: "Vidéo",
+  article: "Article",
+  pdf: "PDF",
+  quiz: "Quiz",
+  scorm: "SCORM",
+};
 
 type CourseFormState = {
   title: string;
@@ -54,14 +54,6 @@ type CourseFormState = {
   level: string;
   visibility: string;
   metadata: string;
-};
-
-type ModuleFormState = {
-  title: string;
-  module_type: string;
-  content_id: string;
-  duration_seconds: string;
-  data: string;
 };
 
 type UserFormState = {
@@ -105,13 +97,6 @@ const createEmptyCourseForm = (): CourseFormState => ({
   metadata: "",
 });
 
-const createEmptyModuleForm = (): ModuleFormState => ({
-  title: "",
-  module_type: moduleTypes[0]?.value ?? "video",
-  content_id: "",
-  duration_seconds: "",
-  data: "",
-});
 
 const emptyUserForm: UserFormState = {
   email: "",
@@ -232,12 +217,8 @@ export default function AdminPage() {
   const [organizations, setOrganizations] = useState<OrganizationResponse[]>([]);
 
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
-  const [selectedModuleId, setSelectedModuleId] = useState<string | null>(null);
-  const [editingModule, setEditingModule] = useState<ModuleResponse | null>(null);
 
   const [courseForm, setCourseForm] = useState<CourseFormState>(createEmptyCourseForm());
-  const [moduleForm, setModuleForm] = useState<ModuleFormState>(createEmptyModuleForm());
-  const [moduleEditForm, setModuleEditForm] = useState<ModuleFormState>(createEmptyModuleForm());
   const [userForm, setUserForm] = useState<UserFormState>(emptyUserForm);
   const [groupForm, setGroupForm] = useState<GroupFormState>(emptyGroupForm);
   const [enrollmentForm, setEnrollmentForm] = useState<EnrollmentFormState>(emptyEnrollmentForm);
@@ -249,8 +230,6 @@ export default function AdminPage() {
   const [lastUploadUrl, setLastUploadUrl] = useState<string | null>(null);
 
   const [isSavingCourse, setIsSavingCourse] = useState(false);
-  const [isSavingModule, setIsSavingModule] = useState(false);
-  const [isUpdatingModule, setIsUpdatingModule] = useState(false);
   const [isSavingUser, setIsSavingUser] = useState(false);
   const [isSavingGroup, setIsSavingGroup] = useState(false);
   const [isSavingEnrollment, setIsSavingEnrollment] = useState(false);
@@ -260,11 +239,6 @@ export default function AdminPage() {
   const selectedCourse = useMemo(
     () => courses.find((course) => course.id === selectedCourseId) ?? null,
     [courses, selectedCourseId],
-  );
-
-  const selectedModule = useMemo(
-    () => modules.find((module) => module.id === selectedModuleId) ?? null,
-    [modules, selectedModuleId],
   );
 
   useEffect(() => {
@@ -285,7 +259,6 @@ export default function AdminPage() {
   useEffect(() => {
     if (!organization || !selectedCourseId) {
       setModules([]);
-      setSelectedModuleId(null);
       return;
     }
 
@@ -295,7 +268,6 @@ export default function AdminPage() {
       .listModules(organization.id, selectedCourseId)
       .then((moduleData) => {
         setModules(moduleData);
-        setSelectedModuleId(moduleData[0]?.id ?? null);
       })
       .catch((err: any) => {
         console.error(err);
@@ -327,36 +299,6 @@ export default function AdminPage() {
       metadata: JSON.stringify(metadata, null, 2),
     });
   }, [selectedCourse]);
-
-  useEffect(() => {
-    if (!selectedModule) {
-      setModuleForm((prev) => ({ ...createEmptyModuleForm(), module_type: prev.module_type }));
-      return;
-    }
-
-    setModuleForm({
-      title: selectedModule.title,
-      module_type: selectedModule.module_type,
-      content_id: selectedModule.content_id ?? "",
-      duration_seconds: selectedModule.duration_seconds ? String(selectedModule.duration_seconds) : "",
-      data: selectedModule.data ? JSON.stringify(selectedModule.data, null, 2) : "",
-    });
-  }, [selectedModule]);
-
-  useEffect(() => {
-    if (!editingModule) {
-      setModuleEditForm(createEmptyModuleForm());
-      return;
-    }
-
-    setModuleEditForm({
-      title: editingModule.title,
-      module_type: editingModule.module_type,
-      content_id: editingModule.content_id ?? "",
-      duration_seconds: editingModule.duration_seconds ? String(editingModule.duration_seconds) : "",
-      data: editingModule.data ? JSON.stringify(editingModule.data, null, 2) : "",
-    });
-  }, [editingModule]);
 
   const stats = useMemo(() => {
     const publishedCourses = courses.filter((course) => course.status === "published").length;
@@ -396,11 +338,7 @@ export default function AdminPage() {
       setEnrollments(enrollmentsData);
       setContents(contentsData);
 
-      if (coursesData.length > 0) {
-        setSelectedCourseId(coursesData[0].id);
-      } else {
-        setSelectedCourseId(null);
-      }
+      setSelectedCourseId(null);
 
       if (user?.role === "super_admin") {
         const orgs = await apiClient.listOrganizations();
@@ -419,17 +357,12 @@ export default function AdminPage() {
     setActiveTab("courses");
   };
 
-  const handleCreateNewCourse = () => {
-    setSelectedCourseId(null);
-    setModules([]);
-    setEditingModule(null);
-    setModuleForm(createEmptyModuleForm());
-    setCourseForm(createEmptyCourseForm());
-  };
-
   const handleCourseSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!organization) return;
+    if (!organization || !selectedCourseId) {
+      setError("Sélectionnez un cours à modifier");
+      return;
+    }
 
     setIsSavingCourse(true);
     setError(null);
@@ -452,24 +385,12 @@ export default function AdminPage() {
         }
       }
 
-      let course: CourseResponse;
-      if (selectedCourseId) {
-        course = await apiClient.updateCourse(organization.id, selectedCourseId, {
-          title: courseForm.title,
-          description: courseForm.description,
-          metadata: baseMetadata,
-        });
-        setCourses((prev) => prev.map((item) => (item.id === course.id ? course : item)));
-      } else {
-        course = await apiClient.createCourse(organization.id, {
-          title: courseForm.title,
-          slug: courseForm.slug || slugify(courseForm.title),
-          description: courseForm.description,
-          metadata: baseMetadata,
-        });
-        setCourses((prev) => [course, ...prev]);
-        setSelectedCourseId(course.id);
-      }
+      const course = await apiClient.updateCourse(organization.id, selectedCourseId, {
+        title: courseForm.title,
+        description: courseForm.description,
+        metadata: baseMetadata,
+      });
+      setCourses((prev) => prev.map((item) => (item.id === course.id ? course : item)));
 
       showFeedback(`Cours "${course.title}" enregistré`);
     } catch (err: any) {
@@ -525,83 +446,11 @@ export default function AdminPage() {
     }
   };
 
-  const handleModuleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!organization || !selectedCourseId) return;
-
-    setIsSavingModule(true);
-    setError(null);
-
-    try {
-      const data = parseJsonInput(moduleForm.data || "");
-      const duration = moduleForm.duration_seconds ? Number(moduleForm.duration_seconds) : undefined;
-      const created = await apiClient.createModule(organization.id, selectedCourseId, {
-        title: moduleForm.title,
-        module_type: moduleForm.module_type,
-        content_id: moduleForm.content_id || undefined,
-        duration_seconds: duration && !Number.isNaN(duration) ? duration : undefined,
-        data,
-      });
-
-      setModules((prev) => [...prev, created]);
-      setModuleForm(createEmptyModuleForm());
-      showFeedback(`Module "${created.title}" créé`);
-    } catch (err: any) {
-      console.error(err);
-      setError(err?.error || "Impossible d'ajouter le module");
-    } finally {
-      setIsSavingModule(false);
-    }
-  };
-
-  const handleStartModuleEdit = (module: ModuleResponse) => {
-    setEditingModule(module);
-  };
-
-  const handleCancelModuleEdit = () => {
-    setEditingModule(null);
-  };
-
-  const handleModuleUpdate = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!organization || !editingModule) return;
-
-    setIsUpdatingModule(true);
-    setError(null);
-
-    try {
-      const data = parseJsonInput(moduleEditForm.data || "");
-      const duration = moduleEditForm.duration_seconds ? Number(moduleEditForm.duration_seconds) : undefined;
-      const updated = await apiClient.updateModule(organization.id, editingModule.id, {
-        title: moduleEditForm.title,
-        module_type: moduleEditForm.module_type,
-        content_id: moduleEditForm.content_id || undefined,
-        duration_seconds: duration && !Number.isNaN(duration) ? duration : undefined,
-        data,
-      });
-
-      setModules((prev) => prev.map((module) => (module.id === updated.id ? updated : module)));
-      setEditingModule(null);
-      showFeedback(`Module "${updated.title}" mis à jour`);
-    } catch (err: any) {
-      console.error(err);
-      setError(err?.error || "Impossible de modifier le module");
-    } finally {
-      setIsUpdatingModule(false);
-    }
-  };
-
   const handleDeleteModule = async (moduleId: string) => {
     if (!organization) return;
     try {
       await apiClient.deleteModule(organization.id, moduleId);
       setModules((prev) => prev.filter((module) => module.id !== moduleId));
-      if (selectedModuleId === moduleId) {
-        setSelectedModuleId(null);
-      }
-      if (editingModule?.id === moduleId) {
-        setEditingModule(null);
-      }
       showFeedback("Module supprimé");
     } catch (err: any) {
       console.error(err);
@@ -964,59 +813,91 @@ export default function AdminPage() {
           </TabsContent>
 
           <TabsContent value="courses" className="mt-6 space-y-6">
-            <div className="grid gap-6 lg:grid-cols-[1.2fr,1.8fr]">
+            <Card className="border border-blue-200 bg-blue-50/70 shadow-sm">
+              <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <CardTitle className="text-lg text-blue-900">Assistant guidé de création</CardTitle>
+                  <p className="text-sm text-blue-900/80">
+                    Créez un nouveau cours en trois étapes : informations, modules et publication.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  className="bg-blue-600 text-white hover:bg-blue-700"
+                  onClick={() => router.push("/admin/courses/new")}
+                >
+                  <PlusCircle className="mr-2 h-4 w-4" /> Lancer l'assistant
+                </Button>
+              </CardHeader>
+            </Card>
+
+            <div className="grid gap-6 lg:grid-cols-[1.1fr,1.4fr]">
               <Card className="border border-slate-200 bg-white shadow-sm">
-                <CardHeader className="flex flex-row items-center justify-between">
-                  <CardTitle className="flex items-center gap-2 text-lg text-slate-900">
-                    <BookOpen className="h-5 w-5 text-blue-500" /> Catalogue
-                  </CardTitle>
-                  <div className="flex gap-2">
-                    <Button
-                      type="button"
-                      onClick={() => router.push("/admin/courses/new" + (organization ? `?org=${organization.id}` : ""))}
-                      className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700"
-                    >
-                      <PlusCircle className="mr-2 h-4 w-4" /> Assistant guidé
-                    </Button>
-                    <Button type="button" variant="outline" onClick={handleCreateNewCourse} className="border-slate-200">
-                      Création rapide
-                    </Button>
-                  </div>
+                <CardHeader>
+                  <CardTitle className="text-lg text-slate-900">Vos cours</CardTitle>
+                  <p className="text-sm text-slate-500">Sélectionnez un cours pour afficher et modifier ses informations.</p>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {courses.map((course) => (
                     <div
                       key={course.id}
-                      className={`rounded-xl border px-4 py-3 transition-colors ${
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => handleSelectCourse(course)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          handleSelectCourse(course);
+                        }
+                      }}
+                      className={`rounded-xl border px-4 py-3 text-left transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                         selectedCourseId === course.id
-                          ? "border-blue-500/40 bg-blue-50"
-                          : "border-slate-200 bg-slate-50 hover:border-blue-400/40 hover:bg-blue-50"
+                          ? "border-blue-500/60 bg-blue-50"
+                          : "border-slate-200 bg-slate-50 hover:border-blue-400/50 hover:bg-blue-50"
                       }`}
                     >
                       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                        <div>
+                        <div className="space-y-1">
                           <p className="text-sm font-semibold text-slate-900">{course.title}</p>
                           <p className="text-xs text-slate-500">{course.description || "Pas de description"}</p>
                         </div>
                         <div className="flex flex-wrap items-center gap-2 text-xs">
                           <span className="rounded-full bg-white px-3 py-1 text-slate-600">{course.status}</span>
-                          <Button variant="outline" size="sm" className="border-slate-200" onClick={() => handleSelectCourse(course)}>
-                            Modifier
-                          </Button>
                           {course.status === "published" ? (
-                            <Button variant="outline" size="sm" className="border-slate-200" onClick={() => handleUnpublishCourse(course.id)}>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="border-slate-200"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                void handleUnpublishCourse(course.id);
+                              }}
+                            >
                               Dépublier
                             </Button>
                           ) : (
-                            <Button size="sm" className="bg-blue-600 text-white hover:bg-blue-700" onClick={() => handlePublishCourse(course.id)}>
+                            <Button
+                              type="button"
+                              size="sm"
+                              className="bg-blue-600 text-white hover:bg-blue-700"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                void handlePublishCourse(course.id);
+                              }}
+                            >
                               Publier
                             </Button>
                           )}
                           <Button
-                            variant="outline"
+                            type="button"
                             size="sm"
+                            variant="outline"
                             className="border-red-200 text-red-600 hover:bg-red-50"
-                            onClick={() => handleArchiveCourse(course.id)}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              void handleArchiveCourse(course.id);
+                            }}
                           >
                             Archiver
                           </Button>
@@ -1026,257 +907,165 @@ export default function AdminPage() {
                   ))}
                   {courses.length === 0 && (
                     <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
-                      Aucun cours disponible. Lancez-vous en créant un nouveau programme.
+                      Aucun cours pour le moment. Utilisez l'assistant pour créer votre premier programme.
                     </div>
                   )}
                 </CardContent>
               </Card>
 
-              <Card className="border border-slate-200 bg-white shadow-sm">
-                <CardHeader>
-                  <CardTitle className="text-lg text-slate-900">
-                    {selectedCourse ? `Modifier le cours : ${selectedCourse.title}` : "Créer un cours"}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <form className="space-y-4" onSubmit={handleCourseSubmit}>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-slate-600">Titre</label>
-                      <Input
-                        required
-                        value={courseForm.title}
-                        onChange={(event) => setCourseForm((prev) => ({ ...prev, title: event.target.value }))}
-                      />
+              {selectedCourse ? (
+                <Card className="border border-slate-200 bg-white shadow-sm">
+                  <CardHeader>
+                    <CardTitle className="text-lg text-slate-900">Modifier le cours : {selectedCourse.title}</CardTitle>
+                    <p className="text-sm text-slate-500">
+                      Mettez à jour les informations principales du cours sélectionné.
+                    </p>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="mb-4 text-xs text-slate-500">
+                      Slug : <code className="rounded bg-slate-100 px-1 py-0.5">{selectedCourse.slug}</code>
                     </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-slate-600">Slug</label>
-                      <Input
-                        value={courseForm.slug}
-                        onChange={(event) => setCourseForm((prev) => ({ ...prev, slug: event.target.value }))}
-                        placeholder="automatique si vide"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-slate-600">Description</label>
-                      <textarea
-                        className={fieldClass}
-                        rows={3}
-                        value={courseForm.description}
-                        onChange={(event) => setCourseForm((prev) => ({ ...prev, description: event.target.value }))}
-                      />
-                    </div>
-                    <div className="grid gap-4 md:grid-cols-2">
+                    <form className="space-y-4" onSubmit={handleCourseSubmit}>
                       <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-600">Tags</label>
-                        <Input
-                          value={courseForm.tags}
-                          onChange={(event) => setCourseForm((prev) => ({ ...prev, tags: event.target.value }))}
-                          placeholder="séparés par une virgule"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-600">Durée (heures)</label>
-                        <Input
-                          value={courseForm.duration_hours}
-                          onChange={(event) => setCourseForm((prev) => ({ ...prev, duration_hours: event.target.value }))}
-                          placeholder="ex: 12"
-                        />
-                      </div>
-                    </div>
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-600">Niveau</label>
-                        <select
-                          className={fieldClass}
-                          value={courseForm.level}
-                          onChange={(event) => setCourseForm((prev) => ({ ...prev, level: event.target.value }))}
-                        >
-                          <option value="beginner">Débutant</option>
-                          <option value="intermediate">Intermédiaire</option>
-                          <option value="advanced">Avancé</option>
-                        </select>
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-600">Visibilité</label>
-                        <select
-                          className={fieldClass}
-                          value={courseForm.visibility}
-                          onChange={(event) => setCourseForm((prev) => ({ ...prev, visibility: event.target.value }))}
-                        >
-                          <option value="private">Privé</option>
-                          <option value="public">Public</option>
-                          <option value="restricted">Restreint</option>
-                        </select>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-slate-600">Métadonnées (JSON)</label>
-                      <textarea
-                        className={fieldClass}
-                        rows={5}
-                        value={courseForm.metadata}
-                        onChange={(event) => setCourseForm((prev) => ({ ...prev, metadata: event.target.value }))}
-                        placeholder={'{\n  "lang": "fr"\n}'}
-                      />
-                    </div>
-                    <Button type="submit" className="w-full bg-blue-600 text-white hover:bg-blue-700" disabled={isSavingCourse}>
-                      {isSavingCourse ? "Enregistrement…" : "Enregistrer"}
-                    </Button>
-                  </form>
-                </CardContent>
-              </Card>
-            </div>
-
-            <Card className="border border-slate-200 bg-white shadow-sm">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg text-slate-900">
-                  <FileStack className="h-5 w-5 text-blue-500" /> Modules du cours
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid gap-4 lg:grid-cols-[1.3fr,1.7fr]">
-                  <div className="space-y-3">
-                    {isLoadingModules && <p className="text-sm text-slate-500">Chargement des modules…</p>}
-                    {!isLoadingModules && modules.length === 0 && (
-                      <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
-                        Aucun module pour ce cours. Ajoutez votre premier module via le formulaire.
-                      </div>
-                    )}
-                    {modules.map((module) => (
-                      <div
-                        key={module.id}
-                        className={`rounded-lg border px-4 py-3 transition-colors ${
-                          selectedModuleId === module.id
-                            ? "border-blue-500/40 bg-blue-50"
-                            : "border-slate-200 bg-slate-50 hover:border-blue-400/40 hover:bg-blue-50"
-                        }`}
-                      >
-                        <div className="flex flex-col gap-2">
-                          <div className="flex items-center justify-between">
-                            <p className="text-sm font-semibold text-slate-900">{module.title}</p>
-                            <span className="text-xs capitalize text-slate-500">{module.module_type}</span>
-                          </div>
-                          <div className="flex flex-wrap gap-2 text-xs">
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="outline"
-                              className="border-slate-200"
-                              onClick={() => {
-                                setSelectedModuleId(module.id);
-                                handleStartModuleEdit(module);
-                              }}
-                            >
-                              Éditer
-                            </Button>
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="outline"
-                              className="border-red-200 text-red-600 hover:bg-red-50"
-                              onClick={() => handleDeleteModule(module.id)}
-                            >
-                              Supprimer
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="space-y-6">
-                    <form className="space-y-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-4" onSubmit={handleModuleSubmit}>
-                      <h3 className="text-sm font-semibold text-slate-700">Ajouter un module</h3>
-                      <Input
-                        required
-                        placeholder="Titre du module"
-                        value={moduleForm.title}
-                        onChange={(event) => setModuleForm((prev) => ({ ...prev, title: event.target.value }))}
-                      />
-                      <select
-                        className={fieldClass}
-                        value={moduleForm.module_type}
-                        onChange={(event) => setModuleForm((prev) => ({ ...prev, module_type: event.target.value }))}
-                      >
-                        {moduleTypes.map((type) => (
-                          <option key={type.value} value={type.value}>
-                            {type.label}
-                          </option>
-                        ))}
-                      </select>
-                      <Input
-                        placeholder="Identifiant contenu (optionnel)"
-                        value={moduleForm.content_id}
-                        onChange={(event) => setModuleForm((prev) => ({ ...prev, content_id: event.target.value }))}
-                      />
-                      <Input
-                        placeholder="Durée en secondes"
-                        value={moduleForm.duration_seconds}
-                        onChange={(event) => setModuleForm((prev) => ({ ...prev, duration_seconds: event.target.value }))}
-                      />
-                      <textarea
-                        className={fieldClass}
-                        rows={3}
-                        placeholder="Métadonnées JSON"
-                        value={moduleForm.data}
-                        onChange={(event) => setModuleForm((prev) => ({ ...prev, data: event.target.value }))}
-                      />
-                      <Button type="submit" className="w-full bg-blue-600 text-white hover:bg-blue-700" disabled={isSavingModule}>
-                        {isSavingModule ? "Ajout…" : "Ajouter le module"}
-                      </Button>
-                    </form>
-
-                    {editingModule && (
-                      <form className="space-y-4 rounded-xl border border-blue-200 bg-blue-50 px-4 py-4" onSubmit={handleModuleUpdate}>
-                        <div className="flex items-center justify-between">
-                          <h3 className="text-sm font-semibold text-blue-700">Modifier le module</h3>
-                          <Button type="button" variant="outline" size="sm" onClick={handleCancelModuleEdit}>
-                            Annuler
-                          </Button>
-                        </div>
+                        <label className="text-sm font-medium text-slate-600">Titre</label>
                         <Input
                           required
-                          value={moduleEditForm.title}
-                          onChange={(event) => setModuleEditForm((prev) => ({ ...prev, title: event.target.value }))}
+                          value={courseForm.title}
+                          onChange={(event) => setCourseForm((prev) => ({ ...prev, title: event.target.value }))}
                         />
-                        <select
-                          className={fieldClass}
-                          value={moduleEditForm.module_type}
-                          onChange={(event) => setModuleEditForm((prev) => ({ ...prev, module_type: event.target.value }))}
-                        >
-                          {moduleTypes.map((type) => (
-                            <option key={type.value} value={type.value}>
-                              {type.label}
-                            </option>
-                          ))}
-                        </select>
-                        <Input
-                          value={moduleEditForm.content_id}
-                          onChange={(event) => setModuleEditForm((prev) => ({ ...prev, content_id: event.target.value }))}
-                          placeholder="Identifiant contenu"
-                        />
-                        <Input
-                          value={moduleEditForm.duration_seconds}
-                          onChange={(event) => setModuleEditForm((prev) => ({ ...prev, duration_seconds: event.target.value }))}
-                          placeholder="Durée en secondes"
-                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-slate-600">Description</label>
                         <textarea
                           className={fieldClass}
                           rows={3}
-                          value={moduleEditForm.data}
-                          onChange={(event) => setModuleEditForm((prev) => ({ ...prev, data: event.target.value }))}
+                          value={courseForm.description}
+                          onChange={(event) => setCourseForm((prev) => ({ ...prev, description: event.target.value }))}
                         />
-                        <Button type="submit" className="w-full bg-blue-600 text-white hover:bg-blue-700" disabled={isUpdatingModule}>
-                          {isUpdatingModule ? "Mise à jour…" : "Mettre à jour"}
-                        </Button>
-                      </form>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+                      </div>
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-slate-600">Tags</label>
+                          <Input
+                            value={courseForm.tags}
+                            onChange={(event) => setCourseForm((prev) => ({ ...prev, tags: event.target.value }))}
+                            placeholder="séparés par une virgule"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-slate-600">Durée (heures)</label>
+                          <Input
+                            value={courseForm.duration_hours}
+                            onChange={(event) => setCourseForm((prev) => ({ ...prev, duration_hours: event.target.value }))}
+                            placeholder="ex: 12"
+                          />
+                        </div>
+                      </div>
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-slate-600">Niveau</label>
+                          <select
+                            className={fieldClass}
+                            value={courseForm.level}
+                            onChange={(event) => setCourseForm((prev) => ({ ...prev, level: event.target.value }))}
+                          >
+                            <option value="beginner">Débutant</option>
+                            <option value="intermediate">Intermédiaire</option>
+                            <option value="advanced">Avancé</option>
+                          </select>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-slate-600">Visibilité</label>
+                          <select
+                            className={fieldClass}
+                            value={courseForm.visibility}
+                            onChange={(event) => setCourseForm((prev) => ({ ...prev, visibility: event.target.value }))}
+                          >
+                            <option value="private">Privé</option>
+                            <option value="public">Public</option>
+                            <option value="restricted">Restreint</option>
+                          </select>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-slate-600">Métadonnées (JSON)</label>
+                        <textarea
+                          className={fieldClass}
+                          rows={5}
+                          value={courseForm.metadata}
+                          onChange={(event) => setCourseForm((prev) => ({ ...prev, metadata: event.target.value }))}
+                          placeholder={'{\n  "lang": "fr"\n}'}
+                        />
+                      </div>
+                      <Button
+                        type="submit"
+                        className="w-full bg-blue-600 text-white hover:bg-blue-700"
+                        disabled={isSavingCourse}
+                      >
+                        {isSavingCourse ? "Enregistrement…" : "Enregistrer les modifications"}
+                      </Button>
+                    </form>
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card className="border border-slate-200 bg-white shadow-sm">
+                  <CardContent className="flex h-full flex-col items-center justify-center gap-3 text-center text-sm text-slate-500">
+                    <BookOpen className="h-8 w-8 text-slate-400" />
+                    <p className="font-medium text-slate-600">Sélectionnez un cours pour afficher ses détails.</p>
+                    <p>Vous pouvez créer de nouveaux cours uniquement avec l'assistant guidé.</p>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
 
+            {selectedCourse && (
+              <Card className="border border-slate-200 bg-white shadow-sm">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-lg text-slate-900">
+                    <FileStack className="h-5 w-5 text-blue-500" /> Modules du cours
+                  </CardTitle>
+                  <p className="text-sm text-slate-500">
+                    Les modules sont gérés via l'assistant de création. Supprimez ceux qui ne sont plus nécessaires.
+                  </p>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {isLoadingModules && <p className="text-sm text-slate-500">Chargement des modules…</p>}
+                  {!isLoadingModules && modules.length === 0 && (
+                    <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
+                      Aucun module pour ce cours.
+                    </div>
+                  )}
+                  {modules.map((module) => (
+                    <div key={module.id} className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+                      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                        <div className="space-y-1">
+                          <p className="text-sm font-semibold text-slate-900">{module.title}</p>
+                          <p className="text-xs text-slate-500">
+                            {moduleTypeLabels[module.module_type] ?? module.module_type}
+                            {module.duration_seconds
+                              ? ` • ${Math.ceil((module.duration_seconds ?? 0) / 60)} min`
+                              : ""}
+                          </p>
+                          {module.content_id && (
+                            <p className="text-xs text-slate-400">Contenu associé : {module.content_id}</p>
+                          )}
+                        </div>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="border-red-200 text-red-600 hover:bg-red-50 md:self-start"
+                          onClick={() => void handleDeleteModule(module.id)}
+                        >
+                          Supprimer
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
           <TabsContent value="learners" className="mt-6 space-y-6">
             <div className="grid gap-6 lg:grid-cols-[1.1fr,1.9fr]">
               <Card className="border border-slate-200 bg-white shadow-sm">
