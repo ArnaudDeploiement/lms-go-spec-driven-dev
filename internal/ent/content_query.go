@@ -4,8 +4,10 @@ package ent
 
 import (
 	"context"
+	"database/sql/driver"
 	"fmt"
 	"lms-go/internal/ent/content"
+	"lms-go/internal/ent/module"
 	"lms-go/internal/ent/organization"
 	"lms-go/internal/ent/predicate"
 	"math"
@@ -24,6 +26,7 @@ type ContentQuery struct {
 	inters           []Interceptor
 	predicates       []predicate.Content
 	withOrganization *OrganizationQuery
+	withModules      *ModuleQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -75,6 +78,28 @@ func (cq *ContentQuery) QueryOrganization() *OrganizationQuery {
 			sqlgraph.From(content.Table, content.FieldID, selector),
 			sqlgraph.To(organization.Table, organization.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, content.OrganizationTable, content.OrganizationColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(cq.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryModules chains the current query on the "modules" edge.
+func (cq *ContentQuery) QueryModules() *ModuleQuery {
+	query := (&ModuleClient{config: cq.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := cq.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := cq.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(content.Table, content.FieldID, selector),
+			sqlgraph.To(module.Table, module.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, content.ModulesTable, content.ModulesColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(cq.driver.Dialect(), step)
 		return fromU, nil
@@ -275,6 +300,7 @@ func (cq *ContentQuery) Clone() *ContentQuery {
 		inters:           append([]Interceptor{}, cq.inters...),
 		predicates:       append([]predicate.Content{}, cq.predicates...),
 		withOrganization: cq.withOrganization.Clone(),
+		withModules:      cq.withModules.Clone(),
 		// clone intermediate query.
 		sql:  cq.sql.Clone(),
 		path: cq.path,
@@ -289,6 +315,17 @@ func (cq *ContentQuery) WithOrganization(opts ...func(*OrganizationQuery)) *Cont
 		opt(query)
 	}
 	cq.withOrganization = query
+	return cq
+}
+
+// WithModules tells the query-builder to eager-load the nodes that are connected to
+// the "modules" edge. The optional arguments are used to configure the query builder of the edge.
+func (cq *ContentQuery) WithModules(opts ...func(*ModuleQuery)) *ContentQuery {
+	query := (&ModuleClient{config: cq.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	cq.withModules = query
 	return cq
 }
 
@@ -370,8 +407,9 @@ func (cq *ContentQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Cont
 	var (
 		nodes       = []*Content{}
 		_spec       = cq.querySpec()
-		loadedTypes = [1]bool{
+		loadedTypes = [2]bool{
 			cq.withOrganization != nil,
+			cq.withModules != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -395,6 +433,13 @@ func (cq *ContentQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Cont
 	if query := cq.withOrganization; query != nil {
 		if err := cq.loadOrganization(ctx, query, nodes, nil,
 			func(n *Content, e *Organization) { n.Edges.Organization = e }); err != nil {
+			return nil, err
+		}
+	}
+	if query := cq.withModules; query != nil {
+		if err := cq.loadModules(ctx, query, nodes,
+			func(n *Content) { n.Edges.Modules = []*Module{} },
+			func(n *Content, e *Module) { n.Edges.Modules = append(n.Edges.Modules, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -427,6 +472,39 @@ func (cq *ContentQuery) loadOrganization(ctx context.Context, query *Organizatio
 		for i := range nodes {
 			assign(nodes[i], n)
 		}
+	}
+	return nil
+}
+func (cq *ContentQuery) loadModules(ctx context.Context, query *ModuleQuery, nodes []*Content, init func(*Content), assign func(*Content, *Module)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[uuid.UUID]*Content)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(module.FieldContentID)
+	}
+	query.Where(predicate.Module(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(content.ModulesColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.ContentID
+		if fk == nil {
+			return fmt.Errorf(`foreign-key "content_id" is nil for node %v`, n.ID)
+		}
+		node, ok := nodeids[*fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "content_id" returned %v for node %v`, *fk, n.ID)
+		}
+		assign(node, n)
 	}
 	return nil
 }

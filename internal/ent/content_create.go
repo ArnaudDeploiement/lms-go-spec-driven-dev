@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"lms-go/internal/ent/content"
+	"lms-go/internal/ent/module"
 	"lms-go/internal/ent/organization"
 	"time"
 
@@ -125,6 +126,21 @@ func (cc *ContentCreate) SetNillableID(u *uuid.UUID) *ContentCreate {
 // SetOrganization sets the "organization" edge to the Organization entity.
 func (cc *ContentCreate) SetOrganization(o *Organization) *ContentCreate {
 	return cc.SetOrganizationID(o.ID)
+}
+
+// AddModuleIDs adds the "modules" edge to the Module entity by IDs.
+func (cc *ContentCreate) AddModuleIDs(ids ...uuid.UUID) *ContentCreate {
+	cc.mutation.AddModuleIDs(ids...)
+	return cc
+}
+
+// AddModules adds the "modules" edges to the Module entity.
+func (cc *ContentCreate) AddModules(m ...*Module) *ContentCreate {
+	ids := make([]uuid.UUID, len(m))
+	for i := range m {
+		ids[i] = m[i].ID
+	}
+	return cc.AddModuleIDs(ids...)
 }
 
 // Mutation returns the ContentMutation object of the builder.
@@ -307,6 +323,22 @@ func (cc *ContentCreate) createSpec() (*Content, *sqlgraph.CreateSpec) {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
 		_node.OrganizationID = nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := cc.mutation.ModulesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   content.ModulesTable,
+			Columns: []string{content.ModulesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(module.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec

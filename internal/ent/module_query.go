@@ -6,6 +6,7 @@ import (
 	"context"
 	"database/sql/driver"
 	"fmt"
+	"lms-go/internal/ent/content"
 	"lms-go/internal/ent/course"
 	"lms-go/internal/ent/module"
 	"lms-go/internal/ent/moduleprogress"
@@ -26,6 +27,7 @@ type ModuleQuery struct {
 	inters              []Interceptor
 	predicates          []predicate.Module
 	withCourse          *CourseQuery
+	withContent         *ContentQuery
 	withProgressEntries *ModuleProgressQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
@@ -78,6 +80,28 @@ func (mq *ModuleQuery) QueryCourse() *CourseQuery {
 			sqlgraph.From(module.Table, module.FieldID, selector),
 			sqlgraph.To(course.Table, course.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, module.CourseTable, module.CourseColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(mq.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryContent chains the current query on the "content" edge.
+func (mq *ModuleQuery) QueryContent() *ContentQuery {
+	query := (&ContentClient{config: mq.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := mq.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := mq.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(module.Table, module.FieldID, selector),
+			sqlgraph.To(content.Table, content.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, module.ContentTable, module.ContentColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(mq.driver.Dialect(), step)
 		return fromU, nil
@@ -300,6 +324,7 @@ func (mq *ModuleQuery) Clone() *ModuleQuery {
 		inters:              append([]Interceptor{}, mq.inters...),
 		predicates:          append([]predicate.Module{}, mq.predicates...),
 		withCourse:          mq.withCourse.Clone(),
+		withContent:         mq.withContent.Clone(),
 		withProgressEntries: mq.withProgressEntries.Clone(),
 		// clone intermediate query.
 		sql:  mq.sql.Clone(),
@@ -315,6 +340,17 @@ func (mq *ModuleQuery) WithCourse(opts ...func(*CourseQuery)) *ModuleQuery {
 		opt(query)
 	}
 	mq.withCourse = query
+	return mq
+}
+
+// WithContent tells the query-builder to eager-load the nodes that are connected to
+// the "content" edge. The optional arguments are used to configure the query builder of the edge.
+func (mq *ModuleQuery) WithContent(opts ...func(*ContentQuery)) *ModuleQuery {
+	query := (&ContentClient{config: mq.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	mq.withContent = query
 	return mq
 }
 
@@ -407,8 +443,9 @@ func (mq *ModuleQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Modul
 	var (
 		nodes       = []*Module{}
 		_spec       = mq.querySpec()
-		loadedTypes = [2]bool{
+		loadedTypes = [3]bool{
 			mq.withCourse != nil,
+			mq.withContent != nil,
 			mq.withProgressEntries != nil,
 		}
 	)
@@ -433,6 +470,12 @@ func (mq *ModuleQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Modul
 	if query := mq.withCourse; query != nil {
 		if err := mq.loadCourse(ctx, query, nodes, nil,
 			func(n *Module, e *Course) { n.Edges.Course = e }); err != nil {
+			return nil, err
+		}
+	}
+	if query := mq.withContent; query != nil {
+		if err := mq.loadContent(ctx, query, nodes, nil,
+			func(n *Module, e *Content) { n.Edges.Content = e }); err != nil {
 			return nil, err
 		}
 	}
@@ -468,6 +511,38 @@ func (mq *ModuleQuery) loadCourse(ctx context.Context, query *CourseQuery, nodes
 		nodes, ok := nodeids[n.ID]
 		if !ok {
 			return fmt.Errorf(`unexpected foreign-key "course_id" returned %v`, n.ID)
+		}
+		for i := range nodes {
+			assign(nodes[i], n)
+		}
+	}
+	return nil
+}
+func (mq *ModuleQuery) loadContent(ctx context.Context, query *ContentQuery, nodes []*Module, init func(*Module), assign func(*Module, *Content)) error {
+	ids := make([]uuid.UUID, 0, len(nodes))
+	nodeids := make(map[uuid.UUID][]*Module)
+	for i := range nodes {
+		if nodes[i].ContentID == nil {
+			continue
+		}
+		fk := *nodes[i].ContentID
+		if _, ok := nodeids[fk]; !ok {
+			ids = append(ids, fk)
+		}
+		nodeids[fk] = append(nodeids[fk], nodes[i])
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	query.Where(content.IDIn(ids...))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		nodes, ok := nodeids[n.ID]
+		if !ok {
+			return fmt.Errorf(`unexpected foreign-key "content_id" returned %v`, n.ID)
 		}
 		for i := range nodes {
 			assign(nodes[i], n)
@@ -533,6 +608,9 @@ func (mq *ModuleQuery) querySpec() *sqlgraph.QuerySpec {
 		}
 		if mq.withCourse != nil {
 			_spec.Node.AddColumnOnce(module.FieldCourseID)
+		}
+		if mq.withContent != nil {
+			_spec.Node.AddColumnOnce(module.FieldContentID)
 		}
 	}
 	if ps := mq.predicates; len(ps) > 0 {

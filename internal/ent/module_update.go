@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"lms-go/internal/ent/content"
 	"lms-go/internal/ent/course"
 	"lms-go/internal/ent/module"
 	"lms-go/internal/ent/moduleprogress"
@@ -178,6 +179,11 @@ func (mu *ModuleUpdate) SetCourse(c *Course) *ModuleUpdate {
 	return mu.SetCourseID(c.ID)
 }
 
+// SetContent sets the "content" edge to the Content entity.
+func (mu *ModuleUpdate) SetContent(c *Content) *ModuleUpdate {
+	return mu.SetContentID(c.ID)
+}
+
 // AddProgressEntryIDs adds the "progress_entries" edge to the ModuleProgress entity by IDs.
 func (mu *ModuleUpdate) AddProgressEntryIDs(ids ...uuid.UUID) *ModuleUpdate {
 	mu.mutation.AddProgressEntryIDs(ids...)
@@ -201,6 +207,12 @@ func (mu *ModuleUpdate) Mutation() *ModuleMutation {
 // ClearCourse clears the "course" edge to the Course entity.
 func (mu *ModuleUpdate) ClearCourse() *ModuleUpdate {
 	mu.mutation.ClearCourse()
+	return mu
+}
+
+// ClearContent clears the "content" edge to the Content entity.
+func (mu *ModuleUpdate) ClearContent() *ModuleUpdate {
+	mu.mutation.ClearContent()
 	return mu
 }
 
@@ -291,12 +303,6 @@ func (mu *ModuleUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			}
 		}
 	}
-	if value, ok := mu.mutation.ContentID(); ok {
-		_spec.SetField(module.FieldContentID, field.TypeUUID, value)
-	}
-	if mu.mutation.ContentIDCleared() {
-		_spec.ClearField(module.FieldContentID, field.TypeUUID)
-	}
 	if value, ok := mu.mutation.Title(); ok {
 		_spec.SetField(module.FieldTitle, field.TypeString, value)
 	}
@@ -352,6 +358,35 @@ func (mu *ModuleUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(course.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if mu.mutation.ContentCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   module.ContentTable,
+			Columns: []string{module.ContentColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(content.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := mu.mutation.ContentIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   module.ContentTable,
+			Columns: []string{module.ContentColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(content.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {
@@ -571,6 +606,11 @@ func (muo *ModuleUpdateOne) SetCourse(c *Course) *ModuleUpdateOne {
 	return muo.SetCourseID(c.ID)
 }
 
+// SetContent sets the "content" edge to the Content entity.
+func (muo *ModuleUpdateOne) SetContent(c *Content) *ModuleUpdateOne {
+	return muo.SetContentID(c.ID)
+}
+
 // AddProgressEntryIDs adds the "progress_entries" edge to the ModuleProgress entity by IDs.
 func (muo *ModuleUpdateOne) AddProgressEntryIDs(ids ...uuid.UUID) *ModuleUpdateOne {
 	muo.mutation.AddProgressEntryIDs(ids...)
@@ -594,6 +634,12 @@ func (muo *ModuleUpdateOne) Mutation() *ModuleMutation {
 // ClearCourse clears the "course" edge to the Course entity.
 func (muo *ModuleUpdateOne) ClearCourse() *ModuleUpdateOne {
 	muo.mutation.ClearCourse()
+	return muo
+}
+
+// ClearContent clears the "content" edge to the Content entity.
+func (muo *ModuleUpdateOne) ClearContent() *ModuleUpdateOne {
+	muo.mutation.ClearContent()
 	return muo
 }
 
@@ -714,12 +760,6 @@ func (muo *ModuleUpdateOne) sqlSave(ctx context.Context) (_node *Module, err err
 			}
 		}
 	}
-	if value, ok := muo.mutation.ContentID(); ok {
-		_spec.SetField(module.FieldContentID, field.TypeUUID, value)
-	}
-	if muo.mutation.ContentIDCleared() {
-		_spec.ClearField(module.FieldContentID, field.TypeUUID)
-	}
 	if value, ok := muo.mutation.Title(); ok {
 		_spec.SetField(module.FieldTitle, field.TypeString, value)
 	}
@@ -775,6 +815,35 @@ func (muo *ModuleUpdateOne) sqlSave(ctx context.Context) (_node *Module, err err
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(course.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if muo.mutation.ContentCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   module.ContentTable,
+			Columns: []string{module.ContentColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(content.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := muo.mutation.ContentIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   module.ContentTable,
+			Columns: []string{module.ContentColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(content.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {

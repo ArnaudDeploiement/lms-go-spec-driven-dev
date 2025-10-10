@@ -5,6 +5,7 @@ package ent
 import (
 	"encoding/json"
 	"fmt"
+	"lms-go/internal/ent/content"
 	"lms-go/internal/ent/course"
 	"lms-go/internal/ent/module"
 	"strings"
@@ -50,11 +51,13 @@ type Module struct {
 type ModuleEdges struct {
 	// Course holds the value of the course edge.
 	Course *Course `json:"course,omitempty"`
+	// Content holds the value of the content edge.
+	Content *Content `json:"content,omitempty"`
 	// ProgressEntries holds the value of the progress_entries edge.
 	ProgressEntries []*ModuleProgress `json:"progress_entries,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [2]bool
+	loadedTypes [3]bool
 }
 
 // CourseOrErr returns the Course value or an error if the edge
@@ -68,10 +71,21 @@ func (e ModuleEdges) CourseOrErr() (*Course, error) {
 	return nil, &NotLoadedError{edge: "course"}
 }
 
+// ContentOrErr returns the Content value or an error if the edge
+// was not loaded in eager-loading, or loaded but was not found.
+func (e ModuleEdges) ContentOrErr() (*Content, error) {
+	if e.Content != nil {
+		return e.Content, nil
+	} else if e.loadedTypes[1] {
+		return nil, &NotFoundError{label: content.Label}
+	}
+	return nil, &NotLoadedError{edge: "content"}
+}
+
 // ProgressEntriesOrErr returns the ProgressEntries value or an error if the edge
 // was not loaded in eager-loading.
 func (e ModuleEdges) ProgressEntriesOrErr() ([]*ModuleProgress, error) {
-	if e.loadedTypes[1] {
+	if e.loadedTypes[2] {
 		return e.ProgressEntries, nil
 	}
 	return nil, &NotLoadedError{edge: "progress_entries"}
@@ -194,6 +208,11 @@ func (m *Module) Value(name string) (ent.Value, error) {
 // QueryCourse queries the "course" edge of the Module entity.
 func (m *Module) QueryCourse() *CourseQuery {
 	return NewModuleClient(m.config).QueryCourse(m)
+}
+
+// QueryContent queries the "content" edge of the Module entity.
+func (m *Module) QueryContent() *ContentQuery {
+	return NewModuleClient(m.config).QueryContent(m)
 }
 
 // QueryProgressEntries queries the "progress_entries" edge of the Module entity.

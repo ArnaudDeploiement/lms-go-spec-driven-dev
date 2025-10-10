@@ -539,6 +539,29 @@ func HasOrganizationWith(preds ...predicate.Organization) predicate.Content {
 	})
 }
 
+// HasModules applies the HasEdge predicate on the "modules" edge.
+func HasModules() predicate.Content {
+	return predicate.Content(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, ModulesTable, ModulesColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasModulesWith applies the HasEdge predicate on the "modules" edge with a given conditions (other predicates).
+func HasModulesWith(preds ...predicate.Module) predicate.Content {
+	return predicate.Content(func(s *sql.Selector) {
+		step := newModulesStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // And groups predicates with the AND operator between them.
 func And(predicates ...predicate.Content) predicate.Content {
 	return predicate.Content(sql.AndPredicates(predicates...))

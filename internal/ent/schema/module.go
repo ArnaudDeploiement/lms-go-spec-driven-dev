@@ -53,6 +53,10 @@ func (Module) Edges() []ent.Edge {
 			Field("course_id").
 			Unique().
 			Required(),
+		edge.From("content", Content.Type).
+			Ref("modules").
+			Field("content_id").
+			Unique(),
 		edge.To("progress_entries", ModuleProgress.Type),
 	}
 }

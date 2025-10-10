@@ -141,26 +141,6 @@ func ContentIDNotIn(vs ...uuid.UUID) predicate.Module {
 	return predicate.Module(sql.FieldNotIn(FieldContentID, vs...))
 }
 
-// ContentIDGT applies the GT predicate on the "content_id" field.
-func ContentIDGT(v uuid.UUID) predicate.Module {
-	return predicate.Module(sql.FieldGT(FieldContentID, v))
-}
-
-// ContentIDGTE applies the GTE predicate on the "content_id" field.
-func ContentIDGTE(v uuid.UUID) predicate.Module {
-	return predicate.Module(sql.FieldGTE(FieldContentID, v))
-}
-
-// ContentIDLT applies the LT predicate on the "content_id" field.
-func ContentIDLT(v uuid.UUID) predicate.Module {
-	return predicate.Module(sql.FieldLT(FieldContentID, v))
-}
-
-// ContentIDLTE applies the LTE predicate on the "content_id" field.
-func ContentIDLTE(v uuid.UUID) predicate.Module {
-	return predicate.Module(sql.FieldLTE(FieldContentID, v))
-}
-
 // ContentIDIsNil applies the IsNil predicate on the "content_id" field.
 func ContentIDIsNil() predicate.Module {
 	return predicate.Module(sql.FieldIsNull(FieldContentID))
@@ -561,6 +541,29 @@ func HasCourse() predicate.Module {
 func HasCourseWith(preds ...predicate.Course) predicate.Module {
 	return predicate.Module(func(s *sql.Selector) {
 		step := newCourseStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasContent applies the HasEdge predicate on the "content" edge.
+func HasContent() predicate.Module {
+	return predicate.Module(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, ContentTable, ContentColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasContentWith applies the HasEdge predicate on the "content" edge with a given conditions (other predicates).
+func HasContentWith(preds ...predicate.Content) predicate.Module {
+	return predicate.Module(func(s *sql.Selector) {
+		step := newContentStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)

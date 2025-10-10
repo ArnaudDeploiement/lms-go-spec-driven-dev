@@ -60,6 +60,9 @@ type ContentMutation struct {
 	clearedFields       map[string]struct{}
 	organization        *uuid.UUID
 	clearedorganization bool
+	modules             map[uuid.UUID]struct{}
+	removedmodules      map[uuid.UUID]struct{}
+	clearedmodules      bool
 	done                bool
 	oldValue            func(context.Context) (*Content, error)
 	predicates          []predicate.Content
@@ -567,6 +570,60 @@ func (m *ContentMutation) ResetOrganization() {
 	m.clearedorganization = false
 }
 
+// AddModuleIDs adds the "modules" edge to the Module entity by ids.
+func (m *ContentMutation) AddModuleIDs(ids ...uuid.UUID) {
+	if m.modules == nil {
+		m.modules = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.modules[ids[i]] = struct{}{}
+	}
+}
+
+// ClearModules clears the "modules" edge to the Module entity.
+func (m *ContentMutation) ClearModules() {
+	m.clearedmodules = true
+}
+
+// ModulesCleared reports if the "modules" edge to the Module entity was cleared.
+func (m *ContentMutation) ModulesCleared() bool {
+	return m.clearedmodules
+}
+
+// RemoveModuleIDs removes the "modules" edge to the Module entity by IDs.
+func (m *ContentMutation) RemoveModuleIDs(ids ...uuid.UUID) {
+	if m.removedmodules == nil {
+		m.removedmodules = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.modules, ids[i])
+		m.removedmodules[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedModules returns the removed IDs of the "modules" edge to the Module entity.
+func (m *ContentMutation) RemovedModulesIDs() (ids []uuid.UUID) {
+	for id := range m.removedmodules {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ModulesIDs returns the "modules" edge IDs in the mutation.
+func (m *ContentMutation) ModulesIDs() (ids []uuid.UUID) {
+	for id := range m.modules {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetModules resets all changes to the "modules" edge.
+func (m *ContentMutation) ResetModules() {
+	m.modules = nil
+	m.clearedmodules = false
+	m.removedmodules = nil
+}
+
 // Where appends a list predicates to the ContentMutation builder.
 func (m *ContentMutation) Where(ps ...predicate.Content) {
 	m.predicates = append(m.predicates, ps...)
@@ -866,9 +923,12 @@ func (m *ContentMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *ContentMutation) AddedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	if m.organization != nil {
 		edges = append(edges, content.EdgeOrganization)
+	}
+	if m.modules != nil {
+		edges = append(edges, content.EdgeModules)
 	}
 	return edges
 }
@@ -881,27 +941,47 @@ func (m *ContentMutation) AddedIDs(name string) []ent.Value {
 		if id := m.organization; id != nil {
 			return []ent.Value{*id}
 		}
+	case content.EdgeModules:
+		ids := make([]ent.Value, 0, len(m.modules))
+		for id := range m.modules {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *ContentMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
+	if m.removedmodules != nil {
+		edges = append(edges, content.EdgeModules)
+	}
 	return edges
 }
 
 // RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
 // the given name in this mutation.
 func (m *ContentMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	case content.EdgeModules:
+		ids := make([]ent.Value, 0, len(m.removedmodules))
+		for id := range m.removedmodules {
+			ids = append(ids, id)
+		}
+		return ids
+	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *ContentMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	if m.clearedorganization {
 		edges = append(edges, content.EdgeOrganization)
+	}
+	if m.clearedmodules {
+		edges = append(edges, content.EdgeModules)
 	}
 	return edges
 }
@@ -912,6 +992,8 @@ func (m *ContentMutation) EdgeCleared(name string) bool {
 	switch name {
 	case content.EdgeOrganization:
 		return m.clearedorganization
+	case content.EdgeModules:
+		return m.clearedmodules
 	}
 	return false
 }
@@ -933,6 +1015,9 @@ func (m *ContentMutation) ResetEdge(name string) error {
 	switch name {
 	case content.EdgeOrganization:
 		m.ResetOrganization()
+		return nil
+	case content.EdgeModules:
+		m.ResetModules()
 		return nil
 	}
 	return fmt.Errorf("unknown Content edge %s", name)
@@ -4438,7 +4523,6 @@ type ModuleMutation struct {
 	op                      Op
 	typ                     string
 	id                      *uuid.UUID
-	content_id              *uuid.UUID
 	title                   *string
 	module_type             *string
 	position                *int
@@ -4452,6 +4536,8 @@ type ModuleMutation struct {
 	clearedFields           map[string]struct{}
 	course                  *uuid.UUID
 	clearedcourse           bool
+	content                 *uuid.UUID
+	clearedcontent          bool
 	progress_entries        map[uuid.UUID]struct{}
 	removedprogress_entries map[uuid.UUID]struct{}
 	clearedprogress_entries bool
@@ -4602,12 +4688,12 @@ func (m *ModuleMutation) ResetCourseID() {
 
 // SetContentID sets the "content_id" field.
 func (m *ModuleMutation) SetContentID(u uuid.UUID) {
-	m.content_id = &u
+	m.content = &u
 }
 
 // ContentID returns the value of the "content_id" field in the mutation.
 func (m *ModuleMutation) ContentID() (r uuid.UUID, exists bool) {
-	v := m.content_id
+	v := m.content
 	if v == nil {
 		return
 	}
@@ -4633,7 +4719,7 @@ func (m *ModuleMutation) OldContentID(ctx context.Context) (v *uuid.UUID, err er
 
 // ClearContentID clears the value of the "content_id" field.
 func (m *ModuleMutation) ClearContentID() {
-	m.content_id = nil
+	m.content = nil
 	m.clearedFields[module.FieldContentID] = struct{}{}
 }
 
@@ -4645,7 +4731,7 @@ func (m *ModuleMutation) ContentIDCleared() bool {
 
 // ResetContentID resets all changes to the "content_id" field.
 func (m *ModuleMutation) ResetContentID() {
-	m.content_id = nil
+	m.content = nil
 	delete(m.clearedFields, module.FieldContentID)
 }
 
@@ -5031,6 +5117,33 @@ func (m *ModuleMutation) ResetCourse() {
 	m.clearedcourse = false
 }
 
+// ClearContent clears the "content" edge to the Content entity.
+func (m *ModuleMutation) ClearContent() {
+	m.clearedcontent = true
+	m.clearedFields[module.FieldContentID] = struct{}{}
+}
+
+// ContentCleared reports if the "content" edge to the Content entity was cleared.
+func (m *ModuleMutation) ContentCleared() bool {
+	return m.ContentIDCleared() || m.clearedcontent
+}
+
+// ContentIDs returns the "content" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// ContentID instead. It exists only for internal usage by the builders.
+func (m *ModuleMutation) ContentIDs() (ids []uuid.UUID) {
+	if id := m.content; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetContent resets all changes to the "content" edge.
+func (m *ModuleMutation) ResetContent() {
+	m.content = nil
+	m.clearedcontent = false
+}
+
 // AddProgressEntryIDs adds the "progress_entries" edge to the ModuleProgress entity by ids.
 func (m *ModuleMutation) AddProgressEntryIDs(ids ...uuid.UUID) {
 	if m.progress_entries == nil {
@@ -5123,7 +5236,7 @@ func (m *ModuleMutation) Fields() []string {
 	if m.course != nil {
 		fields = append(fields, module.FieldCourseID)
 	}
-	if m.content_id != nil {
+	if m.content != nil {
 		fields = append(fields, module.FieldContentID)
 	}
 	if m.title != nil {
@@ -5419,9 +5532,12 @@ func (m *ModuleMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *ModuleMutation) AddedEdges() []string {
-	edges := make([]string, 0, 2)
+	edges := make([]string, 0, 3)
 	if m.course != nil {
 		edges = append(edges, module.EdgeCourse)
+	}
+	if m.content != nil {
+		edges = append(edges, module.EdgeContent)
 	}
 	if m.progress_entries != nil {
 		edges = append(edges, module.EdgeProgressEntries)
@@ -5437,6 +5553,10 @@ func (m *ModuleMutation) AddedIDs(name string) []ent.Value {
 		if id := m.course; id != nil {
 			return []ent.Value{*id}
 		}
+	case module.EdgeContent:
+		if id := m.content; id != nil {
+			return []ent.Value{*id}
+		}
 	case module.EdgeProgressEntries:
 		ids := make([]ent.Value, 0, len(m.progress_entries))
 		for id := range m.progress_entries {
@@ -5449,7 +5569,7 @@ func (m *ModuleMutation) AddedIDs(name string) []ent.Value {
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *ModuleMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 2)
+	edges := make([]string, 0, 3)
 	if m.removedprogress_entries != nil {
 		edges = append(edges, module.EdgeProgressEntries)
 	}
@@ -5472,9 +5592,12 @@ func (m *ModuleMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *ModuleMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 2)
+	edges := make([]string, 0, 3)
 	if m.clearedcourse {
 		edges = append(edges, module.EdgeCourse)
+	}
+	if m.clearedcontent {
+		edges = append(edges, module.EdgeContent)
 	}
 	if m.clearedprogress_entries {
 		edges = append(edges, module.EdgeProgressEntries)
@@ -5488,6 +5611,8 @@ func (m *ModuleMutation) EdgeCleared(name string) bool {
 	switch name {
 	case module.EdgeCourse:
 		return m.clearedcourse
+	case module.EdgeContent:
+		return m.clearedcontent
 	case module.EdgeProgressEntries:
 		return m.clearedprogress_entries
 	}
@@ -5501,6 +5626,9 @@ func (m *ModuleMutation) ClearEdge(name string) error {
 	case module.EdgeCourse:
 		m.ClearCourse()
 		return nil
+	case module.EdgeContent:
+		m.ClearContent()
+		return nil
 	}
 	return fmt.Errorf("unknown Module unique edge %s", name)
 }
@@ -5511,6 +5639,9 @@ func (m *ModuleMutation) ResetEdge(name string) error {
 	switch name {
 	case module.EdgeCourse:
 		m.ResetCourse()
+		return nil
+	case module.EdgeContent:
+		m.ResetContent()
 		return nil
 	case module.EdgeProgressEntries:
 		m.ResetProgressEntries()

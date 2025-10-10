@@ -5,18 +5,33 @@ import (
 	"html/template"
 	"io/fs"
 	"net/http"
+	"strings"
 	"time"
 )
 
 //go:embed templates/*.tmpl static/*.css
 var uiFS embed.FS
 
+var templateFuncs = template.FuncMap{
+	"contains": strings.Contains,
+	"div": func(a, b int64) int64 {
+		if b == 0 {
+			return 0
+		}
+		return a / b
+	},
+}
+
 var (
-	adminTemplates        = template.Must(template.ParseFS(uiFS, "templates/layout.tmpl", "templates/admin.tmpl"))
-	homeTemplates         = template.Must(template.ParseFS(uiFS, "templates/layout.tmpl", "templates/home.tmpl"))
-	learnerCatalogTmpl    = template.Must(template.ParseFS(uiFS, "templates/layout.tmpl", "templates/learn_catalog.tmpl"))
-	learnerCourseTmpl     = template.Must(template.ParseFS(uiFS, "templates/layout.tmpl", "templates/learn_course.tmpl"))
-	staticFS              = mustSubFS(uiFS, "static")
+	adminTemplates      = template.Must(template.New("admin").Funcs(templateFuncs).ParseFS(uiFS, "templates/layout.tmpl", "templates/admin.tmpl"))
+	coursesTemplates    = template.Must(template.New("admin-courses").Funcs(templateFuncs).ParseFS(uiFS, "templates/layout.tmpl", "templates/admin_courses.tmpl"))
+	contentsTemplates   = template.Must(template.New("admin-contents").Funcs(templateFuncs).ParseFS(uiFS, "templates/layout.tmpl", "templates/admin_contents.tmpl"))
+	wizardTemplates     = template.Must(template.New("admin-course-wizard").Funcs(templateFuncs).ParseFS(uiFS, "templates/layout.tmpl", "templates/admin_course_wizard.tmpl"))
+	contentsV2Templates = template.Must(template.New("admin-contents-v2").Funcs(templateFuncs).ParseFS(uiFS, "templates/layout.tmpl", "templates/admin_contents_v2.tmpl"))
+	homeTemplates       = template.Must(template.New("home").Funcs(templateFuncs).ParseFS(uiFS, "templates/layout.tmpl", "templates/home.tmpl"))
+	learnerCatalogTmpl  = template.Must(template.New("learn-catalog").Funcs(templateFuncs).ParseFS(uiFS, "templates/layout.tmpl", "templates/learn_catalog.tmpl"))
+	learnerCourseTmpl   = template.Must(template.New("learn-course").Funcs(templateFuncs).ParseFS(uiFS, "templates/layout.tmpl", "templates/learn_course.tmpl"))
+	staticFS            = mustSubFS(uiFS, "static")
 )
 
 func mustSubFS(fsys embed.FS, path string) fs.FS {
@@ -44,20 +59,20 @@ func HomeHandler() http.HandlerFunc {
 		Description string
 		ActionLabel string
 	}
-		type viewModel struct {
-			Page         string
-			PageTitle    string
-			FlashMessage string
-			FlashError   string
-			CurrentYear  int
-			Highlights   []highlight
-			Shortcuts    []shortcut
+	type viewModel struct {
+		Page         string
+		PageTitle    string
+		FlashMessage string
+		FlashError   string
+		CurrentYear  int
+		Highlights   []highlight
+		Shortcuts    []shortcut
 	}
 
-		data := viewModel{
-			Page:        "home",
-			PageTitle:   "LMS Go",
-			CurrentYear: time.Now().Year(),
+	data := viewModel{
+		Page:        "home",
+		PageTitle:   "LMS Go",
+		CurrentYear: time.Now().Year(),
 		Highlights: []highlight{
 			{Title: "Cours actifs", Value: "6", Description: "Parcours publiés et accessibles aux apprenants."},
 			{Title: "Utilisateurs", Value: "128", Description: "Apprenants, concepteurs et tuteurs actifs."},

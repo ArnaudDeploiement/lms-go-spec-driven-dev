@@ -99,8 +99,8 @@ func (s *Service) Create(ctx context.Context, input CreateInput) (*ent.User, err
 		SetMetadata(metadata).
 		Save(ctx)
 	if err != nil {
-        if ent.IsConstraintError(err) {
-            return nil, ErrEmailAlreadyUsed
+		if ent.IsConstraintError(err) {
+			return nil, ErrEmailAlreadyUsed
 		}
 		return nil, err
 	}
@@ -193,8 +193,8 @@ func (s *Service) Update(ctx context.Context, orgID, userID uuid.UUID, input Upd
 
 	user, err := update.Save(ctx)
 	if err != nil {
-        if ent.IsConstraintError(err) {
-            return nil, ErrEmailAlreadyUsed
+		if ent.IsConstraintError(err) {
+			return nil, ErrEmailAlreadyUsed
 		}
 		if ent.IsNotFound(err) {
 			return nil, ErrNotFound

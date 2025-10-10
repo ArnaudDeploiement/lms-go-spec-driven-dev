@@ -35,6 +35,8 @@ const (
 	FieldUpdatedAt = "updated_at"
 	// EdgeOrganization holds the string denoting the organization edge name in mutations.
 	EdgeOrganization = "organization"
+	// EdgeModules holds the string denoting the modules edge name in mutations.
+	EdgeModules = "modules"
 	// Table holds the table name of the content in the database.
 	Table = "contents"
 	// OrganizationTable is the table that holds the organization relation/edge.
@@ -44,6 +46,13 @@ const (
 	OrganizationInverseTable = "organizations"
 	// OrganizationColumn is the table column denoting the organization relation/edge.
 	OrganizationColumn = "organization_id"
+	// ModulesTable is the table that holds the modules relation/edge.
+	ModulesTable = "modules"
+	// ModulesInverseTable is the table name for the Module entity.
+	// It exists in this package in order to avoid circular dependency with the "module" package.
+	ModulesInverseTable = "modules"
+	// ModulesColumn is the table column denoting the modules relation/edge.
+	ModulesColumn = "content_id"
 )
 
 // Columns holds all SQL columns for content fields.
@@ -145,10 +154,31 @@ func ByOrganizationField(field string, opts ...sql.OrderTermOption) OrderOption 
 		sqlgraph.OrderByNeighborTerms(s, newOrganizationStep(), sql.OrderByField(field, opts...))
 	}
 }
+
+// ByModulesCount orders the results by modules count.
+func ByModulesCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newModulesStep(), opts...)
+	}
+}
+
+// ByModules orders the results by modules terms.
+func ByModules(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newModulesStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
 func newOrganizationStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(OrganizationInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.M2O, true, OrganizationTable, OrganizationColumn),
+	)
+}
+func newModulesStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ModulesInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, ModulesTable, ModulesColumn),
 	)
 }

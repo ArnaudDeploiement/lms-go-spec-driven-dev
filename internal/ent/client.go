@@ -389,6 +389,22 @@ func (c *ContentClient) QueryOrganization(co *Content) *OrganizationQuery {
 	return query
 }
 
+// QueryModules queries the modules edge of a Content.
+func (c *ContentClient) QueryModules(co *Content) *ModuleQuery {
+	query := (&ModuleClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := co.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(content.Table, content.FieldID, id),
+			sqlgraph.To(module.Table, module.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, content.ModulesTable, content.ModulesColumn),
+		)
+		fromV = sqlgraph.Neighbors(co.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *ContentClient) Hooks() []Hook {
 	return c.hooks.Content
@@ -1122,6 +1138,22 @@ func (c *ModuleClient) QueryCourse(m *Module) *CourseQuery {
 			sqlgraph.From(module.Table, module.FieldID, id),
 			sqlgraph.To(course.Table, course.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, module.CourseTable, module.CourseColumn),
+		)
+		fromV = sqlgraph.Neighbors(m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryContent queries the content edge of a Module.
+func (c *ModuleClient) QueryContent(m *Module) *ContentQuery {
+	query := (&ContentClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(module.Table, module.FieldID, id),
+			sqlgraph.To(content.Table, content.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, module.ContentTable, module.ContentColumn),
 		)
 		fromV = sqlgraph.Neighbors(m.driver.Dialect(), step)
 		return fromV, nil

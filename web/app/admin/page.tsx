@@ -970,9 +970,18 @@ export default function AdminPage() {
                   <CardTitle className="flex items-center gap-2 text-lg text-slate-900">
                     <BookOpen className="h-5 w-5 text-blue-500" /> Catalogue
                   </CardTitle>
-                  <Button type="button" onClick={handleCreateNewCourse} className="bg-blue-600 text-white hover:bg-blue-700">
-                    <PlusCircle className="mr-2 h-4 w-4" /> Nouveau cours
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      onClick={() => router.push("/admin/courses/new" + (organization ? `?org=${organization.id}` : ""))}
+                      className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700"
+                    >
+                      <PlusCircle className="mr-2 h-4 w-4" /> Assistant guidé
+                    </Button>
+                    <Button type="button" variant="outline" onClick={handleCreateNewCourse} className="border-slate-200">
+                      Création rapide
+                    </Button>
+                  </div>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {courses.map((course) => (

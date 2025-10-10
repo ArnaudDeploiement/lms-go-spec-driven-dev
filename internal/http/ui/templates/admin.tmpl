@@ -4,6 +4,31 @@
 
 {{define "content"}}
 <div class="space-y-10">
+  <!-- Quick navigation -->
+  {{if ne .SelectedOrg.String "00000000-0000-0000-0000-000000000000"}}
+  <section class="rounded-xl bg-gradient-to-r from-blue-600 to-indigo-700 p-6 text-white">
+    <h2 class="text-2xl font-bold">Tableau de bord Admin</h2>
+    <p class="mt-1 text-blue-100">Gérez votre plateforme LMS</p>
+    <div class="mt-6 grid gap-4 md:grid-cols-3">
+      <a href="/admin/courses?org={{.SelectedOrg}}" class="rounded-lg bg-white/10 p-4 ring-1 ring-white/20 hover:bg-white/20 transition-colors">
+        <div class="text-3xl mb-2">📚</div>
+        <div class="font-semibold">Gestion des cours</div>
+        <div class="mt-1 text-sm text-blue-100">Créer et gérer vos parcours pédagogiques</div>
+      </a>
+      <a href="/admin/contents?org={{.SelectedOrg}}" class="rounded-lg bg-white/10 p-4 ring-1 ring-white/20 hover:bg-white/20 transition-colors">
+        <div class="text-3xl mb-2">📁</div>
+        <div class="font-semibold">Bibliothèque de contenus</div>
+        <div class="mt-1 text-sm text-blue-100">Gérer vos fichiers et médias</div>
+      </a>
+      <a href="#users" class="rounded-lg bg-white/10 p-4 ring-1 ring-white/20 hover:bg-white/20 transition-colors">
+        <div class="text-3xl mb-2">👥</div>
+        <div class="font-semibold">Utilisateurs</div>
+        <div class="mt-1 text-sm text-blue-100">Gérer les apprenants et formateurs</div>
+      </a>
+    </div>
+  </section>
+  {{end}}
+
   <section class="rounded-2xl bg-white p-6 shadow-xl shadow-slate-900/5 ring-1 ring-slate-200">
     <h2 class="text-lg font-semibold text-slate-900">Organisations</h2>
     <form class="mt-4 grid gap-4 md:grid-cols-3" method="post" action="/admin/organizations">
@@ -33,7 +58,7 @@
   </section>
 
   {{if ne .SelectedOrg.String "00000000-0000-0000-0000-000000000000"}}
-  <section class="rounded-2xl bg-white p-6 shadow-xl shadow-slate-900/5 ring-1 ring-slate-200">
+  <section id="users" class="rounded-2xl bg-white p-6 shadow-xl shadow-slate-900/5 ring-1 ring-slate-200">
     <h2 class="text-lg font-semibold text-slate-900">Utilisateurs (organisation sélectionnée)</h2>
     <form class="mt-4 grid gap-4 md:grid-cols-4" method="post" action="/admin/users">
       <input type="hidden" name="org_id" value="{{.SelectedOrg}}" />
@@ -67,118 +92,23 @@
     </ul>
   </section>
 
-  <section class="rounded-2xl bg-white p-6 shadow-xl shadow-slate-900/5 ring-1 ring-slate-200">
-    <h2 class="text-lg font-semibold text-slate-900">Cours &amp; modules</h2>
-    <form class="mt-4 grid gap-4 md:grid-cols-4" method="post" action="/admin/courses">
-      <input type="hidden" name="org_id" value="{{.SelectedOrg}}" />
-      <div class="col-span-1">
-        <label class="block text-sm font-medium text-slate-700" for="course-title">Titre</label>
-        <input id="course-title" class="mt-1 w-full rounded border border-slate-300 px-3 py-2" name="title" placeholder="Nom du parcours" required />
-      </div>
-      <div class="col-span-1">
-        <label class="block text-sm font-medium text-slate-700" for="course-slug">Slug</label>
-        <input id="course-slug" class="mt-1 w-full rounded border border-slate-300 px-3 py-2" name="slug" placeholder="nom-du-parcours" />
-      </div>
-      <div class="col-span-1">
-        <label class="block text-sm font-medium text-slate-700" for="course-description">Description</label>
-        <input id="course-description" class="mt-1 w-full rounded border border-slate-300 px-3 py-2" name="description" placeholder="Résumé du parcours" />
-      </div>
-      <div class="flex items-end">
-        <button class="w-full rounded bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700" type="submit">Créer le cours</button>
-      </div>
-    </form>
-
-    <div class="mt-6 space-y-6">
-      {{range .Courses}}
-      <div class="rounded border border-slate-200 p-4">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="font-semibold text-slate-900">{{.Course.Title}}</p>
-            <p class="text-xs text-slate-500">Slug: {{.Course.Slug}} • Statut: {{.Course.Status}} • Inscriptions: {{.EnrollmentCount}}</p>
-          </div>
-        </div>
-        <h3 class="mt-4 text-sm font-semibold text-slate-700">Modules</h3>
-        <ul class="mt-2 space-y-1 text-sm text-slate-600">
-          {{range .Modules}}
-          <li>{{.Position | printf "%02d"}} — {{.Title}} ({{.ModuleType}})</li>
-          {{else}}
-          <li>Aucun module pour ce cours.</li>
-          {{end}}
-        </ul>
-        <form class="mt-4 grid gap-4 md:grid-cols-5" method="post" action="/admin/modules">
-          <input type="hidden" name="org_id" value="{{$.SelectedOrg}}" />
-          <input type="hidden" name="course_id" value="{{.Course.ID}}" />
-          <div class="col-span-1">
-            <label class="block text-sm font-medium text-slate-700" for="module-title-{{.Course.ID}}">Titre du module</label>
-            <input id="module-title-{{.Course.ID}}" class="mt-1 w-full rounded border border-slate-300 px-3 py-2" name="title" placeholder="Introduction" required />
-          </div>
-          <div class="col-span-1">
-            <label class="block text-sm font-medium text-slate-700" for="module-type-{{.Course.ID}}">Type</label>
-            <select id="module-type-{{.Course.ID}}" class="mt-1 w-full rounded border border-slate-300 px-3 py-2" name="module_type" required>
-              <option value="">Choisir un type</option>
-              {{range $.ModuleTypes}}
-              <option value="{{.}}">{{.}}</option>
-              {{end}}
-            </select>
-          </div>
-          <div class="col-span-1">
-            <label class="block text-sm font-medium text-slate-700" for="module-content-{{.Course.ID}}">Contenu associé</label>
-            <select id="module-content-{{.Course.ID}}" class="mt-1 w-full rounded border border-slate-300 px-3 py-2" name="content_id">
-              <option value="">Aucun contenu</option>
-              {{range $.Contents}}
-              <option value="{{.ID}}">{{.Name}}</option>
-              {{end}}
-            </select>
-            <p class="mt-1 text-xs text-slate-500">Associer un média uploadé (PDF, vidéo, etc.).</p>
-          </div>
-          <div class="col-span-1">
-            <label class="block text-sm font-medium text-slate-700" for="module-duration-{{.Course.ID}}">Durée (sec)</label>
-            <input id="module-duration-{{.Course.ID}}" class="mt-1 w-full rounded border border-slate-300 px-3 py-2" name="duration" type="number" min="0" placeholder="600" />
-          </div>
-          <div class="flex items-end">
-            <button class="w-full rounded bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700" type="submit">Ajouter le module</button>
-          </div>
-        </form>
-      </div>
-      {{else}}
-      <p class="text-sm text-slate-600">Aucun cours pour cette organisation.</p>
-      {{end}}
+  <!-- Quick stats -->
+  <section class="grid gap-4 md:grid-cols-3">
+    <div class="rounded-2xl bg-white p-6 shadow-xl shadow-slate-900/5 ring-1 ring-slate-200">
+      <h3 class="text-sm font-medium text-slate-600">Cours créés</h3>
+      <p class="mt-2 text-3xl font-bold text-slate-900">{{len .Courses}}</p>
+      <a href="/admin/courses?org={{.SelectedOrg}}" class="mt-3 inline-block text-sm text-blue-600 hover:underline">Gérer les cours →</a>
     </div>
-  </section>
-
-  <section class="rounded-2xl bg-white p-6 shadow-xl shadow-slate-900/5 ring-1 ring-slate-200">
-    <h2 class="text-lg font-semibold text-slate-900">Contenus médias</h2>
-    <form class="mt-4 grid gap-4 md:grid-cols-4" method="post" action="/admin/contents">
-      <input type="hidden" name="org_id" value="{{.SelectedOrg}}" />
-      <div class="col-span-1">
-        <label class="block text-sm font-medium text-slate-700" for="content-name">Nom</label>
-        <input id="content-name" class="mt-1 w-full rounded border border-slate-300 px-3 py-2" name="name" placeholder="Cours PDF" required />
-      </div>
-      <div class="col-span-1">
-        <label class="block text-sm font-medium text-slate-700" for="content-mime">Type MIME</label>
-        <input id="content-mime" class="mt-1 w-full rounded border border-slate-300 px-3 py-2" name="mime_type" placeholder="application/pdf" required />
-      </div>
-      <div class="col-span-1">
-        <label class="block text-sm font-medium text-slate-700" for="content-size">Taille (octets)</label>
-        <input id="content-size" class="mt-1 w-full rounded border border-slate-300 px-3 py-2" name="size_bytes" type="number" min="0" placeholder="1048576" />
-      </div>
-      <div class="flex items-end">
-        <button class="w-full rounded bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700" type="submit">Générer un upload</button>
-      </div>
-    </form>
-    {{if .UploadURL}}
-    <p class="mt-3 break-all text-sm text-slate-600">
-      URL d'upload :
-      <a class="text-blue-600 hover:underline" href="{{.UploadURL}}" target="_blank" rel="noreferrer">{{.UploadURL}}</a>
-    </p>
-    {{end}}
-    <ul class="mt-4 space-y-2 text-sm text-slate-600">
-      {{range .Contents}}
-      <li class="rounded border border-slate-200 px-3 py-2">{{.Name}} — {{.MimeType}} ({{.Status}})</li>
-      {{else}}
-      <li>Aucun contenu enregistré.</li>
-      {{end}}
-    </ul>
+    <div class="rounded-2xl bg-white p-6 shadow-xl shadow-slate-900/5 ring-1 ring-slate-200">
+      <h3 class="text-sm font-medium text-slate-600">Fichiers médias</h3>
+      <p class="mt-2 text-3xl font-bold text-slate-900">{{len .Contents}}</p>
+      <a href="/admin/contents?org={{.SelectedOrg}}" class="mt-3 inline-block text-sm text-blue-600 hover:underline">Gérer les contenus →</a>
+    </div>
+    <div class="rounded-2xl bg-white p-6 shadow-xl shadow-slate-900/5 ring-1 ring-slate-200">
+      <h3 class="text-sm font-medium text-slate-600">Utilisateurs actifs</h3>
+      <p class="mt-2 text-3xl font-bold text-slate-900">{{len .Users}}</p>
+      <a href="#users" class="mt-3 inline-block text-sm text-blue-600 hover:underline">Gérer les utilisateurs →</a>
+    </div>
   </section>
   {{end}}
 </div>

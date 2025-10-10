@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"lms-go/internal/ent/content"
 	"lms-go/internal/ent/course"
 	"lms-go/internal/ent/module"
 	"lms-go/internal/ent/moduleprogress"
@@ -148,6 +149,11 @@ func (mc *ModuleCreate) SetNillableID(u *uuid.UUID) *ModuleCreate {
 // SetCourse sets the "course" edge to the Course entity.
 func (mc *ModuleCreate) SetCourse(c *Course) *ModuleCreate {
 	return mc.SetCourseID(c.ID)
+}
+
+// SetContent sets the "content" edge to the Content entity.
+func (mc *ModuleCreate) SetContent(c *Content) *ModuleCreate {
+	return mc.SetContentID(c.ID)
 }
 
 // AddProgressEntryIDs adds the "progress_entries" edge to the ModuleProgress entity by IDs.
@@ -297,10 +303,6 @@ func (mc *ModuleCreate) createSpec() (*Module, *sqlgraph.CreateSpec) {
 		_node.ID = id
 		_spec.ID.Value = &id
 	}
-	if value, ok := mc.mutation.ContentID(); ok {
-		_spec.SetField(module.FieldContentID, field.TypeUUID, value)
-		_node.ContentID = &value
-	}
 	if value, ok := mc.mutation.Title(); ok {
 		_spec.SetField(module.FieldTitle, field.TypeString, value)
 		_node.Title = value
@@ -348,6 +350,23 @@ func (mc *ModuleCreate) createSpec() (*Module, *sqlgraph.CreateSpec) {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
 		_node.CourseID = nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := mc.mutation.ContentIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   module.ContentTable,
+			Columns: []string{module.ContentColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(content.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_node.ContentID = &nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	if nodes := mc.mutation.ProgressEntriesIDs(); len(nodes) > 0 {

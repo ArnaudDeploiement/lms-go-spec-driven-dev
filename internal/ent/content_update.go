@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"lms-go/internal/ent/content"
+	"lms-go/internal/ent/module"
 	"lms-go/internal/ent/organization"
 	"lms-go/internal/ent/predicate"
 	"time"
@@ -150,6 +151,21 @@ func (cu *ContentUpdate) SetOrganization(o *Organization) *ContentUpdate {
 	return cu.SetOrganizationID(o.ID)
 }
 
+// AddModuleIDs adds the "modules" edge to the Module entity by IDs.
+func (cu *ContentUpdate) AddModuleIDs(ids ...uuid.UUID) *ContentUpdate {
+	cu.mutation.AddModuleIDs(ids...)
+	return cu
+}
+
+// AddModules adds the "modules" edges to the Module entity.
+func (cu *ContentUpdate) AddModules(m ...*Module) *ContentUpdate {
+	ids := make([]uuid.UUID, len(m))
+	for i := range m {
+		ids[i] = m[i].ID
+	}
+	return cu.AddModuleIDs(ids...)
+}
+
 // Mutation returns the ContentMutation object of the builder.
 func (cu *ContentUpdate) Mutation() *ContentMutation {
 	return cu.mutation
@@ -159,6 +175,27 @@ func (cu *ContentUpdate) Mutation() *ContentMutation {
 func (cu *ContentUpdate) ClearOrganization() *ContentUpdate {
 	cu.mutation.ClearOrganization()
 	return cu
+}
+
+// ClearModules clears all "modules" edges to the Module entity.
+func (cu *ContentUpdate) ClearModules() *ContentUpdate {
+	cu.mutation.ClearModules()
+	return cu
+}
+
+// RemoveModuleIDs removes the "modules" edge to Module entities by IDs.
+func (cu *ContentUpdate) RemoveModuleIDs(ids ...uuid.UUID) *ContentUpdate {
+	cu.mutation.RemoveModuleIDs(ids...)
+	return cu
+}
+
+// RemoveModules removes "modules" edges to Module entities.
+func (cu *ContentUpdate) RemoveModules(m ...*Module) *ContentUpdate {
+	ids := make([]uuid.UUID, len(m))
+	for i := range m {
+		ids[i] = m[i].ID
+	}
+	return cu.RemoveModuleIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -284,6 +321,51 @@ func (cu *ContentUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(organization.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if cu.mutation.ModulesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   content.ModulesTable,
+			Columns: []string{content.ModulesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(module.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := cu.mutation.RemovedModulesIDs(); len(nodes) > 0 && !cu.mutation.ModulesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   content.ModulesTable,
+			Columns: []string{content.ModulesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(module.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := cu.mutation.ModulesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   content.ModulesTable,
+			Columns: []string{content.ModulesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(module.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {
@@ -431,6 +513,21 @@ func (cuo *ContentUpdateOne) SetOrganization(o *Organization) *ContentUpdateOne 
 	return cuo.SetOrganizationID(o.ID)
 }
 
+// AddModuleIDs adds the "modules" edge to the Module entity by IDs.
+func (cuo *ContentUpdateOne) AddModuleIDs(ids ...uuid.UUID) *ContentUpdateOne {
+	cuo.mutation.AddModuleIDs(ids...)
+	return cuo
+}
+
+// AddModules adds the "modules" edges to the Module entity.
+func (cuo *ContentUpdateOne) AddModules(m ...*Module) *ContentUpdateOne {
+	ids := make([]uuid.UUID, len(m))
+	for i := range m {
+		ids[i] = m[i].ID
+	}
+	return cuo.AddModuleIDs(ids...)
+}
+
 // Mutation returns the ContentMutation object of the builder.
 func (cuo *ContentUpdateOne) Mutation() *ContentMutation {
 	return cuo.mutation
@@ -440,6 +537,27 @@ func (cuo *ContentUpdateOne) Mutation() *ContentMutation {
 func (cuo *ContentUpdateOne) ClearOrganization() *ContentUpdateOne {
 	cuo.mutation.ClearOrganization()
 	return cuo
+}
+
+// ClearModules clears all "modules" edges to the Module entity.
+func (cuo *ContentUpdateOne) ClearModules() *ContentUpdateOne {
+	cuo.mutation.ClearModules()
+	return cuo
+}
+
+// RemoveModuleIDs removes the "modules" edge to Module entities by IDs.
+func (cuo *ContentUpdateOne) RemoveModuleIDs(ids ...uuid.UUID) *ContentUpdateOne {
+	cuo.mutation.RemoveModuleIDs(ids...)
+	return cuo
+}
+
+// RemoveModules removes "modules" edges to Module entities.
+func (cuo *ContentUpdateOne) RemoveModules(m ...*Module) *ContentUpdateOne {
+	ids := make([]uuid.UUID, len(m))
+	for i := range m {
+		ids[i] = m[i].ID
+	}
+	return cuo.RemoveModuleIDs(ids...)
 }
 
 // Where appends a list predicates to the ContentUpdate builder.
@@ -595,6 +713,51 @@ func (cuo *ContentUpdateOne) sqlSave(ctx context.Context) (_node *Content, err e
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(organization.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if cuo.mutation.ModulesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   content.ModulesTable,
+			Columns: []string{content.ModulesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(module.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := cuo.mutation.RemovedModulesIDs(); len(nodes) > 0 && !cuo.mutation.ModulesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   content.ModulesTable,
+			Columns: []string{content.ModulesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(module.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := cuo.mutation.ModulesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   content.ModulesTable,
+			Columns: []string{content.ModulesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(module.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {

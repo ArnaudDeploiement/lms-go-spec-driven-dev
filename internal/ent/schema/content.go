@@ -50,6 +50,7 @@ func (Content) Edges() []ent.Edge {
 			Field("organization_id").
 			Unique().
 			Required(),
+		edge.To("modules", Module.Type),
 	}
 }
 

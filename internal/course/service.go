@@ -163,6 +163,19 @@ func (s *Service) Archive(ctx context.Context, orgID, courseID uuid.UUID) (*ent.
 	return s.setStatus(ctx, orgID, courseID, StatusArchived)
 }
 
+func (s *Service) Delete(ctx context.Context, orgID, courseID uuid.UUID) error {
+	course, err := s.client.Course.Query().
+		Where(entcourse.IDEQ(courseID), entcourse.OrganizationIDEQ(orgID)).
+		Only(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return ErrNotFound
+		}
+		return err
+	}
+	return s.client.Course.DeleteOne(course).Exec(ctx)
+}
+
 func (s *Service) setStatus(ctx context.Context, orgID, courseID uuid.UUID, status string) (*ent.Course, error) {
 	update := s.client.Course.UpdateOneID(courseID).
 		Where(entcourse.OrganizationIDEQ(orgID)).

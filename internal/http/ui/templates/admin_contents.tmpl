@@ -1,0 +1,217 @@
+{{define "admin-contents"}}
+  {{template "layout" .}}
+{{end}}
+
+{{define "content"}}
+<div class="space-y-6">
+  <!-- Page header -->
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-3xl font-bold text-slate-900">Bibliothèque de contenus</h1>
+      <p class="mt-1 text-sm text-slate-600">Gérez vos fichiers PDF, vidéos, audio et documents</p>
+    </div>
+    <a href="/admin?org={{.SelectedOrg}}" class="rounded-lg bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-200">
+      ← Retour au tableau de bord
+    </a>
+  </div>
+
+  <!-- Upload new content card -->
+  <section class="rounded-xl bg-gradient-to-br from-emerald-50 to-teal-50 p-6 ring-1 ring-emerald-100">
+    <h2 class="text-lg font-semibold text-slate-900">Téléverser un nouveau contenu</h2>
+    <p class="mt-1 text-sm text-slate-600">Générez une URL de téléversement pour ajouter un fichier à votre bibliothèque</p>
+
+    <form class="mt-4 grid gap-4 md:grid-cols-4" method="post" action="/admin/contents">
+      <input type="hidden" name="org_id" value="{{.SelectedOrg}}" />
+      <div>
+        <label class="block text-sm font-medium text-slate-700" for="content-name">Nom du fichier *</label>
+        <input
+          id="content-name"
+          class="mt-1.5 w-full rounded-lg border border-slate-300 px-3 py-2.5 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+          name="name"
+          placeholder="Ex: presentation-module-1.pdf"
+          required
+        />
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-slate-700" for="content-mime">Type MIME *</label>
+        <select
+          id="content-mime"
+          class="mt-1.5 w-full rounded-lg border border-slate-300 px-3 py-2.5 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+          name="mime_type"
+          required
+        >
+          <option value="">Choisir un type...</option>
+          <optgroup label="Documents">
+            <option value="application/pdf">PDF (application/pdf)</option>
+            <option value="application/vnd.openxmlformats-officedocument.wordprocessingml.document">DOCX (Word)</option>
+            <option value="text/plain">Texte brut (text/plain)</option>
+          </optgroup>
+          <optgroup label="Vidéos">
+            <option value="video/mp4">MP4 (video/mp4)</option>
+            <option value="video/webm">WebM (video/webm)</option>
+          </optgroup>
+          <optgroup label="Audio">
+            <option value="audio/mpeg">MP3 (audio/mpeg)</option>
+            <option value="audio/wav">WAV (audio/wav)</option>
+          </optgroup>
+          <optgroup label="Images">
+            <option value="image/jpeg">JPEG (image/jpeg)</option>
+            <option value="image/png">PNG (image/png)</option>
+          </optgroup>
+        </select>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-slate-700" for="content-size">Taille (octets)</label>
+        <input
+          id="content-size"
+          class="mt-1.5 w-full rounded-lg border border-slate-300 px-3 py-2.5 shadow-sm focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+          name="size_bytes"
+          type="number"
+          min="0"
+          placeholder="Ex: 1048576 (1 MB)"
+        />
+        <p class="mt-1 text-xs text-slate-500">Optionnel, pour pré-allocation</p>
+      </div>
+      <div class="flex items-end">
+        <button class="w-full rounded-lg bg-emerald-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/50" type="submit">
+          Générer l'URL
+        </button>
+      </div>
+    </form>
+
+    {{if .UploadURL}}
+    <div class="mt-4 rounded-lg bg-white p-4 ring-1 ring-emerald-200">
+      <p class="text-sm font-semibold text-emerald-900">URL de téléversement générée</p>
+      <div class="mt-2 flex items-center gap-2">
+        <input
+          type="text"
+          readonly
+          value="{{.UploadURL}}"
+          class="flex-1 rounded border border-emerald-300 bg-emerald-50 px-3 py-2 text-xs font-mono text-emerald-900"
+          onclick="this.select()"
+        />
+        <button
+          onclick="copyToClipboard('{{.UploadURL}}')"
+          class="rounded-lg bg-emerald-600 px-4 py-2 text-xs font-medium text-white hover:bg-emerald-700"
+        >
+          Copier
+        </button>
+      </div>
+      <p class="mt-2 text-xs text-slate-600">
+        Utilisez cette URL pour téléverser votre fichier via PUT (curl, Postman, etc.). L'URL expire après 15 minutes.
+      </p>
+      <div class="mt-3 rounded bg-slate-50 p-3">
+        <p class="text-xs font-mono text-slate-700">curl -X PUT "{{.UploadURL}}" --upload-file votre-fichier.pdf</p>
+      </div>
+    </div>
+    {{end}}
+  </section>
+
+  <!-- Contents library -->
+  <section class="space-y-4">
+    <div class="flex items-center justify-between">
+      <h2 class="text-xl font-semibold text-slate-900">Bibliothèque ({{len .Contents}} fichier(s))</h2>
+      <div class="flex items-center gap-2">
+        <input
+          type="search"
+          id="search-contents"
+          placeholder="Rechercher un contenu..."
+          class="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+          onkeyup="filterContents()"
+        />
+      </div>
+    </div>
+
+    {{if .Contents}}
+      <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3" id="contents-grid">
+        {{range .Contents}}
+        <div class="content-item rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200 hover:shadow-md transition-shadow" data-name="{{.Name}}" data-mime="{{.MimeType}}">
+          <!-- Content type icon -->
+          <div class="flex items-start justify-between">
+            <div class="flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-br {{if contains .MimeType "pdf"}}from-red-100 to-red-200{{else if contains .MimeType "video"}}from-purple-100 to-purple-200{{else if contains .MimeType "audio"}}from-blue-100 to-blue-200{{else if contains .MimeType "word"}}from-indigo-100 to-indigo-200{{else}}from-slate-100 to-slate-200{{end}}">
+              <span class="text-xl">
+                {{if contains .MimeType "pdf"}}📄{{else if contains .MimeType "video"}}🎬{{else if contains .MimeType "audio"}}🎵{{else if contains .MimeType "word"}}📝{{else if contains .MimeType "image"}}🖼️{{else}}📎{{end}}
+              </span>
+            </div>
+
+            <!-- Status badge -->
+            {{if eq .Status "available"}}
+              <span class="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">
+                Disponible
+              </span>
+            {{else if eq .Status "pending"}}
+              <span class="inline-flex items-center rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800">
+                En attente
+              </span>
+            {{else}}
+              <span class="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                {{.Status}}
+              </span>
+            {{end}}
+          </div>
+
+          <!-- Content info -->
+          <div class="mt-4">
+            <h3 class="font-semibold text-slate-900 truncate" title="{{.Name}}">{{.Name}}</h3>
+            <p class="mt-1 text-xs text-slate-500">
+              <span class="font-mono">{{.MimeType}}</span>
+            </p>
+            {{if .SizeBytes}}
+            <p class="mt-1 text-xs text-slate-500">
+              Taille: {{if ge .SizeBytes 1048576}}{{div .SizeBytes 1048576}} MB{{else if ge .SizeBytes 1024}}{{div .SizeBytes 1024}} KB{{else}}{{.SizeBytes}} octets{{end}}
+            </p>
+            {{end}}
+          </div>
+
+          <!-- Storage key -->
+          <div class="mt-3 rounded bg-slate-50 px-2 py-1">
+            <p class="text-xs font-mono text-slate-600 truncate" title="{{.StorageKey}}">{{.StorageKey}}</p>
+          </div>
+
+          <!-- Actions -->
+          <div class="mt-4 flex items-center justify-between gap-2">
+            <span class="text-xs text-slate-400">ID: {{.ID | printf "%.8s"}}</span>
+            <form method="post" action="/admin/contents/{{.ID}}/delete?org={{$.SelectedOrg}}" class="inline" onsubmit="return confirm('Supprimer ce contenu ? Cette action est irréversible.')">
+              <button type="submit" class="rounded bg-red-100 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-200">
+                Supprimer
+              </button>
+            </form>
+          </div>
+        </div>
+        {{end}}
+      </div>
+    {{else}}
+      <div class="rounded-xl bg-slate-50 p-12 text-center">
+        <p class="text-slate-600">Aucun contenu dans votre bibliothèque.</p>
+        <p class="mt-1 text-sm text-slate-500">Commencez par téléverser votre premier fichier ci-dessus.</p>
+      </div>
+    {{end}}
+  </section>
+</div>
+
+<script>
+function copyToClipboard(text) {
+  navigator.clipboard.writeText(text).then(function() {
+    alert('URL copiée dans le presse-papiers !');
+  }, function(err) {
+    console.error('Erreur lors de la copie: ', err);
+  });
+}
+
+function filterContents() {
+  const search = document.getElementById('search-contents').value.toLowerCase();
+  const items = document.querySelectorAll('.content-item');
+
+  items.forEach(item => {
+    const name = item.dataset.name.toLowerCase();
+    const mime = item.dataset.mime.toLowerCase();
+
+    if (name.includes(search) || mime.includes(search)) {
+      item.style.display = '';
+    } else {
+      item.style.display = 'none';
+    }
+  });
+}
+</script>
+{{end}}

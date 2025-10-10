@@ -48,9 +48,11 @@ type Content struct {
 type ContentEdges struct {
 	// Organization holds the value of the organization edge.
 	Organization *Organization `json:"organization,omitempty"`
+	// Modules holds the value of the modules edge.
+	Modules []*Module `json:"modules,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [1]bool
+	loadedTypes [2]bool
 }
 
 // OrganizationOrErr returns the Organization value or an error if the edge
@@ -62,6 +64,15 @@ func (e ContentEdges) OrganizationOrErr() (*Organization, error) {
 		return nil, &NotFoundError{label: organization.Label}
 	}
 	return nil, &NotLoadedError{edge: "organization"}
+}
+
+// ModulesOrErr returns the Modules value or an error if the edge
+// was not loaded in eager-loading.
+func (e ContentEdges) ModulesOrErr() ([]*Module, error) {
+	if e.loadedTypes[1] {
+		return e.Modules, nil
+	}
+	return nil, &NotLoadedError{edge: "modules"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -172,6 +183,11 @@ func (c *Content) Value(name string) (ent.Value, error) {
 // QueryOrganization queries the "organization" edge of the Content entity.
 func (c *Content) QueryOrganization() *OrganizationQuery {
 	return NewContentClient(c.config).QueryOrganization(c)
+}
+
+// QueryModules queries the "modules" edge of the Content entity.
+func (c *Content) QueryModules() *ModuleQuery {
+	return NewContentClient(c.config).QueryModules(c)
 }
 
 // Update returns a builder for updating this Content.

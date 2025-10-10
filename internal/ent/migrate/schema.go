@@ -193,7 +193,6 @@ var (
 	// ModulesColumns holds the columns for the "modules" table.
 	ModulesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
-		{Name: "content_id", Type: field.TypeUUID, Nullable: true},
 		{Name: "title", Type: field.TypeString},
 		{Name: "module_type", Type: field.TypeString},
 		{Name: "position", Type: field.TypeInt, Default: 0},
@@ -202,6 +201,7 @@ var (
 		{Name: "data", Type: field.TypeJSON, Nullable: true},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "content_id", Type: field.TypeUUID, Nullable: true},
 		{Name: "course_id", Type: field.TypeUUID},
 	}
 	// ModulesTable holds the schema information for the "modules" table.
@@ -210,6 +210,12 @@ var (
 		Columns:    ModulesColumns,
 		PrimaryKey: []*schema.Column{ModulesColumns[0]},
 		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "modules_contents_modules",
+				Columns:    []*schema.Column{ModulesColumns[9]},
+				RefColumns: []*schema.Column{ContentsColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
 			{
 				Symbol:     "modules_courses_modules",
 				Columns:    []*schema.Column{ModulesColumns[10]},
@@ -221,12 +227,12 @@ var (
 			{
 				Name:    "module_course_id_position",
 				Unique:  false,
-				Columns: []*schema.Column{ModulesColumns[10], ModulesColumns[4]},
+				Columns: []*schema.Column{ModulesColumns[10], ModulesColumns[3]},
 			},
 			{
 				Name:    "module_course_id_status",
 				Unique:  false,
-				Columns: []*schema.Column{ModulesColumns[10], ModulesColumns[6]},
+				Columns: []*schema.Column{ModulesColumns[10], ModulesColumns[5]},
 			},
 		},
 	}
@@ -348,7 +354,8 @@ func init() {
 	EnrollmentsTable.ForeignKeys[3].RefTable = UsersTable
 	GroupsTable.ForeignKeys[0].RefTable = CoursesTable
 	GroupsTable.ForeignKeys[1].RefTable = OrganizationsTable
-	ModulesTable.ForeignKeys[0].RefTable = CoursesTable
+	ModulesTable.ForeignKeys[0].RefTable = ContentsTable
+	ModulesTable.ForeignKeys[1].RefTable = CoursesTable
 	ModuleProgressesTable.ForeignKeys[0].RefTable = EnrollmentsTable
 	ModuleProgressesTable.ForeignKeys[1].RefTable = ModulesTable
 	UsersTable.ForeignKeys[0].RefTable = OrganizationsTable

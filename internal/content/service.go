@@ -27,14 +27,14 @@ type Storage interface {
 }
 
 type Config struct {
-	UploadExpiry time.Duration
+	UploadExpiry   time.Duration
 	DownloadExpiry time.Duration
 }
 
 type Service struct {
-	client *ent.Client
-	storage Storage
-	uploadExpiry time.Duration
+	client         *ent.Client
+	storage        Storage
+	uploadExpiry   time.Duration
 	downloadExpiry time.Duration
 }
 
@@ -48,9 +48,9 @@ func NewService(client *ent.Client, storage Storage, cfg Config) *Service {
 		download = 15 * time.Minute
 	}
 	return &Service{
-		client: client,
-		storage: storage,
-		uploadExpiry: upload,
+		client:         client,
+		storage:        storage,
+		uploadExpiry:   upload,
 		downloadExpiry: download,
 	}
 }

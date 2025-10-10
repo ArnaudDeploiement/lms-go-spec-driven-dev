@@ -37,6 +37,8 @@ const (
 	FieldUpdatedAt = "updated_at"
 	// EdgeCourse holds the string denoting the course edge name in mutations.
 	EdgeCourse = "course"
+	// EdgeContent holds the string denoting the content edge name in mutations.
+	EdgeContent = "content"
 	// EdgeProgressEntries holds the string denoting the progress_entries edge name in mutations.
 	EdgeProgressEntries = "progress_entries"
 	// Table holds the table name of the module in the database.
@@ -48,6 +50,13 @@ const (
 	CourseInverseTable = "courses"
 	// CourseColumn is the table column denoting the course relation/edge.
 	CourseColumn = "course_id"
+	// ContentTable is the table that holds the content relation/edge.
+	ContentTable = "modules"
+	// ContentInverseTable is the table name for the Content entity.
+	// It exists in this package in order to avoid circular dependency with the "content" package.
+	ContentInverseTable = "contents"
+	// ContentColumn is the table column denoting the content relation/edge.
+	ContentColumn = "content_id"
 	// ProgressEntriesTable is the table that holds the progress_entries relation/edge.
 	ProgressEntriesTable = "module_progresses"
 	// ProgressEntriesInverseTable is the table name for the ModuleProgress entity.
@@ -163,6 +172,13 @@ func ByCourseField(field string, opts ...sql.OrderTermOption) OrderOption {
 	}
 }
 
+// ByContentField orders the results by content field.
+func ByContentField(field string, opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newContentStep(), sql.OrderByField(field, opts...))
+	}
+}
+
 // ByProgressEntriesCount orders the results by progress_entries count.
 func ByProgressEntriesCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -181,6 +197,13 @@ func newCourseStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(CourseInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.M2O, true, CourseTable, CourseColumn),
+	)
+}
+func newContentStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ContentInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2O, true, ContentTable, ContentColumn),
 	)
 }
 func newProgressEntriesStep() *sqlgraph.Step {
