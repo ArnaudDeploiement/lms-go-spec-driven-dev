@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, Suspense, useRef } from "react";
+import type { ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth/context";
 import { apiClient, type ContentResponse } from "@/lib/api/client";
@@ -17,6 +18,7 @@ import {
   X,
   Trash2,
   Link as LinkIcon,
+  UploadCloud,
 } from "lucide-react";
 
 type ModuleType = "pdf" | "video" | "article" | "audio" | "document";
@@ -49,6 +51,56 @@ const getModuleIcon = (type: ModuleType) => {
   }
 };
 
+async function uploadFileToSignedUrl(
+  url: string,
+  file: File,
+  onProgress: (progress: number) => void,
+) {
+  if (typeof window !== "undefined" && typeof XMLHttpRequest !== "undefined") {
+    return new Promise<void>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("PUT", url, true);
+      xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream");
+
+      xhr.upload.onprogress = (event) => {
+        if (!event.lengthComputable) return;
+        const percent = Math.round((event.loaded / event.total) * 100);
+        onProgress(percent);
+      };
+
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          onProgress(100);
+          resolve();
+        } else {
+          reject(new Error("Le téléversement a échoué"));
+        }
+      };
+
+      xhr.onerror = () => {
+        reject(new Error("Impossible de téléverser le fichier"));
+      };
+
+      xhr.send(file);
+    });
+  }
+
+  onProgress(0);
+  const response = await fetch(url, {
+    method: "PUT",
+    headers: {
+      "Content-Type": file.type || "application/octet-stream",
+    },
+    body: file,
+  });
+
+  if (!response.ok) {
+    throw new Error("Le téléversement a échoué");
+  }
+
+  onProgress(100);
+}
+
 function CourseWizardContent() {
   const router = useRouter();
   const { organization, isLoading: authLoading } = useAuth();
@@ -69,13 +121,43 @@ function CourseWizardContent() {
   const [moduleType, setModuleType] = useState<ModuleType>("pdf");
   const [selectedContentId, setSelectedContentId] = useState("");
   const [moduleDuration, setModuleDuration] = useState("");
+  const [moduleContentMode, setModuleContentMode] = useState<"select" | "upload">("select");
+  const [moduleFile, setModuleFile] = useState<File | null>(null);
+  const [moduleContentName, setModuleContentName] = useState("");
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isSavingModule, setIsSavingModule] = useState(false);
   const [autoPublish, setAutoPublish] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     if (organization && !authLoading) {
       loadContents();
     }
   }, [organization, authLoading]);
+
+  useEffect(() => {
+    if (!moduleFile) return;
+
+    setModuleContentName((current) => current || moduleFile.name);
+    setModuleTitle((current) => {
+      if (current.trim()) return current;
+      const nameWithoutExtension = moduleFile.name.replace(/\.[^/.]+$/, "");
+      return nameWithoutExtension;
+    });
+
+    const mime = moduleFile.type?.toLowerCase() || "";
+    if (mime.includes("video")) {
+      setModuleType("video");
+    } else if (mime.includes("audio")) {
+      setModuleType("audio");
+    } else if (mime.includes("pdf")) {
+      setModuleType("pdf");
+    } else if (mime.includes("html") || mime.includes("text")) {
+      setModuleType("article");
+    } else if (mime) {
+      setModuleType("document");
+    }
+  }, [moduleFile]);
 
   const loadContents = async () => {
     if (!organization) return;
@@ -89,6 +171,15 @@ function CourseWizardContent() {
     } finally {
       setLoadingContents(false);
     }
+  };
+
+  const handleModuleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null;
+    if (file) {
+      setModuleFile(file);
+      setModuleContentName((current) => current || file.name);
+    }
+    event.target.value = "";
   };
 
   const getFilteredContents = () => {
@@ -125,39 +216,86 @@ function CourseWizardContent() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const addModule = () => {
+  const addModule = async () => {
     if (!moduleTitle.trim()) {
       setError("Veuillez saisir un titre pour le module");
       return;
     }
-    if (!selectedContentId) {
+    if (moduleContentMode === "select" && !selectedContentId) {
       setError("Veuillez sélectionner un contenu pour ce module");
       return;
     }
-
-    const selectedContent = contents.find((c) => c.id === selectedContentId);
-    if (!selectedContent) {
-      setError("Contenu introuvable");
+    if (moduleContentMode === "upload" && !moduleFile) {
+      setError("Veuillez choisir un fichier à téléverser");
       return;
     }
 
-    const newModule: ModuleData = {
-      id: `temp-${Date.now()}`,
-      title: moduleTitle.trim(),
-      module_type: moduleType,
-      content_id: selectedContentId,
-      content_name: selectedContent.name,
-      duration_minutes: moduleDuration ? parseInt(moduleDuration) : undefined,
-    };
-
-    setModules([...modules, newModule]);
-    setModuleTitle("");
-    setSelectedContentId("");
-    setModuleDuration("");
-    setShowModuleForm(false);
+    setIsSavingModule(true);
     setError(null);
-    setSuccessMessage("Module ajouté avec succès");
-    setTimeout(() => setSuccessMessage(null), 3000);
+
+    try {
+      let contentId = selectedContentId;
+      let contentName = "";
+
+      if (moduleContentMode === "select") {
+        const selectedContent = contents.find((c) => c.id === selectedContentId);
+        if (!selectedContent) {
+          throw new Error("Contenu introuvable");
+        }
+        contentName = selectedContent.name;
+      } else if (moduleFile && organization) {
+        const finalName = moduleContentName.trim() || moduleFile.name;
+        const upload = await apiClient.createContent(organization.id, {
+          name: finalName,
+          mime_type: moduleFile.type || "application/octet-stream",
+          size_bytes: moduleFile.size,
+        });
+
+        await uploadFileToSignedUrl(upload.upload_url, moduleFile, setUploadProgress);
+
+        await apiClient.finalizeContent(organization.id, upload.content.id, {
+          name: finalName,
+          mime_type: moduleFile.type || "application/octet-stream",
+          size_bytes: moduleFile.size,
+        });
+
+        await loadContents();
+        contentId = upload.content.id;
+        contentName = finalName;
+      }
+
+      if (!contentId) {
+        throw new Error("Contenu introuvable");
+      }
+
+      const newModule: ModuleData = {
+        id: `temp-${Date.now()}`,
+        title: moduleTitle.trim(),
+        module_type: moduleType,
+        content_id: contentId,
+        content_name: contentName,
+        duration_minutes: moduleDuration ? parseInt(moduleDuration) : undefined,
+      };
+
+      setModules([...modules, newModule]);
+      setModuleTitle("");
+      setSelectedContentId("");
+      setModuleDuration("");
+      setModuleFile(null);
+      setModuleContentName("");
+      setUploadProgress(0);
+      setModuleContentMode("select");
+      setShowModuleForm(false);
+      setError(null);
+      setSuccessMessage("Module ajouté avec succès");
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (err: any) {
+      console.error(err);
+      setError(err?.message || err?.error || "Impossible d'ajouter le module");
+    } finally {
+      setIsSavingModule(false);
+      setUploadProgress(0);
+    }
   };
 
   const removeModule = (id: string) => {
@@ -295,14 +433,42 @@ function CourseWizardContent() {
                   <h2 className="text-xl font-semibold text-slate-900 mb-1">Modules du cours</h2>
                   <p className="text-sm text-slate-600">{modules.length} module(s) • Chaque module doit être lié à un contenu</p>
                 </div>
-                {!showModuleForm && <Button onClick={() => setShowModuleForm(true)} className="flex items-center gap-2"><Plus className="h-4 w-4" />Ajouter un module</Button>}
+                {!showModuleForm && (
+                  <Button
+                    onClick={() => {
+                      setShowModuleForm(true);
+                      setModuleContentMode("select");
+                      setModuleFile(null);
+                      setModuleContentName("");
+                      setSelectedContentId("");
+                      setUploadProgress(0);
+                    }}
+                    className="flex items-center gap-2"
+                  >
+                    <Plus className="h-4 w-4" />Ajouter un module
+                  </Button>
+                )}
               </div>
 
               {showModuleForm && (
                 <Card className="p-6 bg-blue-50 border-blue-200">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="font-semibold text-slate-900">Nouveau module</h3>
-                    <Button variant="outline" size="sm" onClick={() => { setShowModuleForm(false); setError(null); }}>Annuler</Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setShowModuleForm(false);
+                        setError(null);
+                        setModuleFile(null);
+                        setModuleContentName("");
+                        setUploadProgress(0);
+                        setSelectedContentId("");
+                        setModuleContentMode("select");
+                      }}
+                    >
+                      Annuler
+                    </Button>
                   </div>
                   <div className="space-y-4">
                     <div>
@@ -319,28 +485,140 @@ function CourseWizardContent() {
                         ))}
                       </div>
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">Sélectionner un contenu <span className="text-red-500">*</span></label>
-                      {loadingContents ? (
-                        <div className="text-sm text-slate-500 py-4">Chargement des contenus...</div>
-                      ) : (
-                        <div className="max-h-64 overflow-y-auto border border-slate-200 rounded-lg bg-white">
-                          {getFilteredContents().length === 0 ? (
-                            <div className="p-8 text-center">
-                              <p className="text-sm text-slate-600 mb-3">Aucun contenu de type "{moduleType}" disponible</p>
-                              <Button variant="outline" size="sm" onClick={() => router.push("/admin")} className="flex items-center gap-2 mx-auto"><LinkIcon className="h-4 w-4" />Aller uploader des contenus</Button>
-                            </div>
-                          ) : (
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-2">Source du contenu <span className="text-red-500">*</span></label>
+                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setModuleContentMode("select");
+                              setError(null);
+                              setModuleFile(null);
+                              setModuleContentName("");
+                              setUploadProgress(0);
+                            }}
+                            className={`flex items-center justify-center gap-2 rounded-lg border-2 px-3 py-2 text-sm font-medium transition-colors ${moduleContentMode === "select" ? "border-blue-500 bg-blue-50 text-blue-700" : "border-slate-200 text-slate-600 hover:border-blue-300"}`}
+                          >
+                            <LinkIcon className="h-4 w-4" />Contenu existant
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setModuleContentMode("upload");
+                              setError(null);
+                              setSelectedContentId("");
+                            }}
+                            className={`flex items-center justify-center gap-2 rounded-lg border-2 px-3 py-2 text-sm font-medium transition-colors ${moduleContentMode === "upload" ? "border-blue-500 bg-blue-50 text-blue-700" : "border-slate-200 text-slate-600 hover:border-blue-300"}`}
+                          >
+                            <UploadCloud className="h-4 w-4" />Téléverser un fichier
+                          </button>
+                        </div>
+                      </div>
+
+                      {moduleContentMode === "select" ? (
+                        loadingContents ? (
+                          <div className="text-sm text-slate-500 py-4">Chargement des contenus...</div>
+                        ) : getFilteredContents().length === 0 ? (
+                          <div className="rounded-lg border border-dashed border-slate-300 bg-white p-8 text-center">
+                            <p className="text-sm text-slate-600 mb-3">Aucun contenu de type "{moduleType}" disponible</p>
+                            <p className="text-xs text-slate-500">Téléversez un fichier directement depuis ce formulaire pour créer un nouveau contenu.</p>
+                          </div>
+                        ) : (
+                          <div className="max-h-64 overflow-y-auto border border-slate-200 rounded-lg bg-white">
                             <div className="p-2 space-y-1">
                               {getFilteredContents().map((content) => (
-                                <label key={content.id} className={`flex items-start gap-3 p-3 rounded-lg cursor-pointer transition-colors ${selectedContentId === content.id ? "bg-blue-50 border-2 border-blue-500" : "border-2 border-transparent hover:bg-slate-50"}`}>
-                                  <input type="radio" name="content" value={content.id} checked={selectedContentId === content.id} onChange={(e) => setSelectedContentId(e.target.value)} className="mt-0.5" />
+                                <label
+                                  key={content.id}
+                                  className={`flex items-start gap-3 rounded-lg border-2 p-3 transition-colors ${selectedContentId === content.id ? "border-blue-500 bg-blue-50" : "border-transparent hover:border-blue-200 hover:bg-slate-50"}`}
+                                >
+                                  <input
+                                    type="radio"
+                                    name="content"
+                                    value={content.id}
+                                    checked={selectedContentId === content.id}
+                                    onChange={(e) => setSelectedContentId(e.target.value)}
+                                    className="mt-0.5"
+                                  />
                                   <div className="flex-1 min-w-0">
                                     <div className="font-medium text-sm text-slate-900 truncate">{content.name}</div>
-                                    <div className="text-xs text-slate-500 mt-0.5">{content.mime_type}{content.size_bytes && ` • ${(content.size_bytes / 1024 / 1024).toFixed(2)} MB`}</div>
+                                    <div className="text-xs text-slate-500 mt-0.5">
+                                      {content.mime_type}
+                                      {content.size_bytes && ` • ${(content.size_bytes / 1024 / 1024).toFixed(2)} MB`}
+                                    </div>
                                   </div>
                                 </label>
                               ))}
+                            </div>
+                          </div>
+                        )
+                      ) : (
+                        <div className="space-y-4">
+                          <div className="rounded-lg border-2 border-dashed border-blue-300 bg-white p-6 text-center">
+                            <label className="flex flex-col items-center gap-2 text-sm text-slate-600" htmlFor="module-file-input">
+                              <UploadCloud className="h-6 w-6 text-blue-500" />
+                              <span className="font-medium text-slate-700">Choisir un fichier à téléverser</span>
+                              <span className="text-xs text-slate-500">Formats supportés : PDF, vidéo, audio, documents…</span>
+                              <input
+                                id="module-file-input"
+                                type="file"
+                                className="hidden"
+                                ref={fileInputRef}
+                                onChange={handleModuleFileChange}
+                              />
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="mt-2"
+                                onClick={(event) => {
+                                  event.preventDefault();
+                                  fileInputRef.current?.click();
+                                }}
+                              >
+                                Sélectionner un fichier
+                              </Button>
+                            </label>
+                          </div>
+
+                          {moduleFile && (
+                            <div className="space-y-3">
+                              <div className="flex items-center justify-between rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-slate-700">
+                                <div>
+                                  <p className="font-medium text-slate-900">{moduleFile.name}</p>
+                                  <p className="text-xs text-slate-600">{(moduleFile.size / 1024 / 1024).toFixed(2)} MB • {moduleFile.type || "Type inconnu"}</p>
+                                </div>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    setModuleFile(null);
+                                    setModuleContentName("");
+                                    setUploadProgress(0);
+                                  }}
+                                >
+                                  Retirer
+                                </Button>
+                              </div>
+
+                              <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-2">Nom du contenu</label>
+                                <Input
+                                  value={moduleContentName}
+                                  onChange={(event) => setModuleContentName(event.target.value)}
+                                  placeholder={moduleFile.name}
+                                />
+                              </div>
+
+                              {uploadProgress > 0 && (
+                                <div className="space-y-2">
+                                  <div className="h-2 w-full rounded-full bg-blue-100">
+                                    <div className="h-2 rounded-full bg-blue-500 transition-all" style={{ width: `${uploadProgress}%` }} />
+                                  </div>
+                                  <p className="text-xs font-medium text-blue-600">Téléversement en cours : {uploadProgress}%</p>
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
@@ -351,8 +629,26 @@ function CourseWizardContent() {
                       <Input type="number" value={moduleDuration} onChange={(e) => setModuleDuration(e.target.value)} placeholder="Ex: 15" min="1" />
                     </div>
                     <div className="flex justify-end gap-2 pt-4 border-t">
-                      <Button variant="outline" onClick={() => setShowModuleForm(false)}>Annuler</Button>
-                      <Button onClick={addModule}>Ajouter le module</Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setShowModuleForm(false);
+                          setModuleFile(null);
+                          setModuleContentName("");
+                          setUploadProgress(0);
+                          setSelectedContentId("");
+                          setModuleContentMode("select");
+                        }}
+                      >
+                        Annuler
+                      </Button>
+                      <Button
+                        onClick={() => void addModule()}
+                        disabled={isSavingModule || (moduleContentMode === "upload" && !moduleFile)}
+                        className="min-w-[160px]"
+                      >
+                        {isSavingModule ? "Ajout en cours..." : "Ajouter le module"}
+                      </Button>
                     </div>
                   </div>
                 </Card>
