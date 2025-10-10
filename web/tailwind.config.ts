@@ -21,50 +21,42 @@ const config: Config = {
       colors: {
         background: "var(--background)",
         foreground: "var(--foreground)",
-        muted: {
-          DEFAULT: "var(--muted)",
-          foreground: "var(--muted-foreground)"
+        muted: "var(--muted)",
+        // Revolut-inspired color palette
+        revolut: {
+          black: "#000000",
+          darkGray: "#1A1A1A",
+          gray: "#2D2D2D",
+          lightGray: "#F5F5F5",
+          purple: "#8B5CF6",
+          violet: "#A855F7",
+          blue: "#3B82F6",
+          success: "#10B981",
+          warning: "#F59E0B",
+          error: "#EF4444"
         },
-        subtle: {
-          DEFAULT: "var(--subtle)",
-          foreground: "var(--subtle-foreground)"
+        primary: {
+          DEFAULT: "#8B5CF6",  // Revolut purple
+          foreground: "#FFFFFF"
         },
-        surface: {
-          DEFAULT: "var(--surface)",
-          raised: "var(--surface-raised)",
-          hover: "var(--surface-hover)"
+        secondary: {
+          DEFAULT: "#1A1A1A",  // Revolut dark
+          foreground: "#FFFFFF"
         },
-        border: "var(--border)",
-        ring: "var(--ring)",
-        card: "var(--surface)",
-        "card-foreground": "var(--foreground)",
-        accent: {
-          DEFAULT: "var(--accent)",
-          foreground: "var(--accent-foreground)",
-          muted: "var(--accent-muted)"
-        },
-        success: {
-          DEFAULT: "var(--success)",
-          foreground: "var(--success-foreground)"
-        },
-        warning: {
-          DEFAULT: "var(--warning)",
-          foreground: "var(--warning-foreground)"
-        },
-        destructive: {
-          DEFAULT: "var(--destructive)",
-          foreground: "var(--destructive-foreground)"
-        }
+        border: "rgba(0, 0, 0, 0.08)",
+        card: "var(--card)",
+        "card-foreground": "var(--card-foreground)"
       },
       borderRadius: {
-        lg: "1rem",
-        xl: "1.25rem",
-        "2xl": "1.75rem"
+        xl: "1.5rem",
+        "2xl": "2rem",
+        "3xl": "2.5rem"
       },
       boxShadow: {
-        panel: "0 20px 60px -40px rgba(0, 0, 0, 0.95)",
-        subtle: "0 32px 80px -60px rgba(0, 0, 0, 0.8)",
-        focus: "0 0 0 1px var(--ring)"
+        brand: "0 10px 40px -20px rgba(139, 92, 246, 0.45)",
+        revolut: "0 4px 24px -2px rgba(0, 0, 0, 0.08), 0 2px 8px -1px rgba(0, 0, 0, 0.04)",
+        "revolut-hover": "0 8px 32px -4px rgba(0, 0, 0, 0.12), 0 4px 16px -2px rgba(0, 0, 0, 0.08)",
+        "revolut-card": "0 1px 3px 0 rgba(0, 0, 0, 0.08)"
       },
       keyframes: {
         shimmer: {
