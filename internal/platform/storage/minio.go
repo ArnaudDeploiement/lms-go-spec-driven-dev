@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -25,6 +26,7 @@ type Config struct {
 // Client encapsule un client MinIO et le bucket ciblé.
 type Client struct {
 	minio          *minio.Client
+	signer         *minio.Client
 	bucket         string
 	publicEndpoint *url.URL
 }
@@ -58,8 +60,10 @@ func NewMinioClient(ctx context.Context, cfg Config) (*Client, error) {
 		}
 	}
 
+	creds := credentials.NewStaticV4(cfg.AccessKey, cfg.SecretKey, "")
+
 	client, err := minio.New(endpoint, &minio.Options{
-		Creds:  credentials.NewStaticV4(cfg.AccessKey, cfg.SecretKey, ""),
+		Creds:  creds,
 		Secure: useSSL,
 	})
 	if err != nil {
@@ -67,19 +71,62 @@ func NewMinioClient(ctx context.Context, cfg Config) (*Client, error) {
 	}
 
 	var publicURL *url.URL
+	var signerClient *minio.Client
 	if strings.TrimSpace(cfg.PublicEndpoint) != "" {
 		parsed, err := parsePublicEndpoint(cfg.PublicEndpoint, useSSL)
 		if err != nil {
 			return nil, err
 		}
 		publicURL = parsed
+
+		// Si l'hôte public est différent de l'hôte interne, utiliser un client dédié
+		// pour signer les URL avec l'hôte public tout en dialoguant avec MinIO interne.
+		if parsed.Host != "" && parsed.Host != endpoint {
+			signerClient, err = newPublicSigner(parsed, endpoint, creds)
+			if err != nil {
+				return nil, err
+			}
+		}
 	}
 
-	s := &Client{minio: client, bucket: cfg.Bucket, publicEndpoint: publicURL}
+	if signerClient == nil {
+		signerClient = client
+	}
+
+	s := &Client{minio: client, signer: signerClient, bucket: cfg.Bucket, publicEndpoint: publicURL}
 	if err := s.ensureBucket(ctx); err != nil {
 		return nil, err
 	}
 	return s, nil
+}
+
+func newPublicSigner(public *url.URL, internalHost string, creds *credentials.Credentials) (*minio.Client, error) {
+	transport, err := minio.DefaultTransport(public.Scheme == "https")
+	if err != nil {
+		return nil, fmt.Errorf("storage: init presign transport: %w", err)
+	}
+
+	originalDial := transport.DialContext
+	if originalDial == nil {
+		dialer := &net.Dialer{Timeout: 30 * time.Second, KeepAlive: 30 * time.Second}
+		originalDial = dialer.DialContext
+	}
+	transport.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+		if strings.EqualFold(addr, public.Host) {
+			addr = internalHost
+		}
+		return originalDial(ctx, network, addr)
+	}
+
+	signerClient, err := minio.New(public.Host, &minio.Options{
+		Creds:     creds,
+		Secure:    public.Scheme == "https",
+		Transport: transport,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("storage: init public signer: %w", err)
+	}
+	return signerClient, nil
 }
 
 func parsePublicEndpoint(endpoint string, useSSL bool) (*url.URL, error) {
@@ -139,7 +186,7 @@ func (c *Client) PresignUpload(ctx context.Context, object string, contentType s
 		headers.Set("Content-Type", contentType)
 	}
 
-	u, err := c.minio.PresignHeader(ctx, http.MethodPut, c.bucket, object, expires, nil, headers)
+	u, err := c.signer.PresignHeader(ctx, http.MethodPut, c.bucket, object, expires, nil, headers)
 	if err != nil {
 		return "", fmt.Errorf("storage: presign upload: %w", err)
 	}
@@ -149,7 +196,7 @@ func (c *Client) PresignUpload(ctx context.Context, object string, contentType s
 
 // PresignDownload renvoie une URL GET pré-signée pour télécharger un objet.
 func (c *Client) PresignDownload(ctx context.Context, object string, expires time.Duration) (string, error) {
-	u, err := c.minio.PresignedGetObject(ctx, c.bucket, object, expires, nil)
+	u, err := c.signer.PresignedGetObject(ctx, c.bucket, object, expires, nil)
 	if err != nil {
 		return "", fmt.Errorf("storage: presign download: %w", err)
 	}
@@ -169,8 +216,12 @@ func (c *Client) applyPublicEndpoint(u *url.URL) {
 	if c.publicEndpoint == nil {
 		return
 	}
-	u.Scheme = c.publicEndpoint.Scheme
-	u.Host = c.publicEndpoint.Host
+	if c.signer != c.minio {
+		// La signature utilise déjà l'hôte public, ne pas le modifier.
+	} else {
+		u.Scheme = c.publicEndpoint.Scheme
+		u.Host = c.publicEndpoint.Host
+	}
 	basePath := strings.TrimSuffix(c.publicEndpoint.Path, "/")
 	if basePath != "" {
 		u.Path = basePath + u.Path
