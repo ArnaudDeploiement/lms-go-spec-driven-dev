@@ -33,7 +33,7 @@ import {
 } from "lucide-react";
 
 const fieldClass =
-  "w-full rounded-xl border border-border/60 bg-surface px-4 py-2.5 text-sm text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-60";
+  "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60";
 
 const moduleTypeLabels: Record<string, string> = {
   video: "Vidéo",
@@ -541,12 +541,12 @@ export default function AdminPage() {
 
   if (isLoading || isBootstrapping) {
     return (
-      <div className="min-h-screen bg-surface-hover">
+      <div className="min-h-screen bg-slate-50">
         <Navigation />
         <div className="flex min-h-screen items-center justify-center pt-24">
-          <div className="flex flex-col items-center gap-3 rounded-2xl border border-border/60 bg-surface px-8 py-10 text-center shadow-sm">
-            <div className="h-12 w-12 animate-spin rounded-full border-2 border-ring border-t-transparent" />
-            <p className="text-sm text-muted-foreground">Chargement de l'espace administrateur…</p>
+          <div className="flex flex-col items-center gap-3 rounded-2xl border border-slate-200 bg-white px-8 py-10 text-center shadow-sm">
+            <div className="h-12 w-12 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
+            <p className="text-sm text-slate-600">Chargement de l'espace administrateur…</p>
           </div>
         </div>
       </div>
@@ -558,24 +558,24 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-surface-hover">
+    <div className="min-h-screen bg-slate-50">
       <Navigation />
       <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 pb-16 pt-24 sm:px-6 lg:px-8">
-        <header className="flex flex-col gap-6 rounded-2xl border border-border/60 bg-surface px-6 py-6 shadow-sm lg:flex-row lg:items-center lg:justify-between">
+        <header className="flex flex-col gap-6 rounded-2xl border border-slate-200 bg-white px-6 py-6 shadow-sm lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-4">
-            <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-accent text-accent-foreground shadow-sm">
+            <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm">
               <Building2 className="h-7 w-7" />
             </div>
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground/80">Administration</p>
-              <h1 className="text-2xl font-semibold text-foreground">{organization.name}</h1>
-              <p className="text-sm text-muted-foreground/80">Pilotez vos cours, utilisateurs et contenus depuis un espace centralisé.</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Administration</p>
+              <h1 className="text-2xl font-semibold text-slate-900">{organization.name}</h1>
+              <p className="text-sm text-slate-500">Pilotez vos cours, utilisateurs et contenus depuis un espace centralisé.</p>
             </div>
           </div>
           <Button
             type="button"
             variant="outline"
-            className="flex items-center gap-2 border-border/60 text-sm text-muted-foreground"
+            className="flex items-center gap-2 border-slate-200 text-sm text-slate-600"
             onClick={() => router.push("/learn")}
           >
             <ArrowLeft className="h-4 w-4" /> Retour Learn
@@ -593,22 +593,22 @@ export default function AdminPage() {
           </div>
         )}
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="rounded-2xl border border-border/60 bg-surface p-6 shadow-sm">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <TabsList className="grid grid-cols-2 gap-2 md:grid-cols-4 lg:grid-cols-6">
-            <TabsTrigger value="overview" className="flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium data-[state=active]:bg-surface data-[state=active]:text-foreground">
+            <TabsTrigger value="overview" className="flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium data-[state=active]:bg-white data-[state=active]:text-slate-900">
               <LayoutGrid className="h-4 w-4" /> Aperçu
             </TabsTrigger>
-            <TabsTrigger value="courses" className="flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium data-[state=active]:bg-surface data-[state=active]:text-foreground">
+            <TabsTrigger value="courses" className="flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium data-[state=active]:bg-white data-[state=active]:text-slate-900">
               <BookOpen className="h-4 w-4" /> Cours
             </TabsTrigger>
-            <TabsTrigger value="learners" className="flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium data-[state=active]:bg-surface data-[state=active]:text-foreground">
+            <TabsTrigger value="learners" className="flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium data-[state=active]:bg-white data-[state=active]:text-slate-900">
               <Users className="h-4 w-4" /> Utilisateurs
             </TabsTrigger>
-            <TabsTrigger value="enrollments" className="flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium data-[state=active]:bg-surface data-[state=active]:text-foreground">
+            <TabsTrigger value="enrollments" className="flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium data-[state=active]:bg-white data-[state=active]:text-slate-900">
               <Layers className="h-4 w-4" /> Inscriptions
             </TabsTrigger>
             {user.role === "super_admin" && (
-              <TabsTrigger value="organizations" className="flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium data-[state=active]:bg-surface data-[state=active]:text-foreground">
+              <TabsTrigger value="organizations" className="flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium data-[state=active]:bg-white data-[state=active]:text-slate-900">
                 <ShieldCheck className="h-4 w-4" /> Organisations
               </TabsTrigger>
             )}
@@ -616,60 +616,60 @@ export default function AdminPage() {
 
           <TabsContent value="overview" className="mt-6 space-y-6">
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <Card className="border border-border/60 bg-surface-hover/80 shadow-sm">
+              <Card className="border border-slate-200 bg-slate-50/80 shadow-sm">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">Cours publiés</CardTitle>
-                  <GraduationCap className="h-4 w-4 text-accent" />
+                  <CardTitle className="text-sm font-medium text-slate-600">Cours publiés</CardTitle>
+                  <GraduationCap className="h-4 w-4 text-blue-500" />
                 </CardHeader>
                 <CardContent>
-                  <p className="text-2xl font-semibold text-foreground">{stats.publishedCourses}</p>
+                  <p className="text-2xl font-semibold text-slate-900">{stats.publishedCourses}</p>
                 </CardContent>
               </Card>
-              <Card className="border border-border/60 bg-surface-hover/80 shadow-sm">
+              <Card className="border border-slate-200 bg-slate-50/80 shadow-sm">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">Cours brouillons</CardTitle>
-                  <PlusCircle className="h-4 w-4 text-accent" />
+                  <CardTitle className="text-sm font-medium text-slate-600">Cours brouillons</CardTitle>
+                  <PlusCircle className="h-4 w-4 text-blue-500" />
                 </CardHeader>
                 <CardContent>
-                  <p className="text-2xl font-semibold text-foreground">{stats.draftCourses}</p>
+                  <p className="text-2xl font-semibold text-slate-900">{stats.draftCourses}</p>
                 </CardContent>
               </Card>
-              <Card className="border border-border/60 bg-surface-hover/80 shadow-sm">
+              <Card className="border border-slate-200 bg-slate-50/80 shadow-sm">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">Apprenants actifs</CardTitle>
-                  <Users className="h-4 w-4 text-accent" />
+                  <CardTitle className="text-sm font-medium text-slate-600">Apprenants actifs</CardTitle>
+                  <Users className="h-4 w-4 text-blue-500" />
                 </CardHeader>
                 <CardContent>
-                  <p className="text-2xl font-semibold text-foreground">{stats.activeLearners}</p>
+                  <p className="text-2xl font-semibold text-slate-900">{stats.activeLearners}</p>
                 </CardContent>
               </Card>
-              <Card className="border border-border/60 bg-surface-hover/80 shadow-sm">
+              <Card className="border border-slate-200 bg-slate-50/80 shadow-sm">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">Cours terminés</CardTitle>
-                  <LineChart className="h-4 w-4 text-accent" />
+                  <CardTitle className="text-sm font-medium text-slate-600">Cours terminés</CardTitle>
+                  <LineChart className="h-4 w-4 text-blue-500" />
                 </CardHeader>
                 <CardContent>
-                  <p className="text-2xl font-semibold text-foreground">{stats.completedCourses}</p>
+                  <p className="text-2xl font-semibold text-slate-900">{stats.completedCourses}</p>
                 </CardContent>
               </Card>
             </div>
 
-            <Card className="border border-border/60 bg-surface-hover/80 shadow-sm">
+            <Card className="border border-slate-200 bg-slate-50/80 shadow-sm">
               <CardHeader>
-                <CardTitle className="text-lg text-foreground">Activité récente</CardTitle>
+                <CardTitle className="text-lg text-slate-900">Activité récente</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3 text-sm text-muted-foreground">
+              <CardContent className="space-y-3 text-sm text-slate-600">
                 {courses.slice(0, 5).map((course) => (
-                  <div key={course.id} className="flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-surface px-4 py-3">
+                  <div key={course.id} className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3">
                     <div>
-                      <p className="font-medium text-foreground">{course.title}</p>
-                      <p className="text-xs text-muted-foreground/80">{course.status === "published" ? "Publié" : "Brouillon"}</p>
+                      <p className="font-medium text-slate-900">{course.title}</p>
+                      <p className="text-xs text-slate-500">{course.status === "published" ? "Publié" : "Brouillon"}</p>
                     </div>
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
-                      className="border-border/60 text-xs"
+                      className="border-slate-200 text-xs"
                       onClick={() => handleSelectCourse(course)}
                     >
                       Ouvrir
@@ -682,25 +682,29 @@ export default function AdminPage() {
           </TabsContent>
 
           <TabsContent value="courses" className="mt-6 space-y-6">
-            <Card className="border border-ring/30 bg-accent/10 shadow-subtle">
+            <Card className="border border-blue-200 bg-blue-50/70 shadow-sm">
               <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
-                  <CardTitle className="text-lg text-foreground">Assistant guidé de création</CardTitle>
-                  <p className="text-sm text-muted-foreground/80">
+                  <CardTitle className="text-lg text-blue-900">Assistant guidé de création</CardTitle>
+                  <p className="text-sm text-blue-900/80">
                     Créez un nouveau cours en trois étapes : informations, modules et publication.
                   </p>
                 </div>
-                <Button type="button" className="justify-center" onClick={() => router.push("/admin/courses/new") }>
+                <Button
+                  type="button"
+                  className="bg-blue-600 text-white hover:bg-blue-700"
+                  onClick={() => router.push("/admin/courses/new")}
+                >
                   <PlusCircle className="mr-2 h-4 w-4" /> Lancer l'assistant
                 </Button>
               </CardHeader>
             </Card>
 
             <div className="grid gap-6 lg:grid-cols-[1.1fr,1.4fr]">
-              <Card className="border border-border/60 bg-surface shadow-sm">
+              <Card className="border border-slate-200 bg-white shadow-sm">
                 <CardHeader>
-                  <CardTitle className="text-lg text-foreground">Vos cours</CardTitle>
-                  <p className="text-sm text-muted-foreground/80">Sélectionnez un cours pour afficher et modifier ses informations.</p>
+                  <CardTitle className="text-lg text-slate-900">Vos cours</CardTitle>
+                  <p className="text-sm text-slate-500">Sélectionnez un cours pour afficher et modifier ses informations.</p>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {courses.map((course) => (
@@ -715,25 +719,25 @@ export default function AdminPage() {
                           handleSelectCourse(course);
                         }
                       }}
-                      className={`rounded-xl border px-4 py-3 text-left transition-colors focus:outline-none focus:ring-2 focus:ring-ring ${
+                      className={`rounded-xl border px-4 py-3 text-left transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                         selectedCourseId === course.id
-                          ? "border-ring/50 bg-accent/10"
-                          : "border-border/60 bg-surface-hover hover:border-ring/40 hover:bg-accent/10"
+                          ? "border-blue-500/60 bg-blue-50"
+                          : "border-slate-200 bg-slate-50 hover:border-blue-400/50 hover:bg-blue-50"
                       }`}
                     >
                       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                         <div className="space-y-1">
-                          <p className="text-sm font-semibold text-foreground">{course.title}</p>
-                          <p className="text-xs text-muted-foreground/80">{course.description || "Pas de description"}</p>
+                          <p className="text-sm font-semibold text-slate-900">{course.title}</p>
+                          <p className="text-xs text-slate-500">{course.description || "Pas de description"}</p>
                         </div>
                         <div className="flex flex-wrap items-center gap-2 text-xs">
-                          <span className="rounded-full bg-surface px-3 py-1 text-muted-foreground">{course.status}</span>
+                          <span className="rounded-full bg-white px-3 py-1 text-slate-600">{course.status}</span>
                           {course.status === "published" ? (
                             <Button
                               type="button"
                               size="sm"
                               variant="outline"
-                              className="border-border/60"
+                              className="border-slate-200"
                               onClick={(event) => {
                                 event.stopPropagation();
                                 void handleUnpublishCourse(course.id);
@@ -745,7 +749,7 @@ export default function AdminPage() {
                             <Button
                               type="button"
                               size="sm"
-                              className="bg-accent text-accent-foreground hover:bg-accent/90"
+                              className="bg-blue-600 text-white hover:bg-blue-700"
                               onClick={(event) => {
                                 event.stopPropagation();
                                 void handlePublishCourse(course.id);
@@ -771,7 +775,7 @@ export default function AdminPage() {
                     </div>
                   ))}
                   {courses.length === 0 && (
-                    <div className="rounded-xl border border-dashed border-border/40 bg-surface-hover px-4 py-6 text-center text-sm text-muted-foreground/80">
+                    <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
                       Aucun cours pour le moment. Utilisez l'assistant pour créer votre premier programme.
                     </div>
                   )}
@@ -779,20 +783,20 @@ export default function AdminPage() {
               </Card>
 
               {selectedCourse ? (
-                <Card className="border border-border/60 bg-surface shadow-sm">
+                <Card className="border border-slate-200 bg-white shadow-sm">
                   <CardHeader>
-                    <CardTitle className="text-lg text-foreground">Modifier le cours : {selectedCourse.title}</CardTitle>
-                    <p className="text-sm text-muted-foreground/80">
+                    <CardTitle className="text-lg text-slate-900">Modifier le cours : {selectedCourse.title}</CardTitle>
+                    <p className="text-sm text-slate-500">
                       Mettez à jour les informations principales du cours sélectionné.
                     </p>
                   </CardHeader>
                   <CardContent>
-                    <div className="mb-4 text-xs text-muted-foreground/80">
-                      Slug : <code className="rounded bg-surface-hover px-1 py-0.5">{selectedCourse.slug}</code>
+                    <div className="mb-4 text-xs text-slate-500">
+                      Slug : <code className="rounded bg-slate-100 px-1 py-0.5">{selectedCourse.slug}</code>
                     </div>
                     <form className="space-y-4" onSubmit={handleCourseSubmit}>
                       <div className="space-y-2">
-                        <label className="text-sm font-medium text-muted-foreground">Titre</label>
+                        <label className="text-sm font-medium text-slate-600">Titre</label>
                         <Input
                           required
                           value={courseForm.title}
@@ -800,7 +804,7 @@ export default function AdminPage() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <label className="text-sm font-medium text-muted-foreground">Description</label>
+                        <label className="text-sm font-medium text-slate-600">Description</label>
                         <textarea
                           className={fieldClass}
                           rows={3}
@@ -810,7 +814,7 @@ export default function AdminPage() {
                       </div>
                       <div className="grid gap-4 md:grid-cols-2">
                         <div className="space-y-2">
-                          <label className="text-sm font-medium text-muted-foreground">Tags</label>
+                          <label className="text-sm font-medium text-slate-600">Tags</label>
                           <Input
                             value={courseForm.tags}
                             onChange={(event) => setCourseForm((prev) => ({ ...prev, tags: event.target.value }))}
@@ -818,7 +822,7 @@ export default function AdminPage() {
                           />
                         </div>
                         <div className="space-y-2">
-                          <label className="text-sm font-medium text-muted-foreground">Durée (heures)</label>
+                          <label className="text-sm font-medium text-slate-600">Durée (heures)</label>
                           <Input
                             value={courseForm.duration_hours}
                             onChange={(event) => setCourseForm((prev) => ({ ...prev, duration_hours: event.target.value }))}
@@ -828,7 +832,7 @@ export default function AdminPage() {
                       </div>
                       <div className="grid gap-4 md:grid-cols-2">
                         <div className="space-y-2">
-                          <label className="text-sm font-medium text-muted-foreground">Niveau</label>
+                          <label className="text-sm font-medium text-slate-600">Niveau</label>
                           <select
                             className={fieldClass}
                             value={courseForm.level}
@@ -840,7 +844,7 @@ export default function AdminPage() {
                           </select>
                         </div>
                         <div className="space-y-2">
-                          <label className="text-sm font-medium text-muted-foreground">Visibilité</label>
+                          <label className="text-sm font-medium text-slate-600">Visibilité</label>
                           <select
                             className={fieldClass}
                             value={courseForm.visibility}
@@ -853,7 +857,7 @@ export default function AdminPage() {
                         </div>
                       </div>
                       <div className="space-y-2">
-                        <label className="text-sm font-medium text-muted-foreground">Métadonnées (JSON)</label>
+                        <label className="text-sm font-medium text-slate-600">Métadonnées (JSON)</label>
                         <textarea
                           className={fieldClass}
                           rows={5}
@@ -864,7 +868,7 @@ export default function AdminPage() {
                       </div>
                       <Button
                         type="submit"
-                        className="w-full bg-accent text-accent-foreground hover:bg-accent/90"
+                        className="w-full bg-blue-600 text-white hover:bg-blue-700"
                         disabled={isSavingCourse}
                       >
                         {isSavingCourse ? "Enregistrement…" : "Enregistrer les modifications"}
@@ -873,10 +877,10 @@ export default function AdminPage() {
                   </CardContent>
                 </Card>
               ) : (
-                <Card className="border border-border/60 bg-surface shadow-sm">
-                  <CardContent className="flex h-full flex-col items-center justify-center gap-3 text-center text-sm text-muted-foreground/80">
-                    <BookOpen className="h-8 w-8 text-muted-foreground/70" />
-                    <p className="font-medium text-muted-foreground">Sélectionnez un cours pour afficher ses détails.</p>
+                <Card className="border border-slate-200 bg-white shadow-sm">
+                  <CardContent className="flex h-full flex-col items-center justify-center gap-3 text-center text-sm text-slate-500">
+                    <BookOpen className="h-8 w-8 text-slate-400" />
+                    <p className="font-medium text-slate-600">Sélectionnez un cours pour afficher ses détails.</p>
                     <p>Vous pouvez créer de nouveaux cours uniquement avec l'assistant guidé.</p>
                   </CardContent>
                 </Card>
@@ -884,35 +888,35 @@ export default function AdminPage() {
             </div>
 
             {selectedCourse && (
-              <Card className="border border-border/60 bg-surface shadow-sm">
+              <Card className="border border-slate-200 bg-white shadow-sm">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-lg text-foreground">
-                    <FileStack className="h-5 w-5 text-accent" /> Modules du cours
+                  <CardTitle className="flex items-center gap-2 text-lg text-slate-900">
+                    <FileStack className="h-5 w-5 text-blue-500" /> Modules du cours
                   </CardTitle>
-                  <p className="text-sm text-muted-foreground/80">
+                  <p className="text-sm text-slate-500">
                     Les modules sont gérés via l'assistant de création. Supprimez ceux qui ne sont plus nécessaires.
                   </p>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {isLoadingModules && <p className="text-sm text-muted-foreground/80">Chargement des modules…</p>}
+                  {isLoadingModules && <p className="text-sm text-slate-500">Chargement des modules…</p>}
                   {!isLoadingModules && modules.length === 0 && (
-                    <div className="rounded-lg border border-dashed border-border/40 bg-surface-hover px-4 py-6 text-center text-sm text-muted-foreground/80">
+                    <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
                       Aucun module pour ce cours.
                     </div>
                   )}
                   {modules.map((module) => (
-                    <div key={module.id} className="rounded-lg border border-border/60 bg-surface-hover px-4 py-3">
+                    <div key={module.id} className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
                       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                         <div className="space-y-1">
-                          <p className="text-sm font-semibold text-foreground">{module.title}</p>
-                          <p className="text-xs text-muted-foreground/80">
+                          <p className="text-sm font-semibold text-slate-900">{module.title}</p>
+                          <p className="text-xs text-slate-500">
                             {moduleTypeLabels[module.module_type] ?? module.module_type}
                             {module.duration_seconds
                               ? ` • ${Math.ceil((module.duration_seconds ?? 0) / 60)} min`
                               : ""}
                           </p>
                           {module.content_id && (
-                            <p className="text-xs text-muted-foreground/70">Contenu associé : {module.content_id}</p>
+                            <p className="text-xs text-slate-400">Contenu associé : {module.content_id}</p>
                           )}
                         </div>
                         <Button
@@ -933,10 +937,10 @@ export default function AdminPage() {
           </TabsContent>
           <TabsContent value="learners" className="mt-6 space-y-6">
             <div className="grid gap-6 lg:grid-cols-[1.1fr,1.9fr]">
-              <Card className="border border-border/60 bg-surface shadow-sm">
+              <Card className="border border-slate-200 bg-white shadow-sm">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-lg text-foreground">
-                    <UserPlus className="h-5 w-5 text-accent" /> Nouvel utilisateur
+                  <CardTitle className="flex items-center gap-2 text-lg text-slate-900">
+                    <UserPlus className="h-5 w-5 text-blue-500" /> Nouvel utilisateur
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -964,23 +968,23 @@ export default function AdminPage() {
                       <option value="manager">Manager</option>
                       <option value="admin">Admin</option>
                     </select>
-                    <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-accent/90" disabled={isSavingUser}>
+                    <Button type="submit" className="w-full bg-blue-600 text-white hover:bg-blue-700" disabled={isSavingUser}>
                       {isSavingUser ? "Création…" : "Créer l'utilisateur"}
                     </Button>
                   </form>
                 </CardContent>
               </Card>
 
-              <Card className="border border-border/60 bg-surface shadow-sm">
+              <Card className="border border-slate-200 bg-white shadow-sm">
                 <CardHeader>
-                  <CardTitle className="text-lg text-foreground">Utilisateurs</CardTitle>
+                  <CardTitle className="text-lg text-slate-900">Utilisateurs</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {users.map((item) => (
-                    <div key={item.id} className="flex flex-col gap-2 rounded-lg border border-border/60 bg-surface-hover px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div key={item.id} className="flex flex-col gap-2 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                       <div>
-                        <p className="text-sm font-semibold text-foreground">{item.email}</p>
-                        <p className="text-xs text-muted-foreground/80">
+                        <p className="text-sm font-semibold text-slate-900">{item.email}</p>
+                        <p className="text-xs text-slate-500">
                           {item.role} • {item.status}
                         </p>
                       </div>
@@ -1000,7 +1004,7 @@ export default function AdminPage() {
                             type="button"
                             size="sm"
                             variant="outline"
-                            className="border-border/60"
+                            className="border-slate-200"
                             onClick={() => handleActivateUser(item.id)}
                           >
                             Activer
@@ -1009,15 +1013,15 @@ export default function AdminPage() {
                       </div>
                     </div>
                   ))}
-                  {users.length === 0 && <p className="text-sm text-muted-foreground/80">Aucun utilisateur pour le moment.</p>}
+                  {users.length === 0 && <p className="text-sm text-slate-500">Aucun utilisateur pour le moment.</p>}
                 </CardContent>
               </Card>
             </div>
 
-            <Card className="border border-border/60 bg-surface shadow-sm">
+            <Card className="border border-slate-200 bg-white shadow-sm">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg text-foreground">
-                  <Users className="h-5 w-5 text-accent" /> Groupes
+                <CardTitle className="flex items-center gap-2 text-lg text-slate-900">
+                  <Users className="h-5 w-5 text-blue-500" /> Groupes
                 </CardTitle>
               </CardHeader>
               <CardContent className="grid gap-6 lg:grid-cols-[1.1fr,1.9fr]">
@@ -1035,29 +1039,29 @@ export default function AdminPage() {
                     value={groupForm.description}
                     onChange={(event) => setGroupForm((prev) => ({ ...prev, description: event.target.value }))}
                   />
-                  <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-accent/90" disabled={isSavingGroup}>
+                  <Button type="submit" className="w-full bg-blue-600 text-white hover:bg-blue-700" disabled={isSavingGroup}>
                     {isSavingGroup ? "Création…" : "Créer le groupe"}
                   </Button>
                 </form>
 
                 <div className="space-y-3">
                   {groups.map((group) => (
-                    <div key={group.id} className="rounded-lg border border-border/60 bg-surface-hover px-4 py-3">
-                      <p className="text-sm font-semibold text-foreground">{group.name}</p>
-                      <p className="text-xs text-muted-foreground/80">{group.description || "Pas de description"}</p>
+                    <div key={group.id} className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+                      <p className="text-sm font-semibold text-slate-900">{group.name}</p>
+                      <p className="text-xs text-slate-500">{group.description || "Pas de description"}</p>
                     </div>
                   ))}
-                  {groups.length === 0 && <p className="text-sm text-muted-foreground/80">Aucun groupe enregistré.</p>}
+                  {groups.length === 0 && <p className="text-sm text-slate-500">Aucun groupe enregistré.</p>}
                 </div>
               </CardContent>
             </Card>
           </TabsContent>
 
           <TabsContent value="enrollments" className="mt-6 space-y-6">
-            <Card className="border border-border/60 bg-surface shadow-sm">
+            <Card className="border border-slate-200 bg-white shadow-sm">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg text-foreground">
-                  <Layers className="h-5 w-5 text-accent" /> Gérer les inscriptions
+                <CardTitle className="flex items-center gap-2 text-lg text-slate-900">
+                  <Layers className="h-5 w-5 text-blue-500" /> Gérer les inscriptions
                 </CardTitle>
               </CardHeader>
               <CardContent className="grid gap-6 lg:grid-cols-[1.1fr,1.9fr]">
@@ -1107,21 +1111,21 @@ export default function AdminPage() {
                     value={enrollmentForm.metadata}
                     onChange={(event) => setEnrollmentForm((prev) => ({ ...prev, metadata: event.target.value }))}
                   />
-                  <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-accent/90" disabled={isSavingEnrollment}>
+                  <Button type="submit" className="w-full bg-blue-600 text-white hover:bg-blue-700" disabled={isSavingEnrollment}>
                     {isSavingEnrollment ? "Création…" : "Créer l'inscription"}
                   </Button>
                 </form>
 
                 <div className="space-y-3">
                   {enrollments.map((enrollment) => (
-                    <div key={enrollment.id} className="rounded-lg border border-border/60 bg-surface-hover px-4 py-3">
-                      <p className="text-sm font-semibold text-foreground">
+                    <div key={enrollment.id} className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+                      <p className="text-sm font-semibold text-slate-900">
                         {courses.find((course) => course.id === enrollment.course_id)?.title || "Cours"}
                       </p>
-                      <p className="text-xs text-muted-foreground/80">
+                      <p className="text-xs text-slate-500">
                         {users.find((item) => item.id === enrollment.user_id)?.email || "Utilisateur"} • {enrollment.status}
                       </p>
-                      <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-muted-foreground/80">
+                      <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-slate-500">
                         <span>Progression : {Math.round(enrollment.progress ?? 0)}%</span>
                         <Button
                           type="button"
@@ -1135,7 +1139,7 @@ export default function AdminPage() {
                       </div>
                     </div>
                   ))}
-                  {enrollments.length === 0 && <p className="text-sm text-muted-foreground/80">Aucune inscription enregistrée.</p>}
+                  {enrollments.length === 0 && <p className="text-sm text-slate-500">Aucune inscription enregistrée.</p>}
                 </div>
               </CardContent>
             </Card>
@@ -1143,10 +1147,10 @@ export default function AdminPage() {
 
           {user.role === "super_admin" && (
             <TabsContent value="organizations" className="mt-6 space-y-6">
-              <Card className="border border-border/60 bg-surface shadow-sm">
+              <Card className="border border-slate-200 bg-white shadow-sm">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-lg text-foreground">
-                    <ShieldCheck className="h-5 w-5 text-accent" /> Organisations
+                  <CardTitle className="flex items-center gap-2 text-lg text-slate-900">
+                    <ShieldCheck className="h-5 w-5 text-blue-500" /> Organisations
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="grid gap-6 lg:grid-cols-[1.1fr,1.9fr]">
@@ -1169,16 +1173,16 @@ export default function AdminPage() {
                       value={organizationForm.settings}
                       onChange={(event) => setOrganizationForm((prev) => ({ ...prev, settings: event.target.value }))}
                     />
-                    <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-accent/90" disabled={isSavingOrganization}>
+                    <Button type="submit" className="w-full bg-blue-600 text-white hover:bg-blue-700" disabled={isSavingOrganization}>
                       {isSavingOrganization ? "Création…" : "Créer l'organisation"}
                     </Button>
                   </form>
 
                   <div className="space-y-3">
                     {organizations.map((org) => (
-                      <div key={org.id} className="rounded-lg border border-border/60 bg-surface-hover px-4 py-3">
-                        <p className="text-sm font-semibold text-foreground">{org.name}</p>
-                        <p className="text-xs text-muted-foreground/80">{org.slug} • {org.status}</p>
+                      <div key={org.id} className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+                        <p className="text-sm font-semibold text-slate-900">{org.name}</p>
+                        <p className="text-xs text-slate-500">{org.slug} • {org.status}</p>
                         <div className="mt-3 flex gap-2 text-xs">
                           {org.status === "active" ? (
                             <Button
@@ -1195,7 +1199,7 @@ export default function AdminPage() {
                               type="button"
                               size="sm"
                               variant="outline"
-                              className="border-border/60"
+                              className="border-slate-200"
                               onClick={() => handleActivateOrganization(org.id)}
                             >
                               Activer
@@ -1204,7 +1208,7 @@ export default function AdminPage() {
                         </div>
                       </div>
                     ))}
-                    {organizations.length === 0 && <p className="text-sm text-muted-foreground/80">Aucune organisation disponible.</p>}
+                    {organizations.length === 0 && <p className="text-sm text-slate-500">Aucune organisation disponible.</p>}
                   </div>
                 </CardContent>
               </Card>

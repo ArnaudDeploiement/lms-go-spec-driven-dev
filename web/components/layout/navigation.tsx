@@ -46,25 +46,23 @@ export function Navigation() {
   };
 
   return (
-    <nav className="fixed inset-x-0 top-0 z-50 border-b border-border/60 bg-background/70 backdrop-blur-xl">
+    <nav className="fixed inset-x-0 top-0 z-50 border-b border-slate-200 bg-white/90 backdrop-blur">
       <div className="container-custom">
-        <div className="flex h-20 items-center justify-between gap-4">
+        <div className="flex h-16 items-center justify-between gap-4">
           {/* Logo */}
-          <Link href="/learn" className="flex items-center gap-3 text-foreground transition-opacity hover:opacity-90">
-            <span className="flex h-11 w-11 items-center justify-center rounded-xl border border-border/70 bg-surface shadow-subtle">
-              <GraduationCap className="h-5 w-5 text-accent" strokeWidth={2.4} />
+          <Link href="/learn" className="flex items-center gap-3">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm">
+              <GraduationCap className="h-5 w-5" strokeWidth={2.4} />
             </span>
             <div className="hidden sm:block">
-              <p className="text-sm font-semibold tracking-tight">LMS Go</p>
-              <p className="text-xs text-muted-foreground">
-                {organization?.name || "Learning Platform"}
-              </p>
+              <p className="text-sm font-semibold text-slate-900">LMS Go</p>
+              <p className="text-xs text-slate-500">{organization?.name || "Learning Platform"}</p>
             </div>
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden items-center gap-3 md:flex">
-            <div className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-surface px-2 py-1 shadow-subtle">
+          <div className="hidden md:flex items-center gap-4">
+            <div className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-100 p-1">
               {filteredNavItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = pathname.startsWith(item.href);
@@ -72,13 +70,13 @@ export function Navigation() {
                   <Link
                     key={item.href}
                     href={item.href}
-                    className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-all ${
+                    className={`flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
                       isActive
-                        ? "bg-accent/10 text-foreground shadow-[0_0_0_1px_var(--ring)]"
-                        : "text-muted-foreground hover:text-foreground hover:bg-surface-hover"
+                        ? "bg-white text-slate-900 shadow-sm"
+                        : "text-slate-600 hover:text-slate-900"
                     }`}
                   >
-                    <Icon className={`h-4 w-4 ${isActive ? "text-accent" : "text-muted-foreground"}`} />
+                    <Icon className={`h-4 w-4 ${isActive ? "text-blue-600" : "text-slate-400"}`} />
                     <span>{item.label}</span>
                   </Link>
                 );
@@ -87,23 +85,19 @@ export function Navigation() {
           </div>
 
           {/* User Menu */}
-          <div className="hidden items-center gap-3 md:flex">
-            <div className="flex items-center gap-3 rounded-2xl border border-border/60 bg-surface px-4 py-3 shadow-subtle">
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-accent/15 text-sm font-semibold text-accent">
+          <div className="hidden md:flex items-center gap-3">
+            <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-sm">
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-100 text-sm font-semibold text-blue-700">
                 {user?.email?.substring(0, 2).toUpperCase() || "U"}
               </div>
               <div className="text-sm leading-tight">
-                <p className="font-medium text-foreground">
-                  {user?.email?.split("@")[0]}
-                </p>
-                <p className="text-xs capitalize text-muted-foreground">
-                  {user?.role || "User"}
-                </p>
+                <p className="font-medium text-slate-900">{user?.email?.split("@")[0]}</p>
+                <p className="text-xs capitalize text-slate-500">{user?.role || "User"}</p>
               </div>
             </div>
             <button
               onClick={handleLogout}
-              className="inline-flex items-center gap-2 rounded-xl border border-border/70 px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:border-border hover:text-foreground"
+              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
             >
               <LogOut className="h-4 w-4" />
               <span>Déconnexion</span>
@@ -113,7 +107,7 @@ export function Navigation() {
           {/* Mobile Menu Button */}
           <button
             onClick={() => setIsMobileMenuOpen((prev) => !prev)}
-            className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-border/60 text-muted-foreground transition-colors hover:text-foreground md:hidden"
+            className="md:hidden inline-flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 text-slate-600 transition-colors hover:bg-slate-100"
             aria-label="Menu"
           >
             {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -123,8 +117,8 @@ export function Navigation() {
 
       {/* Mobile Menu */}
       {isMobileMenuOpen && (
-        <div className="border-t border-border/60 bg-background/90 backdrop-blur md:hidden">
-          <div className="container-custom space-y-4 py-6">
+        <div className="md:hidden border-t border-slate-200 bg-white/95 backdrop-blur">
+          <div className="container-custom space-y-4 py-4">
             <div className="flex flex-col gap-2">
               {filteredNavItems.map((item) => {
                 const Icon = item.icon;
@@ -134,32 +128,32 @@ export function Navigation() {
                     key={item.href}
                     href={item.href}
                     onClick={() => setIsMobileMenuOpen(false)}
-                    className={`flex items-center gap-3 rounded-2xl border px-4 py-3 text-sm font-medium transition-colors ${
+                    className={`flex items-center gap-3 rounded-xl border px-4 py-3 text-sm font-medium transition-colors ${
                       isActive
-                        ? "border-ring/40 bg-accent/10 text-foreground"
-                        : "border-border/70 bg-surface text-muted-foreground hover:text-foreground hover:bg-surface-hover"
+                        ? "border-blue-500/30 bg-blue-50 text-blue-700"
+                        : "border-slate-200 bg-white text-slate-600 hover:border-blue-400/40 hover:bg-blue-50 hover:text-blue-700"
                     }`}
                   >
-                    <Icon className={`h-5 w-5 ${isActive ? "text-accent" : "text-muted-foreground"}`} />
+                    <Icon className={`h-5 w-5 ${isActive ? "text-blue-600" : "text-slate-400"}`} />
                     <span>{item.label}</span>
                   </Link>
                 );
               })}
             </div>
 
-            <div className="rounded-2xl border border-border/70 bg-surface px-4 py-5 shadow-subtle">
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-accent/15 text-sm font-semibold text-accent">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-sm font-semibold text-blue-700">
                   {user?.email?.substring(0, 2).toUpperCase() || "U"}
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-foreground">{user?.email}</p>
-                  <p className="text-xs capitalize text-muted-foreground">{user?.role || "User"}</p>
+                  <p className="text-sm font-medium text-slate-900">{user?.email}</p>
+                  <p className="text-xs capitalize text-slate-500">{user?.role || "User"}</p>
                 </div>
               </div>
               <button
                 onClick={handleLogout}
-                className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-accent px-4 py-2 text-sm font-medium text-accent-foreground transition-colors hover:bg-accent/90"
+                className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
               >
                 <LogOut className="h-4 w-4" />
                 <span>Déconnexion</span>

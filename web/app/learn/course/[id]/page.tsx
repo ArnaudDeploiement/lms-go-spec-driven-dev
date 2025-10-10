@@ -7,7 +7,6 @@ import { useAuth } from '@/lib/auth/context';
 import { apiClient } from '@/lib/api/client';
 import type { EnrollmentResponse, ProgressResponse } from '@/lib/api/client';
 import { Button } from '@/components/ui/button';
-import { ProgressBar } from '@/components/ui/progress';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   BookOpen,
@@ -244,20 +243,20 @@ setEnrollment(
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="h-10 w-10 animate-spin rounded-full border-2 border-ring/40 border-t-ring" />
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-300 border-t-blue-600" />
       </div>
     );
   }
 
   if (!course) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <Card className="p-8">
-          <CardContent className="flex flex-col items-center gap-4 text-center">
-            <BookOpen className="h-16 w-16 text-muted-foreground" />
-            <p className="text-muted-foreground">Formation non trouvée</p>
-            <Button className="mt-2" onClick={() => router.push('/learn')}>
+      <div className="flex min-h-screen items-center justify-center">
+        <Card>
+          <CardContent className="flex flex-col items-center py-12">
+            <BookOpen className="h-16 w-16 text-gray-400 mb-4" />
+            <p className="text-gray-600">Formation non trouvée</p>
+            <Button className="mt-4" onClick={() => router.push('/learn')}>
               Retour au catalogue
             </Button>
           </CardContent>
@@ -267,10 +266,10 @@ setEnrollment(
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="border-b border-border/60 bg-background/70 backdrop-blur">
-        <div className="container mx-auto px-6 py-4">
+      <header className="border-b bg-white">
+        <div className="container mx-auto px-4 py-4">
           <Button
             variant="ghost"
             size="sm"
@@ -284,36 +283,34 @@ setEnrollment(
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-6 py-12">
+      <main className="container mx-auto px-4 py-8">
         {/* Course Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
-          <Card className="mb-8 border border-border/60 bg-surface">
+          <Card className="mb-8">
             <CardHeader>
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <CardTitle className="mb-2 text-3xl font-semibold tracking-tight">
-                    {course.title}
-                  </CardTitle>
-                  <CardDescription className="text-base text-muted-foreground">
+                  <CardTitle className="text-3xl mb-2">{course.title}</CardTitle>
+                  <CardDescription className="text-base">
                     {course.description}
                   </CardDescription>
                 </div>
                 <div className="ml-4">
                   {enrollment ? (
                     <div className="text-right">
-                      <div className="mb-2 text-sm text-muted-foreground">
+                      <div className="text-sm text-gray-600 mb-2">
                         Progression
                       </div>
-                      <div className="text-2xl font-semibold text-accent">
+                      <div className="text-2xl font-bold text-blue-600">
                         {enrollment.progress_pct || 0}%
                       </div>
                     </div>
                   ) : (
-                    <Button onClick={handleEnroll} disabled={isEnrolling} className="justify-center">
+                    <Button onClick={handleEnroll} disabled={isEnrolling}>
                       {isEnrolling ? 'Inscription...' : "S'inscrire"}
                     </Button>
                   )}
@@ -322,7 +319,14 @@ setEnrollment(
             </CardHeader>
             {enrollment && (
               <CardContent>
-                <ProgressBar value={enrollment.progress_pct || 0} />
+                <div className="h-2 w-full rounded-full bg-gray-200">
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${enrollment.progress_pct || 0}%` }}
+                    transition={{ duration: 0.5, delay: 0.2 }}
+                    className="h-full rounded-full bg-blue-600"
+                  />
+                </div>
               </CardContent>
             )}
           </Card>
@@ -334,13 +338,13 @@ setEnrollment(
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}
         >
-          <h2 className="mb-4 text-2xl font-semibold tracking-tight text-foreground">Modules de formation</h2>
+          <h2 className="text-2xl font-bold mb-4">Modules de formation</h2>
 
           {!course.modules || course.modules.length === 0 ? (
-            <Card className="border border-border/60 bg-surface">
-              <CardContent className="flex flex-col items-center justify-center gap-4 py-12 text-center">
-                <BookOpen className="h-16 w-16 text-muted-foreground" />
-                <p className="text-muted-foreground">
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <BookOpen className="h-16 w-16 text-gray-400 mb-4" />
+                <p className="text-gray-600 text-center">
                   Aucun module disponible pour cette formation
                 </p>
               </CardContent>
@@ -366,46 +370,42 @@ setEnrollment(
                         transition={{ duration: 0.3, delay: index * 0.05 }}
                       >
                         <Card
-                          className={`cursor-pointer border transition-all ${
-                            isInProgress
-                              ? 'border-ring shadow-[0_0_0_1px_var(--ring)]'
-                              : isCompleted
-                              ? 'border-success/40'
-                              : 'border-border/60'
-                          } ${isLocked ? 'opacity-60' : 'hover:translate-y-[-2px]'}`}
+                          className={`
+                            transition-all cursor-pointer
+                            ${isLocked ? 'opacity-60' : 'hover:shadow-lg'}
+                            ${isInProgress ? 'border-blue-500 border-2' : ''}
+                            ${isCompleted ? 'border-green-500' : ''}
+                          `}
                           onClick={() => !isLocked && handleModuleClick(module)}
                         >
                           <CardHeader>
                             <div className="flex items-start justify-between">
                               <div className="flex items-start gap-4 flex-1">
-                                <div
-                                  className={`rounded-xl p-3 ${
-                                    isCompleted ? 'bg-success/20 text-success' : 'bg-accent/15 text-accent'
-                                  }`}
-                                >
+                                <div className={`
+                                  p-3 rounded-lg
+                                  ${isCompleted ? 'bg-green-100' : 'bg-blue-100'}
+                                `}>
                                   {isLocked ? (
-                                    <Lock className="h-6 w-6 text-muted-foreground" />
+                                    <Lock className="h-6 w-6 text-gray-400" />
                                   ) : isCompleted ? (
-                                    <CheckCircle className="h-6 w-6" />
+                                    <CheckCircle className="h-6 w-6 text-green-600" />
                                   ) : (
-                                    <Icon className={`h-6 w-6 ${isInProgress ? 'text-accent' : 'text-muted-foreground'}`} />
+                                    <Icon className={`h-6 w-6 ${isInProgress ? 'text-blue-600' : 'text-gray-600'}`} />
                                   )}
                                 </div>
                                 <div className="flex-1">
-                                  <CardTitle className="mb-1 text-xl font-semibold">
+                                  <CardTitle className="text-xl mb-1">
                                     Module {index + 1}: {module.title}
                                   </CardTitle>
-                                  <CardDescription className="text-sm text-muted-foreground">
-                                    {module.description}
-                                  </CardDescription>
+                                  <CardDescription>{module.description}</CardDescription>
                                   <div className="flex items-center gap-4 mt-2">
                                     {module.duration_minutes && (
-                                      <span className="flex items-center gap-1 text-sm text-muted-foreground">
+                                      <span className="flex items-center gap-1 text-sm text-gray-600">
                                         <Clock className="h-4 w-4" />
                                         {module.duration_minutes} min
                                       </span>
                                     )}
-                                    <span className="text-sm capitalize text-muted-foreground">
+                                    <span className="text-sm text-gray-600 capitalize">
                                       {module.module_type}
                                     </span>
                                   </div>
@@ -413,13 +413,13 @@ setEnrollment(
                               </div>
                               <div>
                                 {isLocked ? (
-                                  <span className="text-sm text-muted-foreground/70">Verrouillé</span>
+                                  <span className="text-sm text-gray-500">Verrouillé</span>
                                 ) : isCompleted ? (
-                                  <CheckCircle className="h-6 w-6 text-success" />
+                                  <CheckCircle className="h-6 w-6 text-green-600" />
                                 ) : isInProgress ? (
-                                  <Play className="h-6 w-6 text-accent" />
+                                  <Play className="h-6 w-6 text-blue-600" />
                                 ) : (
-                                  <Button size="sm" variant="subtle">
+                                  <Button size="sm" variant="outline">
                                     Commencer
                                   </Button>
                                 )}

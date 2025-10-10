@@ -14,10 +14,10 @@ export function Loading({ size = "md", text, fullScreen = false }: LoadingProps)
   };
 
   const content = (
-    <div className="flex flex-col items-center justify-center gap-4 text-muted-foreground">
-      <Loader2 className={`${sizeClasses[size]} animate-spin text-accent`} />
+    <div className="flex flex-col items-center justify-center gap-4">
+      <Loader2 className={`${sizeClasses[size]} animate-spin text-[var(--accent-primary)]`} />
       {text && (
-        <p className="text-sm font-medium animate-pulse">
+        <p className="text-sm font-medium text-[var(--text-secondary)] animate-pulse">
           {text}
         </p>
       )}
@@ -26,7 +26,7 @@ export function Loading({ size = "md", text, fullScreen = false }: LoadingProps)
 
   if (fullScreen) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-background">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--bg-primary)]">
         {content}
       </div>
     );

@@ -30,29 +30,29 @@ export function Alert({
   const variants = {
     success: {
       icon: CheckCircle,
-      className: "border-success/30 bg-success/10",
-      iconColor: "text-success",
-      textColor: "text-success",
+      className: "border-[var(--accent-success)]/30 bg-[var(--accent-success)]/10",
+      iconColor: "text-[var(--accent-success)]",
+      textColor: "text-[var(--accent-success)]",
     },
     error: {
       icon: XCircle,
-      className: "border-destructive/30 bg-destructive/10",
-      iconColor: "text-destructive",
-      textColor: "text-destructive",
+      className: "border-[var(--accent-error)]/30 bg-[var(--accent-error)]/10",
+      iconColor: "text-[var(--accent-error)]",
+      textColor: "text-[var(--accent-error)]",
     },
     warning: {
       icon: AlertCircle,
-      className: "border-warning/30 bg-warning/10",
-      iconColor: "text-warning",
-      textColor: "text-warning",
+      className: "border-[var(--accent-warning)]/30 bg-[var(--accent-warning)]/10",
+      iconColor: "text-[var(--accent-warning)]",
+      textColor: "text-[var(--accent-warning)]",
     },
     info: {
       icon: Info,
-      className: "border-accent/30 bg-accent-muted/40",
-      iconColor: "text-accent",
-      textColor: "text-accent",
+      className: "border-[var(--accent-info)]/30 bg-[var(--accent-info)]/10",
+      iconColor: "text-[var(--accent-info)]",
+      textColor: "text-[var(--accent-info)]",
     },
-  } as const;
+  };
 
   const config = variants[variant];
   const Icon = config.icon;
@@ -70,12 +70,12 @@ export function Alert({
               {title}
             </h4>
           )}
-          <div className="text-sm text-muted-foreground">{children}</div>
+          <div className="text-sm text-[var(--text-secondary)]">{children}</div>
         </div>
         {dismissible && (
           <button
             onClick={handleDismiss}
-            className="flex-shrink-0 text-muted-foreground transition-colors hover:text-foreground"
+            className="flex-shrink-0 text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors"
             aria-label="Fermer"
           >
             <X className="h-4 w-4" />
