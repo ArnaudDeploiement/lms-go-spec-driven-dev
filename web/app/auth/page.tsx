@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/lib/auth/context";
 import { Alert } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import { GraduationCap, Mail, Lock, ArrowRight, Sparkles, Building2 } from "lucide-react";
 
 type AuthMode = "login" | "signup";
@@ -72,14 +73,12 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden px-6 py-12">
       {/* Background Effects */}
-      <div className="absolute inset-0 -z-10">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-500/20 rounded-full blur-3xl animate-pulse" />
-        <div
-          className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-cyan-500/20 rounded-full blur-3xl animate-pulse"
-          style={{ animationDelay: "1s" }}
-        />
+      <div className="pointer-events-none absolute inset-0 -z-10">
+        <div className="absolute left-[10%] top-[12%] h-80 w-80 rounded-full bg-accent/20 blur-3xl" />
+        <div className="absolute right-[8%] top-[25%] h-72 w-72 rounded-full bg-success/15 blur-3xl" />
+        <div className="absolute left-1/2 top-[65%] h-96 w-96 -translate-x-1/2 rounded-full bg-accent/10 blur-[160px]" />
       </div>
 
       <motion.div
@@ -89,16 +88,16 @@ export default function AuthPage() {
         className="w-full max-w-md"
       >
         {/* Header */}
-        <div className="text-center mb-8">
+        <div className="mb-8 text-center">
           <motion.div
             initial={{ scale: 0.5, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.5, delay: 0.2 }}
-            className="inline-flex items-center justify-center mb-6 relative"
+            className="relative mb-6 inline-flex items-center justify-center"
           >
-            <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 to-cyan-500 rounded-3xl blur-2xl opacity-50" />
-            <div className="relative h-20 w-20 rounded-3xl bg-gradient-to-br from-indigo-500 to-cyan-500 flex items-center justify-center">
-              <GraduationCap className="h-10 w-10 text-white" strokeWidth={2.5} />
+            <div className="absolute inset-0 rounded-3xl bg-accent/30 blur-2xl" />
+            <div className="relative flex h-20 w-20 items-center justify-center rounded-3xl border border-border/60 bg-surface shadow-subtle">
+              <GraduationCap className="h-9 w-9 text-accent" strokeWidth={2.4} />
             </div>
           </motion.div>
 
@@ -106,7 +105,7 @@ export default function AuthPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.5, delay: 0.3 }}
-            className="text-4xl font-bold text-[var(--text-primary)] mb-2"
+            className="mb-2 text-4xl font-semibold tracking-tight text-foreground"
           >
             {mode === "login" ? "Bienvenue" : "Créer votre LMS"}
           </motion.h1>
@@ -115,7 +114,7 @@ export default function AuthPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.5, delay: 0.4 }}
-            className="text-[var(--text-secondary)]"
+            className="text-base text-muted-foreground"
           >
             {mode === "login"
               ? "Connectez-vous pour accéder à vos formations"
@@ -175,7 +174,7 @@ export default function AuthPage() {
                     Nom de l'organisation
                   </label>
                   <div className="relative">
-                    <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[var(--text-tertiary)]" />
+                    <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                     <input
                       id="org_name"
                       type="text"
@@ -197,7 +196,7 @@ export default function AuthPage() {
                     Adresse email
                   </label>
                   <div className="relative">
-                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[var(--text-tertiary)]" />
+                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                     <input
                       id="signup_email"
                       type="email"
@@ -220,7 +219,7 @@ export default function AuthPage() {
                     Mot de passe
                   </label>
                   <div className="relative">
-                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[var(--text-tertiary)]" />
+                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                     <input
                       id="signup_password"
                       type="password"
@@ -236,30 +235,26 @@ export default function AuthPage() {
                       minLength={8}
                     />
                   </div>
-                  <p className="text-xs text-[var(--text-tertiary)]">
+                  <p className="text-xs text-muted-foreground/80">
                     Minimum 8 caractères
                   </p>
                 </div>
 
                 {/* Submit */}
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="btn-primary w-full btn-lg group"
-                >
+                <Button type="submit" disabled={isSubmitting} className="group w-full justify-center" size="lg">
                   {isSubmitting ? (
                     <div className="flex items-center gap-2">
-                      <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-accent-foreground/30 border-t-accent-foreground" />
                       <span>Création...</span>
                     </div>
                   ) : (
                     <>
                       <Sparkles className="h-5 w-5" />
                       <span>Créer mon LMS</span>
-                      <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                      <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
                     </>
                   )}
-                </button>
+                </Button>
               </motion.form>
             ) : (
               <motion.form
@@ -277,7 +272,7 @@ export default function AuthPage() {
                     Adresse email
                   </label>
                   <div className="relative">
-                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[var(--text-tertiary)]" />
+                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                     <input
                       id="login_email"
                       type="email"
@@ -300,7 +295,7 @@ export default function AuthPage() {
                     Mot de passe
                   </label>
                   <div className="relative">
-                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[var(--text-tertiary)]" />
+                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                     <input
                       id="login_password"
                       type="password"
@@ -318,23 +313,19 @@ export default function AuthPage() {
                 </div>
 
                 {/* Submit */}
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="btn-primary w-full btn-lg group"
-                >
+                <Button type="submit" disabled={isSubmitting} className="group w-full justify-center" size="lg">
                   {isSubmitting ? (
                     <div className="flex items-center gap-2">
-                      <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-accent-foreground/30 border-t-accent-foreground" />
                       <span>Connexion...</span>
                     </div>
                   ) : (
                     <>
                       <span>Se connecter</span>
-                      <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                      <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
                     </>
                   )}
-                </button>
+                </Button>
               </motion.form>
             )}
           </AnimatePresence>
@@ -342,13 +333,13 @@ export default function AuthPage() {
           {/* Divider */}
           <div className="relative my-8">
             <div className="divider" />
-            <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 px-4 bg-[var(--bg-glass)] text-xs text-[var(--text-tertiary)] uppercase tracking-wide backdrop-blur-xl">
+            <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 px-4 text-xs uppercase tracking-[0.24em] text-muted-foreground/80">
               ou
             </span>
           </div>
 
           {/* Toggle Mode */}
-          <button type="button" onClick={toggleMode} className="w-full btn-secondary">
+          <Button type="button" onClick={toggleMode} variant="subtle" className="w-full justify-center">
             {mode === "login" ? (
               <>
                 <Sparkles className="h-4 w-4" />
@@ -359,7 +350,7 @@ export default function AuthPage() {
                 <span>J'ai déjà un compte</span>
               </>
             )}
-          </button>
+          </Button>
         </motion.div>
 
         {/* Footer Info */}
@@ -371,24 +362,23 @@ export default function AuthPage() {
         >
           {mode === "signup" && (
             <div className="glass-card p-4">
-              <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
-                <span className="font-semibold text-[var(--text-primary)]">Note :</span> En créant un compte, vous devenez{" "}
-                <span className="text-gradient font-semibold">administrateur</span> de
-                votre propre instance LMS multi-tenant.
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                <span className="font-semibold text-foreground">Note :</span> En créant un compte, vous devenez{" "}
+                <span className="font-semibold text-accent">administrateur</span> de votre propre instance LMS multi-tenant.
               </p>
             </div>
           )}
 
-          <div className="flex items-center justify-center gap-6 text-xs text-[var(--text-tertiary)]">
-            <a href="#" className="hover:text-[var(--text-primary)] transition-colors">
+          <div className="flex items-center justify-center gap-6 text-xs text-muted-foreground/80">
+            <a href="#" className="transition-colors hover:text-foreground">
               Aide
             </a>
             <span>•</span>
-            <a href="#" className="hover:text-[var(--text-primary)] transition-colors">
+            <a href="#" className="transition-colors hover:text-foreground">
               Confidentialité
             </a>
             <span>•</span>
-            <a href="#" className="hover:text-[var(--text-primary)] transition-colors">
+            <a href="#" className="transition-colors hover:text-foreground">
               Conditions
             </a>
           </div>

@@ -22,18 +22,18 @@ export function ProgressBar({
   };
 
   const variantGradients = {
-    default: "var(--gradient-primary)",
-    success: "var(--gradient-success)",
-    warning: "linear-gradient(135deg, #F59E0B 0%, #EAB308 100%)",
-    error: "linear-gradient(135deg, #EF4444 0%, #DC2626 100%)",
-  };
+    default: "linear-gradient(135deg, var(--accent) 0%, rgba(91, 91, 214, 0.55) 100%)",
+    success: "linear-gradient(135deg, var(--success) 0%, rgba(34, 211, 238, 0.5) 100%)",
+    warning: "linear-gradient(135deg, var(--warning) 0%, rgba(251, 191, 36, 0.45) 100%)",
+    error: "linear-gradient(135deg, var(--destructive) 0%, rgba(248, 113, 113, 0.5) 100%)",
+  } as const;
 
   return (
     <div className="space-y-2">
       {showLabel && (
-        <div className="flex items-center justify-between text-xs font-medium">
-          <span className="text-[var(--text-secondary)]">Progression</span>
-          <span className="text-[var(--text-primary)]">{Math.round(percentage)}%</span>
+        <div className="flex items-center justify-between text-xs font-medium text-muted-foreground">
+          <span>Progression</span>
+          <span className="text-foreground">{Math.round(percentage)}%</span>
         </div>
       )}
       <div className={`progress-bar ${sizeClasses[size]}`}>
@@ -77,7 +77,7 @@ export function CircularProgress({
           cx={size / 2}
           cy={size / 2}
           r={radius}
-          stroke="var(--surface-elevated)"
+          stroke="var(--surface-raised)"
           strokeWidth={strokeWidth}
           fill="none"
         />
@@ -96,14 +96,14 @@ export function CircularProgress({
         />
         <defs>
           <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#6366F1" />
-            <stop offset="100%" stopColor="#22D3EE" />
+            <stop offset="0%" stopColor="#5b5bd6" />
+            <stop offset="100%" stopColor="#22d3ee" />
           </linearGradient>
         </defs>
       </svg>
       {showLabel && (
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-2xl font-bold text-[var(--text-primary)]">
+          <span className="text-2xl font-bold text-foreground">
             {Math.round(percentage)}%
           </span>
         </div>
