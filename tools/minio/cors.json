@@ -1,11 +1,6 @@
 [
   {
-    "AllowedOrigin": [
-      "http://localhost:3000",
-      "http://127.0.0.1:3000",
-      "https://localhost:3000",
-      "https://app.example.com"
-    ],
+    "AllowedOrigin": ["http://localhost:3000", "http://127.0.0.1:3000", "https://app.example.com"],
     "AllowedMethod": ["PUT", "GET", "POST", "HEAD"],
     "AllowedHeader": ["*"],
     "ExposeHeader": ["ETag", "x-amz-request-id"],
