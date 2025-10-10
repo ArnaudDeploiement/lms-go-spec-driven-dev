@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import {
   apiClient,
-  type ContentResponse,
   type CourseResponse,
   type EnrollmentResponse,
   type GroupResponse,
@@ -29,7 +28,6 @@ import {
   LineChart,
   PlusCircle,
   ShieldCheck,
-  UploadCloud,
   UserPlus,
   Users,
 } from "lucide-react";
@@ -65,12 +63,6 @@ type UserFormState = {
 type GroupFormState = {
   name: string;
   description: string;
-};
-
-type ContentFormState = {
-  name: string;
-  mime_type: string;
-  metadata: string;
 };
 
 type EnrollmentFormState = {
@@ -109,12 +101,6 @@ const emptyGroupForm: GroupFormState = {
   description: "",
 };
 
-const emptyContentForm: ContentFormState = {
-  name: "",
-  mime_type: "",
-  metadata: "",
-};
-
 const emptyEnrollmentForm: EnrollmentFormState = {
   course_id: "",
   user_id: "",
@@ -148,56 +134,6 @@ function parseJsonInput(value: string): Record<string, any> | undefined {
   }
 }
 
-async function uploadFileToSignedUrl(
-  url: string,
-  file: File,
-  onProgress: (progress: number) => void,
-) {
-  if (typeof window !== "undefined" && typeof XMLHttpRequest !== "undefined") {
-    return new Promise<void>((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-      xhr.open("PUT", url, true);
-      xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream");
-
-      xhr.upload.onprogress = (event) => {
-        if (!event.lengthComputable) return;
-        const percent = Math.round((event.loaded / event.total) * 100);
-        onProgress(percent);
-      };
-
-      xhr.onload = () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          onProgress(100);
-          resolve();
-        } else {
-          reject(new Error("Le téléversement a échoué"));
-        }
-      };
-
-      xhr.onerror = () => {
-        reject(new Error("Impossible de téléverser le fichier"));
-      };
-
-      xhr.send(file);
-    });
-  }
-
-  onProgress(0);
-  const response = await fetch(url, {
-    method: "PUT",
-    headers: {
-      "Content-Type": file.type || "application/octet-stream",
-    },
-    body: file,
-  });
-
-  if (!response.ok) {
-    throw new Error("Le téléversement a échoué");
-  }
-
-  onProgress(100);
-}
-
 export default function AdminPage() {
   const router = useRouter();
   const { user, organization, isLoading, isAuthenticated } = useAuth();
@@ -213,7 +149,6 @@ export default function AdminPage() {
   const [users, setUsers] = useState<UserResponse[]>([]);
   const [groups, setGroups] = useState<GroupResponse[]>([]);
   const [enrollments, setEnrollments] = useState<EnrollmentResponse[]>([]);
-  const [contents, setContents] = useState<ContentResponse[]>([]);
   const [organizations, setOrganizations] = useState<OrganizationResponse[]>([]);
 
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
@@ -222,18 +157,12 @@ export default function AdminPage() {
   const [userForm, setUserForm] = useState<UserFormState>(emptyUserForm);
   const [groupForm, setGroupForm] = useState<GroupFormState>(emptyGroupForm);
   const [enrollmentForm, setEnrollmentForm] = useState<EnrollmentFormState>(emptyEnrollmentForm);
-  const [contentForm, setContentForm] = useState<ContentFormState>(emptyContentForm);
   const [organizationForm, setOrganizationForm] = useState<OrganizationFormState>(emptyOrganizationForm);
-
-  const [contentFile, setContentFile] = useState<File | null>(null);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [lastUploadUrl, setLastUploadUrl] = useState<string | null>(null);
 
   const [isSavingCourse, setIsSavingCourse] = useState(false);
   const [isSavingUser, setIsSavingUser] = useState(false);
   const [isSavingGroup, setIsSavingGroup] = useState(false);
   const [isSavingEnrollment, setIsSavingEnrollment] = useState(false);
-  const [isSavingContent, setIsSavingContent] = useState(false);
   const [isSavingOrganization, setIsSavingOrganization] = useState(false);
 
   const selectedCourse = useMemo(
@@ -324,19 +253,17 @@ export default function AdminPage() {
     setError(null);
 
     try {
-      const [coursesData, usersData, groupsData, enrollmentsData, contentsData] = await Promise.all([
+      const [coursesData, usersData, groupsData, enrollmentsData] = await Promise.all([
         apiClient.getCourses(organization.id),
         apiClient.listUsers(organization.id),
         apiClient.listGroups(organization.id),
         apiClient.getEnrollments(organization.id),
-        apiClient.listContents(organization.id),
       ]);
 
       setCourses(coursesData);
       setUsers(usersData);
       setGroups(groupsData);
       setEnrollments(enrollmentsData);
-      setContents(contentsData);
 
       setSelectedCourseId(null);
 
@@ -567,61 +494,6 @@ export default function AdminPage() {
     }
   };
 
-  const handleContentSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!organization || !contentFile) {
-      setError("Merci de sélectionner un fichier");
-      return;
-    }
-
-    setIsSavingContent(true);
-    setUploadProgress(0);
-    setError(null);
-
-    try {
-      const metadata = parseJsonInput(contentForm.metadata || "");
-      const upload = await apiClient.createContent(organization.id, {
-        name: contentForm.name || contentFile.name,
-        mime_type: contentForm.mime_type || contentFile.type,
-        size_bytes: contentFile.size,
-        metadata,
-      });
-
-      await uploadFileToSignedUrl(upload.upload_url, contentFile, setUploadProgress);
-      await apiClient.finalizeContent(organization.id, upload.content.id, {
-        name: contentForm.name || contentFile.name,
-        mime_type: contentForm.mime_type || contentFile.type,
-        size_bytes: contentFile.size,
-        metadata,
-      });
-
-      const refreshed = await apiClient.listContents(organization.id);
-      setContents(refreshed);
-      setContentFile(null);
-      setContentForm(emptyContentForm);
-      setLastUploadUrl(upload.upload_url);
-      showFeedback("Contenu téléversé");
-    } catch (err: any) {
-      console.error(err);
-      setError(err?.error || "Impossible de téléverser le contenu");
-    } finally {
-      setIsSavingContent(false);
-      setUploadProgress(0);
-    }
-  };
-
-  const handleArchiveContent = async (contentId: string) => {
-    if (!organization) return;
-    try {
-      await apiClient.archiveContent(organization.id, contentId);
-      setContents((prev) => prev.filter((content) => content.id !== contentId));
-      showFeedback("Contenu archivé");
-    } catch (err: any) {
-      console.error(err);
-      setError(err?.error || "Impossible d'archiver le contenu");
-    }
-  };
-
   const handleOrganizationSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setIsSavingOrganization(true);
@@ -734,9 +606,6 @@ export default function AdminPage() {
             </TabsTrigger>
             <TabsTrigger value="enrollments" className="flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium data-[state=active]:bg-white data-[state=active]:text-slate-900">
               <Layers className="h-4 w-4" /> Inscriptions
-            </TabsTrigger>
-            <TabsTrigger value="content" className="flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium data-[state=active]:bg-white data-[state=active]:text-slate-900">
-              <FileStack className="h-4 w-4" /> Contenus
             </TabsTrigger>
             {user.role === "super_admin" && (
               <TabsTrigger value="organizations" className="flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium data-[state=active]:bg-white data-[state=active]:text-slate-900">
@@ -1271,72 +1140,6 @@ export default function AdminPage() {
                     </div>
                   ))}
                   {enrollments.length === 0 && <p className="text-sm text-slate-500">Aucune inscription enregistrée.</p>}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="content" className="mt-6 space-y-6">
-            <Card className="border border-slate-200 bg-white shadow-sm">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg text-slate-900">
-                  <UploadCloud className="h-5 w-5 text-blue-500" /> Téléverser un contenu
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="grid gap-6 lg:grid-cols-[1.1fr,1.9fr]">
-                <form className="space-y-4" onSubmit={handleContentSubmit}>
-                  <Input
-                    placeholder="Nom"
-                    value={contentForm.name}
-                    onChange={(event) => setContentForm((prev) => ({ ...prev, name: event.target.value }))}
-                  />
-                  <Input
-                    placeholder="Type MIME"
-                    value={contentForm.mime_type}
-                    onChange={(event) => setContentForm((prev) => ({ ...prev, mime_type: event.target.value }))}
-                  />
-                  <input
-                    type="file"
-                    className={fieldClass}
-                    onChange={(event) => setContentFile(event.target.files?.[0] ?? null)}
-                  />
-                  <textarea
-                    className={fieldClass}
-                    rows={3}
-                    placeholder="Métadonnées JSON"
-                    value={contentForm.metadata}
-                    onChange={(event) => setContentForm((prev) => ({ ...prev, metadata: event.target.value }))}
-                  />
-                  {uploadProgress > 0 && uploadProgress < 100 && (
-                    <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200">
-                      <div className="h-full bg-blue-500" style={{ width: `${uploadProgress}%` }} />
-                    </div>
-                  )}
-                  <Button type="submit" className="w-full bg-blue-600 text-white hover:bg-blue-700" disabled={isSavingContent}>
-                    {isSavingContent ? "Téléversement…" : "Téléverser"}
-                  </Button>
-                  {lastUploadUrl && (
-                    <p className="text-xs text-slate-500">Lien de téléversement généré : {lastUploadUrl}</p>
-                  )}
-                </form>
-
-                <div className="space-y-3">
-                  {contents.map((content) => (
-                    <div key={content.id} className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
-                      <p className="text-sm font-semibold text-slate-900">{content.name}</p>
-                      <p className="text-xs text-slate-500">{content.mime_type}</p>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        className="mt-3 border-red-200 text-red-600 hover:bg-red-50"
-                        onClick={() => handleArchiveContent(content.id)}
-                      >
-                        Archiver
-                      </Button>
-                    </div>
-                  ))}
-                  {contents.length === 0 && <p className="text-sm text-slate-500">Aucun contenu téléversé.</p>}
                 </div>
               </CardContent>
             </Card>
