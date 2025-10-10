@@ -3,7 +3,6 @@ package api
 import (
 	"encoding/json"
 	"errors"
-	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -206,70 +205,48 @@ func respondError(w http.ResponseWriter, status int, message string) {
 
 // setAuthCookies définit les cookies httpOnly pour les tokens d'authentification
 func setAuthCookies(w http.ResponseWriter, r *http.Request, tokens auth.TokenPair) {
-	domain, secure := cookieAttributes(r)
-	maxAge := int(tokens.ExpiresAt.Sub(time.Now()).Seconds())
-	if maxAge <= 0 {
-		maxAge = 0
-	}
-
-	access := &http.Cookie{
+	http.SetCookie(w, &http.Cookie{
 		Name:     "access_token",
 		Value:    tokens.AccessToken,
 		Path:     "/",
 		HttpOnly: true,
-		Secure:   secure,
-		SameSite: http.SameSiteLaxMode,
-		MaxAge:   maxAge,
-	}
-	refresh := &http.Cookie{
+		Secure:   r.TLS != nil,
+		SameSite: http.SameSiteStrictMode,
+		MaxAge:   int(tokens.ExpiresAt.Sub(time.Now()).Seconds()),
+	})
+	http.SetCookie(w, &http.Cookie{
 		Name:     "refresh_token",
 		Value:    tokens.RefreshToken,
 		Path:     "/",
 		HttpOnly: true,
-		Secure:   secure,
-		SameSite: http.SameSiteLaxMode,
+		Secure:   r.TLS != nil,
+		SameSite: http.SameSiteStrictMode,
 		MaxAge:   72 * 3600, // 72h
-	}
-	if domain != "" {
-		access.Domain = domain
-		refresh.Domain = domain
-	}
-
-	http.SetCookie(w, access)
-	http.SetCookie(w, refresh)
+	})
 }
 
 func clearAuthCookies(w http.ResponseWriter, r *http.Request) {
 	expired := time.Now().Add(-time.Hour)
-	domain, secure := cookieAttributes(r)
-
-	access := &http.Cookie{
+	http.SetCookie(w, &http.Cookie{
 		Name:     "access_token",
 		Value:    "",
 		Path:     "/",
 		HttpOnly: true,
-		Secure:   secure,
-		SameSite: http.SameSiteLaxMode,
+		Secure:   r.TLS != nil,
+		SameSite: http.SameSiteStrictMode,
 		Expires:  expired,
 		MaxAge:   -1,
-	}
-	refresh := &http.Cookie{
+	})
+	http.SetCookie(w, &http.Cookie{
 		Name:     "refresh_token",
 		Value:    "",
 		Path:     "/",
 		HttpOnly: true,
-		Secure:   secure,
-		SameSite: http.SameSiteLaxMode,
+		Secure:   r.TLS != nil,
+		SameSite: http.SameSiteStrictMode,
 		Expires:  expired,
 		MaxAge:   -1,
-	}
-	if domain != "" {
-		access.Domain = domain
-		refresh.Domain = domain
-	}
-
-	http.SetCookie(w, access)
-	http.SetCookie(w, refresh)
+	})
 }
 
 func (h *AuthHandler) handleSignup(w http.ResponseWriter, r *http.Request) {
@@ -397,45 +374,4 @@ func extractAccessToken(r *http.Request) string {
 	}
 
 	return ""
-}
-
-func cookieAttributes(r *http.Request) (domain string, secure bool) {
-	host := forwardedHost(r)
-	host = stripPort(host)
-	secure = r.TLS != nil
-	if proto := strings.TrimSpace(r.Header.Get("X-Forwarded-Proto")); proto != "" {
-		secure = strings.EqualFold(proto, "https")
-	}
-
-	if host != "" && !isLocalhost(host) {
-		domain = host
-	}
-	return domain, secure
-}
-
-func forwardedHost(r *http.Request) string {
-	if h := strings.TrimSpace(r.Header.Get("X-Forwarded-Host")); h != "" {
-		return h
-	}
-	return r.Host
-}
-
-func stripPort(hostport string) string {
-	if hostport == "" {
-		return hostport
-	}
-	if strings.Contains(hostport, ":") {
-		if host, _, err := net.SplitHostPort(hostport); err == nil {
-			return host
-		}
-	}
-	return hostport
-}
-
-func isLocalhost(host string) bool {
-	lower := strings.ToLower(host)
-	if lower == "localhost" || lower == "127.0.0.1" || lower == "::1" {
-		return true
-	}
-	return strings.HasSuffix(lower, ".localhost")
 }
