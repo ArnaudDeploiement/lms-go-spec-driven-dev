@@ -24,18 +24,18 @@ export function StatCard({
   variant = "default",
 }: StatCardProps) {
   const variantClasses = {
-    default: "border-[var(--border-subtle)]",
-    primary: "border-[var(--accent-primary)]/30 glow-primary",
-    success: "border-[var(--accent-success)]/30 glow-success",
-    warning: "border-[var(--accent-warning)]/30",
-  };
+    default: "border-border/70",
+    primary: "border-accent/40",
+    success: "border-success/35",
+    warning: "border-warning/35",
+  } as const;
 
   const iconColors = {
-    default: "text-[var(--text-tertiary)]",
-    primary: "text-[var(--accent-primary)]",
-    success: "text-[var(--accent-success)]",
-    warning: "text-[var(--accent-warning)]",
-  };
+    default: "text-muted-foreground",
+    primary: "text-accent",
+    success: "text-success",
+    warning: "text-warning",
+  } as const;
 
   return (
     <div className={`glass-card p-6 ${variantClasses[variant]}`}>
@@ -46,13 +46,13 @@ export function StatCard({
 
       <div className="space-y-2">
         <div className="flex items-baseline gap-3">
-          <h3 className="text-3xl font-bold text-[var(--text-primary)] tracking-tight">
+          <h3 className="text-3xl font-bold tracking-tight text-foreground">
             {value}
           </h3>
           {trend && (
             <span
               className={`text-sm font-semibold ${
-                trend.isPositive ? "text-[var(--accent-success)]" : "text-[var(--accent-error)]"
+                trend.isPositive ? "text-success" : "text-destructive"
               }`}
             >
               {trend.isPositive ? "+" : ""}
@@ -62,11 +62,11 @@ export function StatCard({
         </div>
 
         {description && (
-          <p className="text-xs text-[var(--text-tertiary)]">{description}</p>
+          <p className="text-xs text-muted-foreground/80">{description}</p>
         )}
       </div>
 
-      {action && <div className="mt-4 pt-4 border-t border-[var(--border-subtle)]">{action}</div>}
+      {action && <div className="mt-4 border-t border-border/70 pt-4">{action}</div>}
     </div>
   );
 }

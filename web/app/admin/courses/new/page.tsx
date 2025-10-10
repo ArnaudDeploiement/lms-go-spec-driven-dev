@@ -343,12 +343,12 @@ function CourseWizardContent() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-slate-50">
+      <div className="min-h-screen bg-surface-hover">
         <Navigation />
         <div className="flex min-h-screen items-center justify-center pt-24">
           <div className="text-center">
-            <div className="h-12 w-12 animate-spin rounded-full border-2 border-blue-500 border-t-transparent mx-auto mb-4" />
-            <p className="text-sm text-slate-600">Chargement...</p>
+            <div className="h-12 w-12 animate-spin rounded-full border-2 border-ring border-t-transparent mx-auto mb-4" />
+            <p className="text-sm text-muted-foreground">Chargement...</p>
           </div>
         </div>
       </div>
@@ -357,11 +357,11 @@ function CourseWizardContent() {
 
   if (!organization) {
     return (
-      <div className="min-h-screen bg-slate-50">
+      <div className="min-h-screen bg-surface-hover">
         <Navigation />
         <div className="flex min-h-screen items-center justify-center pt-24">
           <Card className="p-8 text-center max-w-md">
-            <p className="text-slate-600 mb-4">Vous devez être connecté à une organisation</p>
+            <p className="text-muted-foreground mb-4">Vous devez être connecté à une organisation</p>
             <Button onClick={() => router.push("/admin")}>Retour</Button>
           </Card>
         </div>
@@ -370,13 +370,13 @@ function CourseWizardContent() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-surface-hover">
       <Navigation />
       <main className="mx-auto max-w-4xl px-4 pb-16 pt-24 sm:px-6 lg:px-8">
         <div className="mb-8 flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900">Créer un nouveau cours</h1>
-            <p className="mt-1 text-sm text-slate-600">Assistant guidé en {step}/3 étapes</p>
+            <h1 className="text-3xl font-bold text-foreground">Créer un nouveau cours</h1>
+            <p className="mt-1 text-sm text-muted-foreground">Assistant guidé en {step}/3 étapes</p>
           </div>
           <Button variant="outline" onClick={() => router.push("/admin")} className="flex items-center gap-2">
             <X className="h-4 w-4" />
@@ -389,36 +389,68 @@ function CourseWizardContent() {
             {[1, 2, 3].map((s, idx) => (
               <div key={s} className="flex flex-1 items-center">
                 <div className="flex flex-col items-center gap-2">
-                  <div className={`flex h-10 w-10 items-center justify-center rounded-full font-semibold transition-colors ${s < step ? "bg-green-600 text-white" : s === step ? "bg-blue-600 text-white" : "bg-slate-200 text-slate-600"}`}>
+                  <div
+                    className={`flex h-10 w-10 items-center justify-center rounded-full border font-semibold transition-all ${
+                      s < step
+                        ? "border-success/40 bg-success/20 text-success"
+                        : s === step
+                        ? "border-ring/50 bg-accent text-accent-foreground shadow-[0_0_20px_rgba(91,91,214,0.25)]"
+                        : "border-border/60 bg-surface text-muted-foreground"
+                    }`}
+                  >
                     {s < step ? <Check className="h-5 w-5" /> : s}
                   </div>
-                  <span className={`text-sm font-medium ${s === step ? "text-blue-600" : s < step ? "text-green-600" : "text-slate-500"}`}>
+                  <span
+                    className={`text-sm font-medium ${
+                      s === step ? "text-accent" : s < step ? "text-success" : "text-muted-foreground/80"
+                    }`}
+                  >
                     {s === 1 ? "Informations" : s === 2 ? "Modules" : "Révision"}
                   </span>
                 </div>
-                {idx < 2 && <div className={`mx-4 h-1 flex-1 transition-colors ${s < step ? "bg-green-600" : "bg-slate-200"}`} />}
+                {idx < 2 && (
+                  <div
+                    className={`mx-4 h-1 flex-1 rounded-full transition-colors ${
+                      s < step ? "bg-success/40" : "bg-border/60"
+                    }`}
+                  />
+                )}
               </div>
             ))}
           </div>
         </Card>
 
-        {error && <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
-        {successMessage && <div className="mb-6 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">{successMessage}</div>}
+        {error && (
+          <div className="mb-6 rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+            {error}
+          </div>
+        )}
+        {successMessage && (
+          <div className="mb-6 rounded-xl border border-success/40 bg-success/10 px-4 py-3 text-sm text-success">
+            {successMessage}
+          </div>
+        )}
 
         <Card className="p-8">
           {step === 1 && (
             <div className="space-y-6">
               <div>
-                <h2 className="text-xl font-semibold text-slate-900 mb-1">Informations du cours</h2>
-                <p className="text-sm text-slate-600">Donnez un titre et une description à votre cours</p>
+                <h2 className="text-xl font-semibold text-foreground mb-1">Informations du cours</h2>
+                <p className="text-sm text-muted-foreground">Donnez un titre et une description à votre cours</p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Titre du cours <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-medium text-muted-foreground mb-2">Titre du cours <span className="text-red-500">*</span></label>
                 <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ex: Introduction au Marketing Digital" className="text-base" autoFocus />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Description</label>
-                <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} className="w-full rounded-lg border border-slate-300 px-4 py-3 text-base focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20" placeholder="Décrivez les objectifs et le contenu de ce cours..." />
+                <label className="block text-sm font-medium text-muted-foreground mb-2">Description</label>
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  rows={4}
+                  className="w-full rounded-xl border border-border/60 bg-surface px-4 py-3 text-base text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/30"
+                  placeholder="Décrivez les objectifs et le contenu de ce cours..."
+                />
               </div>
               <div className="flex justify-end pt-6 border-t">
                 <Button onClick={handleNext} className="flex items-center gap-2">Suivant : Ajouter des modules <ArrowRight className="h-4 w-4" /></Button>
@@ -430,8 +462,8 @@ function CourseWizardContent() {
             <div className="space-y-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-xl font-semibold text-slate-900 mb-1">Modules du cours</h2>
-                  <p className="text-sm text-slate-600">{modules.length} module(s) • Chaque module doit être lié à un contenu</p>
+                  <h2 className="text-xl font-semibold text-foreground mb-1">Modules du cours</h2>
+                  <p className="text-sm text-muted-foreground">{modules.length} module(s) • Chaque module doit être lié à un contenu</p>
                 </div>
                 {!showModuleForm && (
                   <Button
@@ -451,9 +483,9 @@ function CourseWizardContent() {
               </div>
 
               {showModuleForm && (
-                <Card className="p-6 bg-blue-50 border-blue-200">
+                <Card className="p-6 bg-accent/10 border-ring/30">
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-semibold text-slate-900">Nouveau module</h3>
+                    <h3 className="font-semibold text-foreground">Nouveau module</h3>
                     <Button
                       variant="outline"
                       size="sm"
@@ -472,14 +504,14 @@ function CourseWizardContent() {
                   </div>
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">Titre du module <span className="text-red-500">*</span></label>
+                      <label className="block text-sm font-medium text-muted-foreground mb-2">Titre du module <span className="text-red-500">*</span></label>
                       <Input value={moduleTitle} onChange={(e) => setModuleTitle(e.target.value)} placeholder="Ex: Introduction générale" autoFocus />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">Type de module <span className="text-red-500">*</span></label>
+                      <label className="block text-sm font-medium text-muted-foreground mb-2">Type de module <span className="text-red-500">*</span></label>
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                         {MODULE_TYPE_OPTIONS.map((option) => (
-                          <button key={option.value} type="button" onClick={() => { setModuleType(option.value); setSelectedContentId(""); }} className={`p-3 rounded-lg border-2 text-left transition-colors ${moduleType === option.value ? "border-blue-500 bg-blue-50" : "border-slate-200 hover:border-blue-300"}`}>
+                          <button key={option.value} type="button" onClick={() => { setModuleType(option.value); setSelectedContentId(""); }} className={`p-3 rounded-lg border-2 text-left transition-colors ${moduleType === option.value ? "border-ring bg-accent/10" : "border-border/60 hover:border-ring/35"}`}>
                             <div className="font-medium text-sm">{option.label}</div>
                           </button>
                         ))}
@@ -487,7 +519,7 @@ function CourseWizardContent() {
                     </div>
                     <div className="space-y-4">
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">Source du contenu <span className="text-red-500">*</span></label>
+                        <label className="block text-sm font-medium text-muted-foreground mb-2">Source du contenu <span className="text-red-500">*</span></label>
                         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                           <button
                             type="button"
@@ -498,7 +530,7 @@ function CourseWizardContent() {
                               setModuleContentName("");
                               setUploadProgress(0);
                             }}
-                            className={`flex items-center justify-center gap-2 rounded-lg border-2 px-3 py-2 text-sm font-medium transition-colors ${moduleContentMode === "select" ? "border-blue-500 bg-blue-50 text-blue-700" : "border-slate-200 text-slate-600 hover:border-blue-300"}`}
+                            className={`flex items-center justify-center gap-2 rounded-lg border-2 px-3 py-2 text-sm font-medium transition-colors ${moduleContentMode === "select" ? "border-ring bg-accent/10 text-accent" : "border-border/60 text-muted-foreground hover:border-ring/35"}`}
                           >
                             <LinkIcon className="h-4 w-4" />Contenu existant
                           </button>
@@ -509,7 +541,7 @@ function CourseWizardContent() {
                               setError(null);
                               setSelectedContentId("");
                             }}
-                            className={`flex items-center justify-center gap-2 rounded-lg border-2 px-3 py-2 text-sm font-medium transition-colors ${moduleContentMode === "upload" ? "border-blue-500 bg-blue-50 text-blue-700" : "border-slate-200 text-slate-600 hover:border-blue-300"}`}
+                            className={`flex items-center justify-center gap-2 rounded-lg border-2 px-3 py-2 text-sm font-medium transition-colors ${moduleContentMode === "upload" ? "border-ring bg-accent/10 text-accent" : "border-border/60 text-muted-foreground hover:border-ring/35"}`}
                           >
                             <UploadCloud className="h-4 w-4" />Téléverser un fichier
                           </button>
@@ -518,19 +550,19 @@ function CourseWizardContent() {
 
                       {moduleContentMode === "select" ? (
                         loadingContents ? (
-                          <div className="text-sm text-slate-500 py-4">Chargement des contenus...</div>
+                          <div className="text-sm text-muted-foreground/80 py-4">Chargement des contenus...</div>
                         ) : getFilteredContents().length === 0 ? (
-                          <div className="rounded-lg border border-dashed border-slate-300 bg-white p-8 text-center">
-                            <p className="text-sm text-slate-600 mb-3">Aucun contenu de type "{moduleType}" disponible</p>
-                            <p className="text-xs text-slate-500">Téléversez un fichier directement depuis ce formulaire pour créer un nouveau contenu.</p>
+                          <div className="rounded-lg border border-dashed border-border/40 bg-surface p-8 text-center">
+                            <p className="text-sm text-muted-foreground mb-3">Aucun contenu de type "{moduleType}" disponible</p>
+                            <p className="text-xs text-muted-foreground/80">Téléversez un fichier directement depuis ce formulaire pour créer un nouveau contenu.</p>
                           </div>
                         ) : (
-                          <div className="max-h-64 overflow-y-auto border border-slate-200 rounded-lg bg-white">
+                          <div className="max-h-64 overflow-y-auto border border-border/60 rounded-lg bg-surface">
                             <div className="p-2 space-y-1">
                               {getFilteredContents().map((content) => (
                                 <label
                                   key={content.id}
-                                  className={`flex items-start gap-3 rounded-lg border-2 p-3 transition-colors ${selectedContentId === content.id ? "border-blue-500 bg-blue-50" : "border-transparent hover:border-blue-200 hover:bg-slate-50"}`}
+                                  className={`flex items-start gap-3 rounded-lg border-2 p-3 transition-colors ${selectedContentId === content.id ? "border-ring bg-accent/10" : "border-transparent hover:border-ring/30 hover:bg-surface-hover"}`}
                                 >
                                   <input
                                     type="radio"
@@ -541,8 +573,8 @@ function CourseWizardContent() {
                                     className="mt-0.5"
                                   />
                                   <div className="flex-1 min-w-0">
-                                    <div className="font-medium text-sm text-slate-900 truncate">{content.name}</div>
-                                    <div className="text-xs text-slate-500 mt-0.5">
+                                    <div className="font-medium text-sm text-foreground truncate">{content.name}</div>
+                                    <div className="text-xs text-muted-foreground/80 mt-0.5">
                                       {content.mime_type}
                                       {content.size_bytes && ` • ${(content.size_bytes / 1024 / 1024).toFixed(2)} MB`}
                                     </div>
@@ -554,11 +586,11 @@ function CourseWizardContent() {
                         )
                       ) : (
                         <div className="space-y-4">
-                          <div className="rounded-lg border-2 border-dashed border-blue-300 bg-white p-6 text-center">
-                            <label className="flex flex-col items-center gap-2 text-sm text-slate-600" htmlFor="module-file-input">
-                              <UploadCloud className="h-6 w-6 text-blue-500" />
-                              <span className="font-medium text-slate-700">Choisir un fichier à téléverser</span>
-                              <span className="text-xs text-slate-500">Formats supportés : PDF, vidéo, audio, documents…</span>
+                          <div className="rounded-lg border-2 border-dashed border-ring/35 bg-surface p-6 text-center">
+                            <label className="flex flex-col items-center gap-2 text-sm text-muted-foreground" htmlFor="module-file-input">
+                              <UploadCloud className="h-6 w-6 text-accent" />
+                              <span className="font-medium text-muted-foreground">Choisir un fichier à téléverser</span>
+                              <span className="text-xs text-muted-foreground/80">Formats supportés : PDF, vidéo, audio, documents…</span>
                               <input
                                 id="module-file-input"
                                 type="file"
@@ -583,10 +615,10 @@ function CourseWizardContent() {
 
                           {moduleFile && (
                             <div className="space-y-3">
-                              <div className="flex items-center justify-between rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-slate-700">
+                              <div className="flex items-center justify-between rounded-lg border border-ring/30 bg-accent/10 px-4 py-3 text-sm text-muted-foreground">
                                 <div>
-                                  <p className="font-medium text-slate-900">{moduleFile.name}</p>
-                                  <p className="text-xs text-slate-600">{(moduleFile.size / 1024 / 1024).toFixed(2)} MB • {moduleFile.type || "Type inconnu"}</p>
+                                  <p className="font-medium text-foreground">{moduleFile.name}</p>
+                                  <p className="text-xs text-muted-foreground">{(moduleFile.size / 1024 / 1024).toFixed(2)} MB • {moduleFile.type || "Type inconnu"}</p>
                                 </div>
                                 <Button
                                   type="button"
@@ -603,7 +635,7 @@ function CourseWizardContent() {
                               </div>
 
                               <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-2">Nom du contenu</label>
+                                <label className="block text-sm font-medium text-muted-foreground mb-2">Nom du contenu</label>
                                 <Input
                                   value={moduleContentName}
                                   onChange={(event) => setModuleContentName(event.target.value)}
@@ -613,10 +645,10 @@ function CourseWizardContent() {
 
                               {uploadProgress > 0 && (
                                 <div className="space-y-2">
-                                  <div className="h-2 w-full rounded-full bg-blue-100">
-                                    <div className="h-2 rounded-full bg-blue-500 transition-all" style={{ width: `${uploadProgress}%` }} />
+                                  <div className="h-2 w-full rounded-full bg-accent/15">
+                                    <div className="h-2 rounded-full bg-accent/100 transition-all" style={{ width: `${uploadProgress}%` }} />
                                   </div>
-                                  <p className="text-xs font-medium text-blue-600">Téléversement en cours : {uploadProgress}%</p>
+                                  <p className="text-xs font-medium text-accent">Téléversement en cours : {uploadProgress}%</p>
                                 </div>
                               )}
                             </div>
@@ -625,7 +657,7 @@ function CourseWizardContent() {
                       )}
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">Durée estimée (minutes)</label>
+                      <label className="block text-sm font-medium text-muted-foreground mb-2">Durée estimée (minutes)</label>
                       <Input type="number" value={moduleDuration} onChange={(e) => setModuleDuration(e.target.value)} placeholder="Ex: 15" min="1" />
                     </div>
                     <div className="flex justify-end gap-2 pt-4 border-t">
@@ -655,11 +687,11 @@ function CourseWizardContent() {
               )}
 
               {modules.length === 0 && !showModuleForm && (
-                <Card className="p-12 bg-slate-50 border-dashed border-2">
+                <Card className="p-12 bg-surface-hover border-dashed border-2">
                   <div className="text-center">
                     <div className="text-5xl mb-4">📚</div>
-                    <p className="text-slate-600 font-medium mb-2">Aucun module ajouté</p>
-                    <p className="text-sm text-slate-500">Cliquez sur "Ajouter un module" pour commencer</p>
+                    <p className="text-muted-foreground font-medium mb-2">Aucun module ajouté</p>
+                    <p className="text-sm text-muted-foreground/80">Cliquez sur "Ajouter un module" pour commencer</p>
                   </div>
                 </Card>
               )}
@@ -669,14 +701,14 @@ function CourseWizardContent() {
                   {modules.map((module, index) => (
                     <Card key={module.id} className="p-4">
                       <div className="flex items-start gap-4">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-sm font-semibold text-blue-700 shrink-0">{index + 1}</div>
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-accent/15 text-sm font-semibold text-accent shrink-0">{index + 1}</div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start gap-2 mb-1">
                             <span className="text-xl">{getModuleIcon(module.module_type)}</span>
                             <div className="flex-1">
-                              <h4 className="font-semibold text-slate-900">{module.title}</h4>
-                              <p className="text-sm text-slate-600 mt-1">Type: {module.module_type}{module.duration_minutes && ` • ${module.duration_minutes} min`}</p>
-                              <p className="text-sm text-slate-500 mt-1 flex items-center gap-1"><LinkIcon className="h-3 w-3" />Contenu: {module.content_name}</p>
+                              <h4 className="font-semibold text-foreground">{module.title}</h4>
+                              <p className="text-sm text-muted-foreground mt-1">Type: {module.module_type}{module.duration_minutes && ` • ${module.duration_minutes} min`}</p>
+                              <p className="text-sm text-muted-foreground/80 mt-1 flex items-center gap-1"><LinkIcon className="h-3 w-3" />Contenu: {module.content_name}</p>
                             </div>
                           </div>
                         </div>
@@ -697,48 +729,48 @@ function CourseWizardContent() {
           {step === 3 && (
             <div className="space-y-6">
               <div>
-                <h2 className="text-xl font-semibold text-slate-900 mb-1">Révision et publication</h2>
-                <p className="text-sm text-slate-600">Vérifiez les informations avant de créer le cours</p>
+                <h2 className="text-xl font-semibold text-foreground mb-1">Révision et publication</h2>
+                <p className="text-sm text-muted-foreground">Vérifiez les informations avant de créer le cours</p>
               </div>
-              <Card className="p-6 bg-slate-50">
-                <h3 className="font-semibold text-slate-900 mb-4">Résumé du cours</h3>
+              <Card className="p-6 bg-surface-hover">
+                <h3 className="font-semibold text-foreground mb-4">Résumé du cours</h3>
                 <dl className="space-y-3">
-                  <div><dt className="text-sm text-slate-600">Titre</dt><dd className="font-medium text-slate-900 mt-1">{title}</dd></div>
-                  {description && <div><dt className="text-sm text-slate-600">Description</dt><dd className="text-slate-900 mt-1">{description}</dd></div>}
-                  <div><dt className="text-sm text-slate-600">Nombre de modules</dt><dd className="font-medium text-slate-900 mt-1">{modules.length} module(s)</dd></div>
+                  <div><dt className="text-sm text-muted-foreground">Titre</dt><dd className="font-medium text-foreground mt-1">{title}</dd></div>
+                  {description && <div><dt className="text-sm text-muted-foreground">Description</dt><dd className="text-foreground mt-1">{description}</dd></div>}
+                  <div><dt className="text-sm text-muted-foreground">Nombre de modules</dt><dd className="font-medium text-foreground mt-1">{modules.length} module(s)</dd></div>
                 </dl>
               </Card>
               <div>
-                <h3 className="font-semibold text-slate-900 mb-3">Modules</h3>
+                <h3 className="font-semibold text-foreground mb-3">Modules</h3>
                 <div className="space-y-2">
                   {modules.map((module, index) => (
                     <Card key={module.id} className="p-4 flex items-center gap-3">
                       <span className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-200 text-sm font-semibold shrink-0">{index + 1}</span>
                       <span className="text-xl">{getModuleIcon(module.module_type)}</span>
                       <div className="flex-1">
-                        <div className="font-medium text-slate-900">{module.title}</div>
-                        <div className="text-sm text-slate-600">{module.module_type} • {module.content_name}</div>
+                        <div className="font-medium text-foreground">{module.title}</div>
+                        <div className="text-sm text-muted-foreground">{module.module_type} • {module.content_name}</div>
                       </div>
                     </Card>
                   ))}
                 </div>
               </div>
-              <Card className="p-6 bg-blue-50 border-blue-200">
-                <h3 className="font-semibold text-slate-900 mb-3">Options de publication</h3>
+              <Card className="p-6 bg-accent/10 border-ring/30">
+                <h3 className="font-semibold text-foreground mb-3">Options de publication</h3>
                 <div className="space-y-3">
                   <label className="flex items-start gap-3 cursor-pointer">
                     <input type="radio" checked={!autoPublish} onChange={() => setAutoPublish(false)} className="mt-0.5" />
-                    <div><div className="font-medium text-slate-900">Enregistrer en brouillon</div><div className="text-sm text-slate-600">Le cours ne sera pas visible par les apprenants (recommandé)</div></div>
+                    <div><div className="font-medium text-foreground">Enregistrer en brouillon</div><div className="text-sm text-muted-foreground">Le cours ne sera pas visible par les apprenants (recommandé)</div></div>
                   </label>
                   <label className="flex items-start gap-3 cursor-pointer">
                     <input type="radio" checked={autoPublish} onChange={() => setAutoPublish(true)} className="mt-0.5" />
-                    <div><div className="font-medium text-slate-900">Publier immédiatement</div><div className="text-sm text-slate-600">Le cours sera accessible aux apprenants inscrits</div></div>
+                    <div><div className="font-medium text-foreground">Publier immédiatement</div><div className="text-sm text-muted-foreground">Le cours sera accessible aux apprenants inscrits</div></div>
                   </label>
                 </div>
               </Card>
               <div className="flex justify-between pt-6 border-t">
                 <Button variant="outline" onClick={handleBack} className="flex items-center gap-2"><ArrowLeft className="h-4 w-4" />Retour</Button>
-                <Button onClick={handleSubmit} disabled={isLoading} className="flex items-center gap-2 bg-green-600 hover:bg-green-700">
+                <Button onClick={handleSubmit} disabled={isLoading} variant="success" className="flex items-center gap-2">
                   {isLoading ? <><div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />Création en cours...</> : <><CheckCircle className="h-4 w-4" />Créer le cours</>}
                 </Button>
               </div>
@@ -752,7 +784,7 @@ function CourseWizardContent() {
 
 export default function CourseWizardPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-slate-50 flex items-center justify-center"><div className="text-center"><div className="h-12 w-12 animate-spin rounded-full border-2 border-blue-500 border-t-transparent mx-auto mb-4" /><p className="text-sm text-slate-600">Chargement...</p></div></div>}>
+    <Suspense fallback={<div className="min-h-screen bg-surface-hover flex items-center justify-center"><div className="text-center"><div className="h-12 w-12 animate-spin rounded-full border-2 border-ring border-t-transparent mx-auto mb-4" /><p className="text-sm text-muted-foreground">Chargement...</p></div></div>}>
       <CourseWizardContent />
     </Suspense>
   );
