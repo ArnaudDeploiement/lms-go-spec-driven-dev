@@ -1,6 +1,6 @@
 GOCACHE ?= $(PWD)/.cache/go-build
 
-.PHONY: tidy fmt lint test generate up down clean
+.PHONY: tidy fmt lint test generate up down clean minio-cors
 
 tidy:
 	go mod tidy
@@ -28,3 +28,6 @@ clean:
 	docker compose down -v
 	docker volume prune -f
 	@echo "✅ Nettoyage terminé. Toutes les données ont été supprimées."
+
+minio-cors:
+	tools/minio/apply-cors.sh

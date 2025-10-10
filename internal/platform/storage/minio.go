@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"net/url"
 	"strings"
 	"time"
@@ -132,19 +133,15 @@ func (c *Client) ensureBucket(ctx context.Context) error {
 
 // PresignUpload renvoie une URL pré-signée pour PUT un objet.
 func (c *Client) PresignUpload(ctx context.Context, object string, contentType string, expires time.Duration) (string, error) {
-	reqParams := make(url.Values)
+	var headers http.Header
 	if contentType != "" {
-		reqParams.Set("content-type", contentType)
+		headers = make(http.Header)
+		headers.Set("Content-Type", contentType)
 	}
-	u, err := c.minio.PresignedPutObject(ctx, c.bucket, object, expires)
+
+	u, err := c.minio.PresignHeader(ctx, http.MethodPut, c.bucket, object, expires, nil, headers)
 	if err != nil {
 		return "", fmt.Errorf("storage: presign upload: %w", err)
-	}
-	if contentType != "" {
-		// Append content-type manually when using PresignedPutObject.
-		q := u.Query()
-		q.Set("content-type", contentType)
-		u.RawQuery = q.Encode()
 	}
 	c.applyPublicEndpoint(u)
 	return u.String(), nil

@@ -36,6 +36,7 @@ Variables clés du fichier `.env` :
 - `ACCESS_TOKEN_TTL` et `REFRESH_TOKEN_TTL` : durées de vie des tokens d'accès et de rafraîchissement.
 - `MINIO_ENDPOINT`, `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD`, `MINIO_BUCKET`, `MINIO_USE_SSL` : configuration stockage objets (MinIO/S3).
 - `MINIO_PUBLIC_ENDPOINT` : hôte public utilisé pour générer les URL pré-signées accessibles depuis le navigateur (ex. `http://localhost:9000`).
+- `MINIO_PUBLIC_CONSOLE_ENDPOINT` : URL publique de la console MinIO (ex. `http://localhost:9001`) utilisée pour les redirections du navigateur.
 
 Endpoints santé :
 - `GET http://localhost:8080/healthz`
