@@ -12,6 +12,7 @@ import (
 	entsql "entgo.io/ent/dialect/sql"
 
 	"lms-go/internal/ent"
+	entmoduleprogress "lms-go/internal/ent/moduleprogress"
 
 	_ "github.com/glebarez/go-sqlite"
 )
@@ -98,6 +99,26 @@ func TestModuleOperations(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 1, mod2.Position)
 
+	user, err := svc.client.User.Create().
+		SetOrganizationID(orgID).
+		SetEmail("learner@example.com").
+		SetPasswordHash("hashed").
+		Save(ctx)
+	require.NoError(t, err)
+
+	enrollment, err := svc.client.Enrollment.Create().
+		SetOrganizationID(orgID).
+		SetCourseID(course.ID).
+		SetUserID(user.ID).
+		Save(ctx)
+	require.NoError(t, err)
+
+	_, err = svc.client.ModuleProgress.Create().
+		SetEnrollmentID(enrollment.ID).
+		SetModuleID(module.ID).
+		Save(ctx)
+	require.NoError(t, err)
+
 	// Reorder
 	require.NoError(t, svc.ReorderModules(ctx, orgID, course.ID, []uuid.UUID{mod2.ID, module.ID}))
 	modules, err := svc.ListModules(ctx, orgID, course.ID)
@@ -111,6 +132,11 @@ func TestModuleOperations(t *testing.T) {
 
 	// Delete module
 	require.NoError(t, svc.RemoveModule(ctx, orgID, module.ID))
+	count, err := svc.client.ModuleProgress.Query().
+		Where(entmoduleprogress.ModuleIDEQ(module.ID)).
+		Count(ctx)
+	require.NoError(t, err)
+	require.Zero(t, count)
 	modules, err = svc.ListModules(ctx, orgID, course.ID)
 	require.NoError(t, err)
 	require.Len(t, modules, 1)

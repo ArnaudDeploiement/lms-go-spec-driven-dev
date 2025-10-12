@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-const DEFAULT_ALLOWED_HOSTS = ["localhost", "127.0.0.1"];
+const DEFAULT_ALLOWED_HOSTS = ["localhost", "127.0.0.1", "minio"];
 
 function getAllowedHosts(): string[] {
   const fromEnv = process.env.UPLOAD_PROXY_ALLOWED_HOSTS;

@@ -4,7 +4,7 @@
 - **Cause racine** : les URL pré-signées générées par l'API utilisaient l'hôte interne `minio:9000` et ajoutaient un paramètre `content-type` non signé ➝ erreurs `401/403` et `ERR_NAME_NOT_RESOLVED` côté navigateur.
 - **Correctifs** :
   - Signature `PUT` réalisée avec `PresignHeader` en incluant l'en-tête `Content-Type` (plus d'altération de l'URL après signature).
-  - Réécriture systématique de l'hôte vers `MINIO_PUBLIC_ENDPOINT`.
+  - Signature effectuée directement sur `MINIO_PUBLIC_ENDPOINT` (aucune réécriture post-signature).
   - Harmonisation des variables d'environnement (`MINIO_ROOT_USER`, `MINIO_PUBLIC_ENDPOINT`, etc.) et exposition des URLs publiques (`MINIO_SERVER_URL`).
   - Ajout d'une configuration CORS dédiée et de scripts pour l'appliquer/tester.
 - **Statut** : ✅ Upload fonctionnel via navigateur et via `curl`.
@@ -41,7 +41,7 @@
 2. Frontend `PUT` le fichier sur l'URL retournée en conservant le `Content-Type` original.
 3. `POST /contents/{id}/finalize` → passage en statut `available`.
 
-La signature inclut désormais l'en-tête `Content-Type`, évitant les `401/403`. L'URL est réécrite vers l'hôte public pour éviter le `ERR_NAME_NOT_RESOLVED`.
+La signature inclut désormais l'en-tête `Content-Type`, évitant les `401/403`, et les URL sont générées directement avec l'hôte public pour supprimer les erreurs `ERR_NAME_NOT_RESOLVED`.
 
 ## 🧪 Tests & validation
 
@@ -76,4 +76,3 @@ _Attendu : réponse HTTP 200/204._
 - Si un CDN est utilisé, signer les URL avec le domaine CDN (via la variable `MINIO_PUBLIC_ENDPOINT`).
 - Garder l'horloge synchronisée (NTP) pour éviter les expirations immédiates.
 - Ne jamais ajouter d'en-tête `Authorization` sur les requêtes PUT signées.
-

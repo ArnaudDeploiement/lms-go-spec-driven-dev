@@ -11,6 +11,7 @@ import (
 	"lms-go/internal/ent"
 	entcourse "lms-go/internal/ent/course"
 	entmodule "lms-go/internal/ent/module"
+	entmoduleprogress "lms-go/internal/ent/moduleprogress"
 	entorg "lms-go/internal/ent/organization"
 )
 
@@ -327,7 +328,17 @@ func (s *Service) ReorderModules(ctx context.Context, orgID, courseID uuid.UUID,
 }
 
 func (s *Service) RemoveModule(ctx context.Context, orgID, moduleID uuid.UUID) error {
-	module, err := s.client.Module.Query().
+	tx, err := s.client.Tx(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		}
+	}()
+
+	module, err := tx.Module.Query().
 		Where(entmodule.IDEQ(moduleID)).
 		WithCourse(func(q *ent.CourseQuery) {
 			q.Where(entcourse.OrganizationIDEQ(orgID))
@@ -335,11 +346,40 @@ func (s *Service) RemoveModule(ctx context.Context, orgID, moduleID uuid.UUID) e
 		Only(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
-			return ErrNotFound
+			err = ErrNotFound
 		}
 		return err
 	}
-	if err := s.client.Module.DeleteOne(module).Exec(ctx); err != nil {
+
+	if _, err = tx.ModuleProgress.Delete().
+		Where(entmoduleprogress.ModuleIDEQ(moduleID)).
+		Exec(ctx); err != nil {
+		return err
+	}
+
+	if err = tx.Module.DeleteOne(module).Exec(ctx); err != nil {
+		return err
+	}
+
+	remaining, qErr := tx.Module.Query().
+		Where(
+			entmodule.CourseIDEQ(module.CourseID),
+			entmodule.PositionGT(module.Position),
+		).
+		Order(entmodule.ByPosition()).
+		All(ctx)
+	if qErr != nil {
+		return qErr
+	}
+	for _, m := range remaining {
+		if _, updateErr := tx.Module.UpdateOneID(m.ID).
+			SetPosition(m.Position - 1).
+			Save(ctx); updateErr != nil {
+			return updateErr
+		}
+	}
+
+	if err = tx.Commit(); err != nil {
 		return err
 	}
 	return nil

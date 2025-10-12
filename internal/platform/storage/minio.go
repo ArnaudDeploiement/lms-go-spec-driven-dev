@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -38,33 +39,12 @@ func NewMinioClient(ctx context.Context, cfg Config) (*Client, error) {
 		return nil, fmt.Errorf("storage: bucket required")
 	}
 
-	endpoint := cfg.Endpoint
 	useSSL := cfg.UseSSL
-
-	if strings.HasPrefix(endpoint, "http://") || strings.HasPrefix(endpoint, "https://") {
-		parsed, err := url.Parse(endpoint)
-		if err != nil {
-			return nil, fmt.Errorf("storage: parse endpoint: %w", err)
-		}
-		if parsed.Host == "" {
-			return nil, fmt.Errorf("storage: endpoint host missing")
-		}
-		endpoint = parsed.Host
-		if parsed.Scheme == "https" {
-			useSSL = true
-		}
-		if parsed.Scheme == "http" {
-			useSSL = false
-		}
-	}
-
-	client, err := minio.New(endpoint, &minio.Options{
-		Creds:  credentials.NewStaticV4(cfg.AccessKey, cfg.SecretKey, ""),
-		Secure: useSSL,
-	})
+	internalURL, err := parseEndpointURL(cfg.Endpoint, useSSL)
 	if err != nil {
-		return nil, fmt.Errorf("storage: init minio: %w", err)
+		return nil, err
 	}
+	useSSL = internalURL.Scheme == "https"
 
 	var publicURL *url.URL
 	if strings.TrimSpace(cfg.PublicEndpoint) != "" {
@@ -73,6 +53,48 @@ func NewMinioClient(ctx context.Context, cfg Config) (*Client, error) {
 			return nil, err
 		}
 		publicURL = parsed
+	}
+
+	signingHost := internalURL.Host
+	internalDialAddr := hostPortFromURL(internalURL)
+
+	var transport http.RoundTripper
+	if publicURL != nil {
+		signingHost = publicURL.Host
+		publicDialAddr := hostPortFromURL(publicURL)
+
+		if !addressesEqual(publicDialAddr, internalDialAddr) {
+			base, ok := http.DefaultTransport.(*http.Transport)
+			if !ok {
+				return nil, fmt.Errorf("storage: unsupported default transport")
+			}
+			custom := base.Clone()
+			dialer := &net.Dialer{
+				Timeout:   30 * time.Second,
+				KeepAlive: 30 * time.Second,
+			}
+			publicAddrCanonical := normalizeAddr(publicDialAddr)
+			custom.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+				if normalizeAddr(addr) == publicAddrCanonical {
+					addr = internalDialAddr
+				}
+				return dialer.DialContext(ctx, network, addr)
+			}
+			transport = custom
+		}
+	}
+
+	options := &minio.Options{
+		Creds:  credentials.NewStaticV4(cfg.AccessKey, cfg.SecretKey, ""),
+		Secure: useSSL,
+	}
+	if transport != nil {
+		options.Transport = transport
+	}
+
+	client, err := minio.New(signingHost, options)
+	if err != nil {
+		return nil, fmt.Errorf("storage: init minio: %w", err)
 	}
 
 	s := &Client{minio: client, bucket: cfg.Bucket, publicEndpoint: publicURL}
@@ -169,10 +191,75 @@ func (c *Client) applyPublicEndpoint(u *url.URL) {
 	if c.publicEndpoint == nil {
 		return
 	}
-	u.Scheme = c.publicEndpoint.Scheme
-	u.Host = c.publicEndpoint.Host
+	if c.publicEndpoint.Scheme != "" {
+		u.Scheme = c.publicEndpoint.Scheme
+	}
 	basePath := strings.TrimSuffix(c.publicEndpoint.Path, "/")
 	if basePath != "" {
 		u.Path = basePath + u.Path
 	}
+}
+
+func parseEndpointURL(raw string, useSSL bool) (*url.URL, error) {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return nil, fmt.Errorf("storage: endpoint required")
+	}
+
+	scheme := "http"
+	if useSSL {
+		scheme = "https"
+	}
+
+	if strings.Contains(trimmed, "://") {
+		parsed, err := url.Parse(trimmed)
+		if err != nil {
+			return nil, fmt.Errorf("storage: parse endpoint: %w", err)
+		}
+		if parsed.Host == "" {
+			return nil, fmt.Errorf("storage: endpoint host missing")
+		}
+		if parsed.Scheme == "" {
+			parsed.Scheme = scheme
+		}
+		return parsed, nil
+	}
+
+	parsed, err := url.Parse(fmt.Sprintf("%s://%s", scheme, trimmed))
+	if err != nil {
+		return nil, fmt.Errorf("storage: parse endpoint: %w", err)
+	}
+	if parsed.Host == "" {
+		return nil, fmt.Errorf("storage: endpoint host missing")
+	}
+	return parsed, nil
+}
+
+func hostPortFromURL(u *url.URL) string {
+	host := u.Hostname()
+	port := u.Port()
+	if port == "" {
+		switch strings.ToLower(u.Scheme) {
+		case "https":
+			port = "443"
+		case "http":
+			port = "80"
+		}
+	}
+	if port == "" {
+		return host
+	}
+	return net.JoinHostPort(host, port)
+}
+
+func normalizeAddr(addr string) string {
+	host, port, err := net.SplitHostPort(addr)
+	if err != nil {
+		return strings.ToLower(addr)
+	}
+	return strings.ToLower(net.JoinHostPort(host, port))
+}
+
+func addressesEqual(a, b string) bool {
+	return normalizeAddr(a) == normalizeAddr(b)
 }
