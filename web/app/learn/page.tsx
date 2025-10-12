@@ -120,7 +120,7 @@ export default function LearnPage() {
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ duration: 0.5, delay: 0.1 }}
-                    className="text-4xl font-bold tracking-tight text-slate-900 md:text-5xl"
+                    className="text-4xl font-bold tracking-tight text-[var(--foreground)] md:text-5xl"
                   >
                     Bonjour {user?.email?.split("@")[0]}
                   </motion.h1>
@@ -128,7 +128,7 @@ export default function LearnPage() {
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ duration: 0.5, delay: 0.2 }}
-                    className="text-base text-slate-600 md:text-lg"
+                    className="text-base text-[var(--muted-foreground)] md:text-lg"
                   >
                     Retrouvez vos formations actives, suivez votre progression et découvrez de nouveaux contenus sélectionnés pour vous.
                   </motion.p>
@@ -138,13 +138,13 @@ export default function LearnPage() {
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ duration: 0.5, delay: 0.3 }}
-                  className="flex flex-col items-center gap-3 rounded-2xl border border-slate-200 bg-white/70 px-8 py-6 text-center shadow-sm"
+                  className="flex flex-col items-center gap-3 rounded-2xl border border-slate-200 bg-[rgba(255,255,255,0.72)] px-8 py-6 text-center shadow-sm"
                 >
-                  <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-[var(--muted-foreground)]">
                     Progression moyenne
                   </span>
                   <CircularProgress value={avgProgress} size={120} />
-                  <p className="text-sm text-slate-500">
+                  <p className="text-sm text-[var(--muted-foreground)]">
                     {avgProgress}% de vos formations complétées
                   </p>
                 </motion.div>
@@ -156,40 +156,40 @@ export default function LearnPage() {
                 transition={{ duration: 0.5, delay: 0.4 }}
                 className="mt-12 grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
               >
-                <div className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white/80 p-5 shadow-sm">
+                <div className="neo-tile flex items-center gap-4 p-5">
                   <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-100 text-blue-600">
                     <Clock className="h-5 w-5" />
                   </span>
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Formations en cours</p>
-                    <p className="mt-1 text-2xl font-semibold text-slate-900">{enrolledCourses.length}</p>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted-foreground)]">Formations en cours</p>
+                    <p className="mt-1 text-2xl font-semibold text-[var(--foreground)]">{enrolledCourses.length}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white/80 p-5 shadow-sm">
+                <div className="neo-tile flex items-center gap-4 p-5">
                   <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600">
                     <Trophy className="h-5 w-5" />
                   </span>
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Certifications obtenues</p>
-                    <p className="mt-1 text-2xl font-semibold text-slate-900">{completedCount}</p>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted-foreground)]">Certifications obtenues</p>
+                    <p className="mt-1 text-2xl font-semibold text-[var(--foreground)]">{completedCount}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white/80 p-5 shadow-sm">
+                <div className="neo-tile flex items-center gap-4 p-5">
                   <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-cyan-100 text-cyan-600">
                     <Target className="h-5 w-5" />
                   </span>
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Progression globale</p>
-                    <p className="mt-1 text-2xl font-semibold text-slate-900">{avgProgress}%</p>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted-foreground)]">Progression globale</p>
+                    <p className="mt-1 text-2xl font-semibold text-[var(--foreground)]">{avgProgress}%</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white/80 p-5 shadow-sm">
+                <div className="neo-tile flex items-center gap-4 p-5">
                   <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-100 text-indigo-600">
                     <BookOpen className="h-5 w-5" />
                   </span>
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Formations disponibles</p>
-                    <p className="mt-1 text-2xl font-semibold text-slate-900">{courses.length}</p>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted-foreground)]">Formations disponibles</p>
+                    <p className="mt-1 text-2xl font-semibold text-[var(--foreground)]">{courses.length}</p>
                   </div>
                 </div>
               </motion.div>
@@ -290,9 +290,9 @@ export default function LearnPage() {
                           <ProgressBar value={progress} showLabel />
 
                           {/* Action Button */}
-                          <button
-                            onClick={() => router.push(`/learn/course/${course.id}`)}
-                            className="btn-primary w-full group/btn"
+                      <button
+                        onClick={() => router.push(`/learn/course/${course.id}`)}
+                        className="btn btn-primary w-full group/btn"
                           >
                             <span>{progress > 0 ? "Continuer" : "Commencer"}</span>
                             <ArrowRight className="h-4 w-4 group-hover/btn:translate-x-1 transition-transform" />
@@ -357,9 +357,9 @@ export default function LearnPage() {
                       </div>
 
                       {/* Action Button */}
-                      <button
-                        onClick={() => router.push(`/learn/course/${course.id}`)}
-                        className="btn-secondary w-full group/btn"
+                    <button
+                      onClick={() => router.push(`/learn/course/${course.id}`)}
+                      className="btn btn-secondary w-full group/btn"
                       >
                         <span>Découvrir</span>
                         <ArrowRight className="h-4 w-4 group-hover/btn:translate-x-1 transition-transform" />
@@ -377,6 +377,7 @@ export default function LearnPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
+              className="flex justify-center"
             >
               <EmptyState
                 icon={BookOpen}

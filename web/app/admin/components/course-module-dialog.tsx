@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { apiClient, type ContentResponse, type ModuleRequest, type ModuleResponse } from "@/lib/api/client";
 import { uploadFileToSignedUrl } from "@/lib/uploads";
+import { cn } from "@/lib/utils";
 
 type ModuleType = "pdf" | "video" | "article" | "audio" | "document" | "scorm" | "quiz";
 
@@ -96,6 +97,9 @@ export function CourseModuleDialog({ isOpen, onClose, organizationId, courseId, 
     () => [...contents].sort((a, b) => (a.created_at > b.created_at ? -1 : 1)),
     [contents],
   );
+
+  const selectClass =
+    "w-full rounded-[24px] border-0 bg-[var(--background)] px-4 py-2 text-sm text-[var(--foreground)] shadow-[var(--soft-shadow-inset)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)] focus:ring-offset-2 focus:ring-offset-[var(--background)]";
 
   const handleChange = (field: keyof ModuleFormState) => (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const value = event.target.value;
@@ -189,12 +193,12 @@ export function CourseModuleDialog({ isOpen, onClose, organizationId, courseId, 
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4 py-8">
-      <div className="w-full max-w-2xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
-        <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(17,24,39,0.25)] px-4 py-8 backdrop-blur-sm">
+      <div className="neo-surface w-full max-w-2xl overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-4">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900">Nouveau module</h2>
-            <p className="text-sm text-slate-500">Configurez le module à ajouter à ce cours.</p>
+            <h2 className="text-lg font-semibold text-[var(--foreground)]">Nouveau module</h2>
+            <p className="text-sm text-[var(--muted-foreground)]">Configurez le module à ajouter à ce cours.</p>
           </div>
           <Button type="button" variant="ghost" onClick={onClose}>
             Fermer
@@ -202,16 +206,16 @@ export function CourseModuleDialog({ isOpen, onClose, organizationId, courseId, 
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4 px-6 py-5">
-          {error && <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
+          {error && <div className="neo-surface-inset rounded-3xl border border-red-100 px-4 py-3 text-sm text-red-600">{error}</div>}
 
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-600">Titre</label>
+              <label className="text-sm font-medium text-[var(--muted-foreground)]">Titre</label>
               <Input required value={form.title} onChange={handleChange("title")} placeholder="Titre du module" />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-600">Type de module</label>
-              <select className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" value={form.moduleType} onChange={handleChange("moduleType")}>
+              <label className="text-sm font-medium text-[var(--muted-foreground)]">Type de module</label>
+              <select className={selectClass} value={form.moduleType} onChange={handleChange("moduleType")}>
                 {MODULE_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>
                     {option.label}
@@ -222,26 +226,22 @@ export function CourseModuleDialog({ isOpen, onClose, organizationId, courseId, 
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-600">Durée estimée (minutes)</label>
+            <label className="text-sm font-medium text-[var(--muted-foreground)]">Durée estimée (minutes)</label>
             <Input type="number" min="1" value={form.durationMinutes} onChange={handleChange("durationMinutes")} placeholder="Ex: 15" />
           </div>
 
-          <div className="space-y-3 rounded-lg border border-slate-200 p-4">
+          <div className="space-y-3 neo-surface-inset p-4">
             <div className="flex gap-3">
               <button
                 type="button"
-                className={`flex-1 rounded-md border px-3 py-2 text-sm font-medium transition ${
-                  form.mode === "select" ? "border-blue-500 bg-blue-50 text-blue-700" : "border-slate-200 text-slate-600"
-                }`}
+                className={cn("neo-pill-item flex-1 justify-center", form.mode === "select" && "neo-pill-item-active")}
                 onClick={() => setForm((prev) => ({ ...prev, mode: "select" }))}
               >
                 Utiliser un contenu existant
               </button>
               <button
                 type="button"
-                className={`flex-1 rounded-md border px-3 py-2 text-sm font-medium transition ${
-                  form.mode === "upload" ? "border-blue-500 bg-blue-50 text-blue-700" : "border-slate-200 text-slate-600"
-                }`}
+                className={cn("neo-pill-item flex-1 justify-center", form.mode === "upload" && "neo-pill-item-active")}
                 onClick={() => setForm((prev) => ({ ...prev, mode: "upload" }))}
               >
                 Téléverser un fichier
@@ -250,15 +250,15 @@ export function CourseModuleDialog({ isOpen, onClose, organizationId, courseId, 
 
             {form.mode === "select" ? (
               <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-600">Contenu</label>
+                <label className="text-sm font-medium text-[var(--muted-foreground)]">Contenu</label>
                 {isLoadingContents ? (
-                  <p className="text-xs text-slate-500">Chargement des contenus…</p>
+                  <p className="text-xs text-[var(--muted-foreground)]">Chargement des contenus…</p>
                 ) : filteredContents.length === 0 ? (
-                  <p className="rounded-md border border-dashed border-slate-300 bg-slate-50 px-3 py-2 text-xs text-slate-500">
+                  <p className="neo-surface-inset rounded-3xl border border-dashed border-[rgba(176,184,200,0.4)] px-3 py-2 text-xs text-[var(--muted-foreground)]">
                     Aucun contenu n'est disponible pour le moment.
                   </p>
                 ) : (
-                  <select className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" value={form.selectedContentId} onChange={handleChange("selectedContentId")}>
+                  <select className={selectClass} value={form.selectedContentId} onChange={handleChange("selectedContentId")}>
                     <option value="">Sélectionnez un contenu…</option>
                     {filteredContents.map((content) => (
                       <option key={content.id} value={content.id}>
@@ -271,21 +271,21 @@ export function CourseModuleDialog({ isOpen, onClose, organizationId, courseId, 
             ) : (
               <div className="space-y-3">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-600">Fichier</label>
+                  <label className="text-sm font-medium text-[var(--muted-foreground)]">Fichier</label>
                   <Input type="file" accept="video/*,audio/*,application/pdf,text/*,application/zip" onChange={handleFileChange} />
                 </div>
 
                 {moduleFile && (
-                  <div className="flex items-center justify-between rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-slate-700">
+                  <div className="neo-surface flex items-center justify-between px-3 py-2 text-sm text-[var(--foreground)]">
                     <div>
-                      <p className="font-medium text-slate-900">{moduleFile.name}</p>
-                      <p className="text-xs text-slate-600">
+                      <p className="font-medium text-[var(--foreground)]">{moduleFile.name}</p>
+                      <p className="text-xs text-[var(--muted-foreground)]">
                         {(moduleFile.size / 1024 / 1024).toFixed(2)} MB • {moduleFile.type || "Type inconnu"}
                       </p>
                     </div>
                     <Button
                       type="button"
-                      variant="outline"
+                      variant="secondary"
                       size="sm"
                       onClick={() => {
                         setModuleFile(null);
@@ -298,30 +298,30 @@ export function CourseModuleDialog({ isOpen, onClose, organizationId, courseId, 
                 )}
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-600">Nom du contenu</label>
+                  <label className="text-sm font-medium text-[var(--muted-foreground)]">Nom du contenu</label>
                   <Input placeholder={moduleFile?.name ?? "Nom du contenu"} value={form.contentName} onChange={handleChange("contentName")} />
                 </div>
 
                 {uploadProgress > 0 && (
                   <div className="space-y-2">
-                    <div className="h-2 w-full rounded-full bg-blue-100">
-                      <div className="h-2 rounded-full bg-blue-500 transition-all" style={{ width: `${uploadProgress}%` }} />
+                    <div className="neo-surface-inset h-3 w-full rounded-full">
+                      <div className="h-full rounded-full bg-gradient-to-r from-[#92a1ff] to-[#6dd5fa] transition-all" style={{ width: `${uploadProgress}%` }} />
                     </div>
-                    <p className="text-xs font-medium text-blue-600">Téléversement en cours : {uploadProgress}%</p>
+                    <p className="text-xs font-medium text-[var(--accent-primary)]">Téléversement en cours : {uploadProgress}%</p>
                   </div>
                 )}
               </div>
             )}
           </div>
 
-  <div className="flex justify-end gap-2 border-t border-slate-200 pt-4">
-          <Button type="button" variant="outline" onClick={onClose}>
-            Annuler
-          </Button>
-          <Button type="submit" disabled={isSubmitting || (form.mode === "upload" && !moduleFile)}>
-            {isSubmitting ? "Ajout en cours…" : "Ajouter le module"}
-          </Button>
-        </div>
+          <div className="flex justify-end gap-2 pt-4">
+            <Button type="button" variant="secondary" onClick={onClose}>
+              Annuler
+            </Button>
+            <Button type="submit" variant="primary" disabled={isSubmitting || (form.mode === "upload" && !moduleFile)}>
+              {isSubmitting ? "Ajout en cours…" : "Ajouter le module"}
+            </Button>
+          </div>
         </form>
       </div>
     </div>

@@ -3,26 +3,33 @@ import { Slot } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
+const buttonBase =
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full font-medium tracking-wide transition-all duration-200 disabled:pointer-events-none disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--background)] [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0";
+
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  buttonBase,
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90",
-        destructive:
-          "bg-destructive text-destructive-foreground hover:bg-destructive/90",
-        outline:
-          "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
+        default:
+          "bg-[var(--card)] text-[var(--foreground)] shadow-[var(--soft-shadow-sm)] hover:shadow-[var(--soft-shadow)] active:shadow-[var(--soft-shadow-inset)]",
+        primary:
+          "bg-gradient-to-br from-[#92a1ff] via-[#7f8cff] to-[#4cc3ff] text-white shadow-[var(--soft-shadow)] hover:shadow-[var(--soft-shadow-lg)] active:shadow-[var(--soft-shadow-inset)]",
         secondary:
-          "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        ghost: "hover:bg-accent hover:text-accent-foreground",
-        link: "text-primary underline-offset-4 hover:underline",
+          "bg-[rgba(255,255,255,0.72)] text-[var(--muted-foreground)] shadow-[var(--soft-shadow-sm)] border border-[rgba(255,255,255,0.5)] hover:text-[var(--foreground)] hover:shadow-[var(--soft-shadow)] active:shadow-[var(--soft-shadow-inset)]",
+        outline:
+          "bg-transparent border border-[rgba(186,176,224,0.3)] text-[var(--foreground)] shadow-[var(--soft-shadow-sm)] hover:shadow-[var(--soft-shadow)] active:shadow-[var(--soft-shadow-inset)]",
+        destructive:
+          "bg-gradient-to-br from-[#ff9aa5] to-[#ff6b92] text-white shadow-[var(--soft-shadow)] hover:shadow-[var(--soft-shadow-lg)] active:shadow-[var(--soft-shadow-inset)]",
+        ghost:
+          "bg-transparent text-[var(--foreground)] hover:bg-[rgba(255,255,255,0.45)] hover:shadow-[var(--soft-shadow-sm)]",
+        link: "bg-transparent text-[var(--accent-primary)] underline-offset-4 hover:underline px-0 shadow-none"
       },
       size: {
-        default: "h-10 px-4 py-2",
-        sm: "h-9 rounded-md px-3",
-        lg: "h-11 rounded-md px-8",
-        icon: "h-10 w-10",
+        default: "h-10 px-5 text-sm",
+        sm: "h-8 px-4 text-xs",
+        lg: "h-11 px-7 text-base",
+        icon: "h-10 w-10"
       },
     },
     defaultVariants: {

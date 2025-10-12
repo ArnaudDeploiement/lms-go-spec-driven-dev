@@ -128,7 +128,7 @@ export default function AuthPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.5 }}
-          className="glass-card p-8"
+          className="neo-surface neo-surface-hover p-8"
         >
           {/* Feedback Messages */}
           <AnimatePresence mode="wait">
@@ -245,7 +245,7 @@ export default function AuthPage() {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="btn-primary w-full btn-lg group"
+                  className="btn btn-primary w-full btn-lg group"
                 >
                   {isSubmitting ? (
                     <div className="flex items-center gap-2">
@@ -321,7 +321,7 @@ export default function AuthPage() {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="btn-primary w-full btn-lg group"
+                  className="btn btn-primary w-full btn-lg group"
                 >
                   {isSubmitting ? (
                     <div className="flex items-center gap-2">
@@ -348,7 +348,7 @@ export default function AuthPage() {
           </div>
 
           {/* Toggle Mode */}
-          <button type="button" onClick={toggleMode} className="w-full btn-secondary">
+          <button type="button" onClick={toggleMode} className="btn btn-secondary w-full">
             {mode === "login" ? (
               <>
                 <Sparkles className="h-4 w-4" />
@@ -370,7 +370,7 @@ export default function AuthPage() {
           className="mt-8 text-center space-y-4"
         >
           {mode === "signup" && (
-            <div className="glass-card p-4">
+            <div className="neo-surface neo-surface-hover p-4">
               <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
                 <span className="font-semibold text-[var(--text-primary)]">Note :</span> En créant un compte, vous devenez{" "}
                 <span className="text-gradient font-semibold">administrateur</span> de

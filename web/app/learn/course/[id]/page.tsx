@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth/context';
@@ -120,6 +120,19 @@ export default function CourseDetailPage() {
 
   const courseId = params.id as string;
 
+  const sortedModules = useMemo(
+    () => (course?.modules ? [...course.modules].sort((a, b) => a.order_index - b.order_index) : []),
+    [course?.modules]
+  );
+
+  const moduleProgressMap = useMemo(() => {
+    const map = new Map<string, ProgressResponse>();
+    enrollment?.module_progress?.forEach((progress) => {
+      map.set(progress.module_id, progress);
+    });
+    return map;
+  }, [enrollment?.module_progress]);
+
   useEffect(() => {
     if (!isAuthenticated) {
       router.push('/auth');
@@ -200,13 +213,15 @@ setEnrollment(
   const handleModuleClick = async (module: Module) => {
     if (!enrollment || !organization) return;
 
-    const moduleProgress = enrollment.module_progress?.find(p => p.module_id === module.id);
-    const isLocked = moduleProgress?.status === 'not_started' && module.order_index > 0;
+    const index = sortedModules.findIndex((m) => m.id === module.id);
+    const status = moduleProgressMap.get(module.id)?.status ?? 'not_started';
+    const previousCompleted =
+      index <= 0 || sortedModules.slice(0, index).every((prevModule) => moduleProgressMap.get(prevModule.id)?.status === 'completed');
+    const canAccess = status === 'in_progress' || status === 'completed' || previousCompleted;
 
-    if (isLocked) return;
+    if (!canAccess) return;
 
-    // Update progress to in_progress if not started
-    if (!moduleProgress || moduleProgress.status === 'not_started') {
+    if (status === 'not_started') {
       try {
         await apiClient.startModule(organization.id, enrollment.id, module.id);
         const fresh = await apiClient.getProgress(organization.id, enrollment.id);
@@ -218,7 +233,7 @@ setEnrollment(
                 progress_pct: deriveProgressPercentage({
                   progressValue: prev.progress,
                   moduleProgress: fresh,
-                  totalModules: course?.modules?.length ?? fresh.length,
+                  totalModules: sortedModules.length || fresh.length,
                 }),
               }
             : prev,
@@ -228,17 +243,14 @@ setEnrollment(
       }
     }
 
-    // Navigate to module content
     router.push(`/learn/course/${courseId}/module/${module.id}`);
   };
 
   const getModuleStatus = (module: Module) => {
     if (!enrollment) return 'locked';
 
-    const progress = enrollment.module_progress?.find(p => p.module_id === module.id);
-    if (!progress) return 'not_started';
-
-    return progress.status;
+    const progress = moduleProgressMap.get(module.id);
+    return progress?.status ?? 'not_started';
   };
 
   if (isLoading) {
@@ -352,13 +364,14 @@ setEnrollment(
           ) : (
             <div className="space-y-4">
               <AnimatePresence>
-                {course.modules
-                  .sort((a, b) => a.order_index - b.order_index)
-                  .map((module, index) => {
+                {sortedModules.map((module, index) => {
                     const status = getModuleStatus(module);
                     const isCompleted = status === 'completed';
                     const isInProgress = status === 'in_progress';
-                    const isLocked = !enrollment || (status === 'not_started' && index > 0);
+                    const previousCompleted =
+                      index === 0 || sortedModules.slice(0, index).every((prevModule) => moduleProgressMap.get(prevModule.id)?.status === 'completed');
+                    const canAccess = status === 'in_progress' || status === 'completed' || previousCompleted;
+                    const isLocked = !enrollment || !canAccess;
                     const Icon = moduleTypeIcons[module.module_type] || FileText;
 
                     return (
@@ -370,12 +383,11 @@ setEnrollment(
                         transition={{ duration: 0.3, delay: index * 0.05 }}
                       >
                         <Card
-                          className={`
-                            transition-all cursor-pointer
-                            ${isLocked ? 'opacity-60' : 'hover:shadow-lg'}
-                            ${isInProgress ? 'border-blue-500 border-2' : ''}
-                            ${isCompleted ? 'border-green-500' : ''}
-                          `}
+                          className={`transition-all cursor-pointer ${
+                            isLocked ? 'opacity-50' : 'shadow-[var(--soft-shadow-sm)] hover:shadow-[var(--soft-shadow)]'
+                          } ${
+                            isInProgress ? 'border border-[rgba(124,167,255,0.6)]' : isCompleted ? 'border border-[rgba(90,226,180,0.6)]' : 'border border-transparent'
+                          }`}
                           onClick={() => !isLocked && handleModuleClick(module)}
                         >
                           <CardHeader>
@@ -388,9 +400,9 @@ setEnrollment(
                                   {isLocked ? (
                                     <Lock className="h-6 w-6 text-gray-400" />
                                   ) : isCompleted ? (
-                                    <CheckCircle className="h-6 w-6 text-green-600" />
+                                    <CheckCircle className="h-6 w-6 text-green-500" />
                                   ) : (
-                                    <Icon className={`h-6 w-6 ${isInProgress ? 'text-blue-600' : 'text-gray-600'}`} />
+                                    <Icon className={`h-6 w-6 ${isInProgress ? 'text-[var(--accent-primary)]' : 'text-[var(--muted-foreground)]'}`} />
                                   )}
                                 </div>
                                 <div className="flex-1">
@@ -413,13 +425,13 @@ setEnrollment(
                               </div>
                               <div>
                                 {isLocked ? (
-                                  <span className="text-sm text-gray-500">Verrouillé</span>
+                                  <span className="text-sm text-[var(--muted-foreground)]">Verrouillé</span>
                                 ) : isCompleted ? (
-                                  <CheckCircle className="h-6 w-6 text-green-600" />
+                                  <CheckCircle className="h-6 w-6 text-green-500" />
                                 ) : isInProgress ? (
-                                  <Play className="h-6 w-6 text-blue-600" />
+                                  <Play className="h-6 w-6 text-[var(--accent-primary)]" />
                                 ) : (
-                                  <Button size="sm" variant="outline">
+                                  <Button size="sm" variant="secondary">
                                     Commencer
                                   </Button>
                                 )}

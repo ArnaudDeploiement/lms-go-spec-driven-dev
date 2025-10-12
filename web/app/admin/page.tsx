@@ -33,9 +33,10 @@ import {
   Users,
 } from "lucide-react";
 import { CourseModuleDialog } from "./components/course-module-dialog";
+import { cn } from "@/lib/utils";
 
 const fieldClass =
-  "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60";
+  "w-full rounded-[24px] border-0 bg-[var(--background)] px-4 py-2 text-sm text-[var(--foreground)] shadow-[var(--soft-shadow-inset)] transition-all duration-200 placeholder:text-[var(--muted-foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--background)] disabled:cursor-not-allowed disabled:opacity-60";
 
 const moduleTypeLabels: Record<string, string> = {
   video: "Vidéo",
@@ -575,12 +576,12 @@ export default function AdminPage() {
 
   if (isLoading || isBootstrapping) {
     return (
-      <div className="min-h-screen bg-slate-50">
+      <div className="min-h-screen bg-[var(--background)]">
         <Navigation />
-        <div className="flex min-h-screen items-center justify-center pt-24">
-          <div className="flex flex-col items-center gap-3 rounded-2xl border border-slate-200 bg-white px-8 py-10 text-center shadow-sm">
-            <div className="h-12 w-12 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
-            <p className="text-sm text-slate-600">Chargement de l'espace administrateur…</p>
+        <div className="flex min-h-screen items-center justify-center pt-28">
+          <div className="neo-surface neo-surface-hover flex flex-col items-center gap-3 px-10 py-12 text-center">
+            <div className="h-12 w-12 animate-spin rounded-full border-2 border-[var(--accent-primary)] border-t-transparent" />
+            <p className="text-sm text-[var(--muted-foreground)]">Chargement de l'espace administrateur…</p>
           </div>
         </div>
       </div>
@@ -592,24 +593,24 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-[var(--background)]">
       <Navigation />
-      <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 pb-16 pt-24 sm:px-6 lg:px-8">
-        <header className="flex flex-col gap-6 rounded-2xl border border-slate-200 bg-white px-6 py-6 shadow-sm lg:flex-row lg:items-center lg:justify-between">
+      <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 pb-16 pt-28 sm:px-6 lg:px-8">
+        <header className="neo-surface neo-surface-hover flex flex-col gap-6 px-6 py-6 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-4">
-            <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm">
+            <div className="flex h-14 w-14 items-center justify-center rounded-[28px] bg-gradient-to-br from-[#92a1ff] to-[#6dd5fa] text-white shadow-[var(--soft-shadow-sm)]">
               <Building2 className="h-7 w-7" />
             </div>
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Administration</p>
-              <h1 className="text-2xl font-semibold text-slate-900">{organization.name}</h1>
-              <p className="text-sm text-slate-500">Pilotez vos cours, utilisateurs et contenus depuis un espace centralisé.</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-[var(--muted-foreground)]">Administration</p>
+              <h1 className="text-2xl font-semibold text-[var(--foreground)]">{organization.name}</h1>
+              <p className="text-sm text-[var(--muted-foreground)]">Pilotez vos cours, utilisateurs et contenus depuis un espace centralisé.</p>
             </div>
           </div>
           <Button
             type="button"
-            variant="outline"
-            className="flex items-center gap-2 border-slate-200 text-sm text-slate-600"
+            variant="secondary"
+            className="flex items-center gap-2"
             onClick={() => router.push("/learn")}
           >
             <ArrowLeft className="h-4 w-4" /> Retour Learn
@@ -619,30 +620,30 @@ export default function AdminPage() {
         {(error || feedback) && (
           <div className="space-y-2">
             {error && (
-              <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
+              <div className="neo-surface-inset rounded-3xl px-4 py-3 text-sm text-red-600">{error}</div>
             )}
             {feedback && (
-              <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{feedback}</div>
+              <div className="neo-surface-inset rounded-3xl px-4 py-3 text-sm text-emerald-600">{feedback}</div>
             )}
           </div>
         )}
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="neo-surface neo-surface-hover p-6">
           <TabsList className="grid grid-cols-2 gap-2 md:grid-cols-4 lg:grid-cols-6">
-            <TabsTrigger value="overview" className="flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium data-[state=active]:bg-white data-[state=active]:text-slate-900">
+            <TabsTrigger value="overview" className="flex items-center justify-center gap-2">
               <LayoutGrid className="h-4 w-4" /> Aperçu
             </TabsTrigger>
-            <TabsTrigger value="courses" className="flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium data-[state=active]:bg-white data-[state=active]:text-slate-900">
+            <TabsTrigger value="courses" className="flex items-center justify-center gap-2">
               <BookOpen className="h-4 w-4" /> Cours
             </TabsTrigger>
-            <TabsTrigger value="learners" className="flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium data-[state=active]:bg-white data-[state=active]:text-slate-900">
+            <TabsTrigger value="learners" className="flex items-center justify-center gap-2">
               <Users className="h-4 w-4" /> Utilisateurs
             </TabsTrigger>
-            <TabsTrigger value="enrollments" className="flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium data-[state=active]:bg-white data-[state=active]:text-slate-900">
+            <TabsTrigger value="enrollments" className="flex items-center justify-center gap-2">
               <Layers className="h-4 w-4" /> Inscriptions
             </TabsTrigger>
             {user.role === "super_admin" && (
-              <TabsTrigger value="organizations" className="flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium data-[state=active]:bg-white data-[state=active]:text-slate-900">
+              <TabsTrigger value="organizations" className="flex items-center justify-center gap-2">
                 <ShieldCheck className="h-4 w-4" /> Organisations
               </TabsTrigger>
             )}
@@ -650,73 +651,77 @@ export default function AdminPage() {
 
           <TabsContent value="overview" className="mt-6 space-y-6">
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <Card className="border border-slate-200 bg-slate-50/80 shadow-sm">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-slate-600">Cours publiés</CardTitle>
-                  <GraduationCap className="h-4 w-4 text-blue-500" />
+              <Card className="bg-gradient-to-br from-[#f4f7ff] to-[#e6ecfb]">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-0">
+                  <CardTitle className="text-sm font-medium text-[var(--muted-foreground)]">Cours publiés</CardTitle>
+                  <GraduationCap className="h-4 w-4 text-[var(--accent-primary)]" />
                 </CardHeader>
-                <CardContent>
-                  <p className="text-2xl font-semibold text-slate-900">{stats.publishedCourses}</p>
+                <CardContent className="pt-4">
+                  <p className="text-2xl font-semibold text-[var(--foreground)]">{stats.publishedCourses}</p>
                 </CardContent>
               </Card>
-              <Card className="border border-slate-200 bg-slate-50/80 shadow-sm">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-slate-600">Cours brouillons</CardTitle>
-                  <PlusCircle className="h-4 w-4 text-blue-500" />
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-0">
+                  <CardTitle className="text-sm font-medium text-[var(--muted-foreground)]">Cours brouillons</CardTitle>
+                  <PlusCircle className="h-4 w-4 text-[var(--accent-primary)]" />
                 </CardHeader>
-                <CardContent>
-                  <p className="text-2xl font-semibold text-slate-900">{stats.draftCourses}</p>
+                <CardContent className="pt-4">
+                  <p className="text-2xl font-semibold text-[var(--foreground)]">{stats.draftCourses}</p>
                 </CardContent>
               </Card>
-              <Card className="border border-slate-200 bg-slate-50/80 shadow-sm">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-slate-600">Apprenants actifs</CardTitle>
-                  <Users className="h-4 w-4 text-blue-500" />
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-0">
+                  <CardTitle className="text-sm font-medium text-[var(--muted-foreground)]">Apprenants actifs</CardTitle>
+                  <Users className="h-4 w-4 text-[var(--accent-primary)]" />
                 </CardHeader>
-                <CardContent>
-                  <p className="text-2xl font-semibold text-slate-900">{stats.activeLearners}</p>
+                <CardContent className="pt-4">
+                  <p className="text-2xl font-semibold text-[var(--foreground)]">{stats.activeLearners}</p>
                 </CardContent>
               </Card>
-              <Card className="border border-slate-200 bg-slate-50/80 shadow-sm">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-slate-600">Cours terminés</CardTitle>
-                  <LineChart className="h-4 w-4 text-blue-500" />
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-0">
+                  <CardTitle className="text-sm font-medium text-[var(--muted-foreground)]">Cours terminés</CardTitle>
+                  <LineChart className="h-4 w-4 text-[var(--accent-primary)]" />
                 </CardHeader>
-                <CardContent>
-                  <p className="text-2xl font-semibold text-slate-900">{stats.completedCourses}</p>
+                <CardContent className="pt-4">
+                  <p className="text-2xl font-semibold text-[var(--foreground)]">{stats.completedCourses}</p>
                 </CardContent>
               </Card>
             </div>
 
-            <Card className="border border-slate-200 bg-slate-50/80 shadow-sm">
+            <Card>
               <CardHeader>
-                <CardTitle className="text-lg text-slate-900">Activité récente</CardTitle>
+                <CardTitle className="text-lg text-[var(--foreground)]">Activité récente</CardTitle>
+                <p className="text-sm text-[var(--muted-foreground)]">Dernières mises à jour sur vos cours.</p>
               </CardHeader>
-              <CardContent className="space-y-3 text-sm text-slate-600">
+              <CardContent className="space-y-3 text-sm text-[var(--muted-foreground)]">
                 {courses.slice(0, 5).map((course) => (
-                  <div key={course.id} className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3">
+                  <div key={course.id} className="neo-tile flex items-center justify-between gap-3 px-4 py-3">
                     <div>
-                      <p className="font-medium text-slate-900">{course.title}</p>
-                      <p className="text-xs text-slate-500">{course.status === "published" ? "Publié" : "Brouillon"}</p>
+                      <p className="font-medium text-[var(--foreground)]">{course.title}</p>
+                      <p className="text-xs text-[var(--muted-foreground)]">{course.status === "published" ? "Publié" : "Brouillon"}</p>
                     </div>
                     <Button
                       type="button"
-                      variant="outline"
+                      variant="secondary"
                       size="sm"
-                      className="border-slate-200 text-xs"
                       onClick={() => handleSelectCourse(course)}
                     >
                       Ouvrir
                     </Button>
                   </div>
                 ))}
-                {courses.length === 0 && <p>Aucun cours pour le moment. Créez votre premier programme.</p>}
+                {courses.length === 0 && (
+                  <div className="neo-surface-inset rounded-3xl px-4 py-6 text-center text-sm text-[var(--muted-foreground)]">
+                    Aucun cours pour le moment. Créez votre premier programme.
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
 
           <TabsContent value="courses" className="mt-6 space-y-6">
-            <Card className="border border-blue-200 bg-blue-50/70 shadow-sm">
+            <Card className="bg-gradient-to-br from-[#f3f7ff] to-[#e6f4ff]">
               <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
                   <CardTitle className="text-lg text-blue-900">Assistant guidé de création</CardTitle>
@@ -726,7 +731,7 @@ export default function AdminPage() {
                 </div>
                 <Button
                   type="button"
-                  className="bg-blue-600 text-white hover:bg-blue-700"
+                  variant="primary"
                   onClick={() => router.push("/admin/courses/new")}
                 >
                   <PlusCircle className="mr-2 h-4 w-4" /> Lancer l'assistant
@@ -735,10 +740,10 @@ export default function AdminPage() {
             </Card>
 
             <div className="grid gap-6 lg:grid-cols-[1.1fr,1.4fr]">
-              <Card className="border border-slate-200 bg-white shadow-sm">
+              <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg text-slate-900">Vos cours</CardTitle>
-                  <p className="text-sm text-slate-500">Sélectionnez un cours pour afficher et modifier ses informations.</p>
+                  <CardTitle className="text-lg text-[var(--foreground)]">Vos cours</CardTitle>
+                  <p className="text-sm text-[var(--muted-foreground)]">Sélectionnez un cours pour afficher et modifier ses informations.</p>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {courses.map((course) => (
@@ -753,25 +758,25 @@ export default function AdminPage() {
                           handleSelectCourse(course);
                         }
                       }}
-                      className={`rounded-xl border px-4 py-3 text-left transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                      className={cn(
+                        "neo-tile cursor-pointer px-4 py-4 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--background)]",
                         selectedCourseId === course.id
-                          ? "border-blue-500/60 bg-blue-50"
-                          : "border-slate-200 bg-slate-50 hover:border-blue-400/50 hover:bg-blue-50"
-                      }`}
+                          ? "text-[var(--foreground)] shadow-[var(--soft-shadow)]"
+                          : "text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+                      )}
                     >
                       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                         <div className="space-y-1">
-                          <p className="text-sm font-semibold text-slate-900">{course.title}</p>
-                          <p className="text-xs text-slate-500">{course.description || "Pas de description"}</p>
+                          <p className="text-sm font-semibold text-[var(--foreground)]">{course.title}</p>
+                          <p className="text-xs text-[var(--muted-foreground)]">{course.description || "Pas de description"}</p>
                         </div>
                         <div className="flex flex-wrap items-center gap-2 text-xs">
-                          <span className="rounded-full bg-white px-3 py-1 text-slate-600">{course.status}</span>
+                          <span className="neo-badge capitalize">{course.status}</span>
                           {course.status === "published" ? (
                             <Button
                               type="button"
                               size="sm"
-                              variant="outline"
-                              className="border-slate-200"
+                              variant="secondary"
                               onClick={(event) => {
                                 event.stopPropagation();
                                 void handleUnpublishCourse(course.id);
@@ -783,7 +788,7 @@ export default function AdminPage() {
                             <Button
                               type="button"
                               size="sm"
-                              className="bg-blue-600 text-white hover:bg-blue-700"
+                              variant="primary"
                               onClick={(event) => {
                                 event.stopPropagation();
                                 void handlePublishCourse(course.id);
@@ -795,8 +800,7 @@ export default function AdminPage() {
                           <Button
                             type="button"
                             size="sm"
-                            variant="outline"
-                            className="border-red-200 text-red-600 hover:bg-red-50"
+                            variant="secondary"
                             onClick={(event) => {
                               event.stopPropagation();
                               void handleArchiveCourse(course.id);
@@ -821,7 +825,7 @@ export default function AdminPage() {
                     </div>
                   ))}
                   {courses.length === 0 && (
-                    <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
+                    <div className="neo-surface-inset rounded-3xl px-4 py-6 text-center text-sm text-[var(--muted-foreground)]">
                       Aucun cours pour le moment. Utilisez l'assistant pour créer votre premier programme.
                     </div>
                   )}
@@ -829,20 +833,20 @@ export default function AdminPage() {
               </Card>
 
               {selectedCourse ? (
-                <Card className="border border-slate-200 bg-white shadow-sm">
+                <Card>
                   <CardHeader>
-                    <CardTitle className="text-lg text-slate-900">Modifier le cours : {selectedCourse.title}</CardTitle>
-                    <p className="text-sm text-slate-500">
+                    <CardTitle className="text-lg text-[var(--foreground)]">Modifier le cours : {selectedCourse.title}</CardTitle>
+                    <p className="text-sm text-[var(--muted-foreground)]">
                       Mettez à jour les informations principales du cours sélectionné.
                     </p>
                   </CardHeader>
                   <CardContent>
-                    <div className="mb-4 text-xs text-slate-500">
-                      Slug : <code className="rounded bg-slate-100 px-1 py-0.5">{selectedCourse.slug}</code>
+                    <div className="mb-4 text-xs text-[var(--muted-foreground)]">
+                      Slug : <code className="rounded bg-[rgba(255,255,255,0.7)] px-2 py-1 shadow-[var(--soft-shadow-sm)]">{selectedCourse.slug}</code>
                     </div>
                     <form className="space-y-4" onSubmit={handleCourseSubmit}>
                       <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-600">Titre</label>
+                        <label className="text-sm font-medium text-[var(--muted-foreground)]">Titre</label>
                         <Input
                           required
                           value={courseForm.title}
@@ -850,7 +854,7 @@ export default function AdminPage() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-600">Description</label>
+                        <label className="text-sm font-medium text-[var(--muted-foreground)]">Description</label>
                         <textarea
                           className={fieldClass}
                           rows={3}
@@ -860,7 +864,7 @@ export default function AdminPage() {
                       </div>
                       <div className="grid gap-4 md:grid-cols-2">
                         <div className="space-y-2">
-                          <label className="text-sm font-medium text-slate-600">Tags</label>
+                          <label className="text-sm font-medium text-[var(--muted-foreground)]">Tags</label>
                           <Input
                             value={courseForm.tags}
                             onChange={(event) => setCourseForm((prev) => ({ ...prev, tags: event.target.value }))}
@@ -868,7 +872,7 @@ export default function AdminPage() {
                           />
                         </div>
                         <div className="space-y-2">
-                          <label className="text-sm font-medium text-slate-600">Durée (heures)</label>
+                          <label className="text-sm font-medium text-[var(--muted-foreground)]">Durée (heures)</label>
                           <Input
                             value={courseForm.duration_hours}
                             onChange={(event) => setCourseForm((prev) => ({ ...prev, duration_hours: event.target.value }))}
@@ -878,7 +882,7 @@ export default function AdminPage() {
                       </div>
                       <div className="grid gap-4 md:grid-cols-2">
                         <div className="space-y-2">
-                          <label className="text-sm font-medium text-slate-600">Niveau</label>
+                          <label className="text-sm font-medium text-[var(--muted-foreground)]">Niveau</label>
                           <select
                             className={fieldClass}
                             value={courseForm.level}
@@ -890,7 +894,7 @@ export default function AdminPage() {
                           </select>
                         </div>
                         <div className="space-y-2">
-                          <label className="text-sm font-medium text-slate-600">Visibilité</label>
+                          <label className="text-sm font-medium text-[var(--muted-foreground)]">Visibilité</label>
                           <select
                             className={fieldClass}
                             value={courseForm.visibility}
@@ -903,7 +907,7 @@ export default function AdminPage() {
                         </div>
                       </div>
                       <div className="space-y-2">
-                        <label className="text-sm font-medium text-slate-600">Métadonnées (JSON)</label>
+                        <label className="text-sm font-medium text-[var(--muted-foreground)]">Métadonnées (JSON)</label>
                         <textarea
                           className={fieldClass}
                           rows={5}
@@ -914,7 +918,8 @@ export default function AdminPage() {
                       </div>
                       <Button
                         type="submit"
-                        className="w-full bg-blue-600 text-white hover:bg-blue-700"
+                        variant="primary"
+                        className="w-full"
                         disabled={isSavingCourse}
                       >
                         {isSavingCourse ? "Enregistrement…" : "Enregistrer les modifications"}
@@ -923,10 +928,10 @@ export default function AdminPage() {
                   </CardContent>
                 </Card>
               ) : (
-                <Card className="border border-slate-200 bg-white shadow-sm">
-                  <CardContent className="flex h-full flex-col items-center justify-center gap-3 text-center text-sm text-slate-500">
-                    <BookOpen className="h-8 w-8 text-slate-400" />
-                    <p className="font-medium text-slate-600">Sélectionnez un cours pour afficher ses détails.</p>
+                <Card>
+                  <CardContent className="flex h-full flex-col items-center justify-center gap-3 text-center text-sm text-[var(--muted-foreground)]">
+                    <BookOpen className="h-8 w-8 text-[rgba(148,163,184,0.7)]" />
+                    <p className="font-medium text-[var(--muted-foreground)]">Sélectionnez un cours pour afficher ses détails.</p>
                     <p>Vous pouvez créer de nouveaux cours uniquement avec l'assistant guidé.</p>
                   </CardContent>
                 </Card>
@@ -934,20 +939,20 @@ export default function AdminPage() {
             </div>
 
             {selectedCourse && (
-              <Card className="border border-slate-200 bg-white shadow-sm">
+              <Card>
                 <CardHeader className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                   <div>
-                    <CardTitle className="flex items-center gap-2 text-lg text-slate-900">
-                      <FileStack className="h-5 w-5 text-blue-500" /> Modules du cours
+                    <CardTitle className="flex items-center gap-2 text-lg text-[var(--foreground)]">
+                      <FileStack className="h-5 w-5 text-[var(--accent-primary)]" /> Modules du cours
                     </CardTitle>
-                    <p className="text-sm text-slate-500">
+                    <p className="text-sm text-[var(--muted-foreground)]">
                       Ajoutez, téléversez ou supprimez des modules directement depuis cet espace.
                     </p>
                   </div>
                   <Button
                     type="button"
                     size="sm"
-                    className="bg-blue-600 text-white hover:bg-blue-700"
+                    variant="primary"
                     onClick={() => setIsModuleDialogOpen(true)}
                   >
                     <PlusCircle className="h-4 w-4" />
@@ -955,32 +960,32 @@ export default function AdminPage() {
                   </Button>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {isLoadingModules && <p className="text-sm text-slate-500">Chargement des modules…</p>}
+                  {isLoadingModules && <p className="text-sm text-[var(--muted-foreground)]">Chargement des modules…</p>}
                   {!isLoadingModules && modules.length === 0 && (
-                    <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
+                    <div className="neo-surface-inset rounded-3xl border border-dashed border-[rgba(186,176,224,0.45)] px-4 py-6 text-center text-sm text-[var(--muted-foreground)]">
                       Aucun module pour ce cours.
                     </div>
                   )}
                   {modules.map((module) => (
-                    <div key={module.id} className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+                    <div key={module.id} className="neo-tile px-4 py-3">
                       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                         <div className="space-y-1">
-                          <p className="text-sm font-semibold text-slate-900">{module.title}</p>
-                          <p className="text-xs text-slate-500">
+                          <p className="text-sm font-semibold text-[var(--foreground)]">{module.title}</p>
+                          <p className="text-xs text-[var(--muted-foreground)]">
                             {moduleTypeLabels[module.module_type] ?? module.module_type}
                             {module.duration_seconds
                               ? ` • ${Math.ceil((module.duration_seconds ?? 0) / 60)} min`
                               : ""}
                           </p>
                           {module.content_id && (
-                            <p className="text-xs text-slate-400">Contenu associé : {module.content_id}</p>
+                            <p className="text-xs text-[rgba(148,163,184,0.7)]">Contenu associé : {module.content_id}</p>
                           )}
                         </div>
                         <Button
                           type="button"
                           size="sm"
-                          variant="outline"
-                          className="border-red-200 text-red-600 hover:bg-red-50 md:self-start"
+                          variant="destructive"
+                          className="md:self-start"
                           onClick={() => void handleDeleteModule(module.id)}
                         >
                           Supprimer
@@ -1004,10 +1009,10 @@ export default function AdminPage() {
           </TabsContent>
           <TabsContent value="learners" className="mt-6 space-y-6">
             <div className="grid gap-6 lg:grid-cols-[1.1fr,1.9fr]">
-              <Card className="border border-slate-200 bg-white shadow-sm">
+              <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-lg text-slate-900">
-                    <UserPlus className="h-5 w-5 text-blue-500" /> Nouvel utilisateur
+                  <CardTitle className="flex items-center gap-2 text-lg text-[var(--foreground)]">
+                    <UserPlus className="h-5 w-5 text-[var(--accent-primary)]" /> Nouvel utilisateur
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -1035,23 +1040,23 @@ export default function AdminPage() {
                       <option value="manager">Manager</option>
                       <option value="admin">Admin</option>
                     </select>
-                    <Button type="submit" className="w-full bg-blue-600 text-white hover:bg-blue-700" disabled={isSavingUser}>
+                    <Button type="submit" variant="primary" className="w-full" disabled={isSavingUser}>
                       {isSavingUser ? "Création…" : "Créer l'utilisateur"}
                     </Button>
                   </form>
                 </CardContent>
               </Card>
 
-              <Card className="border border-slate-200 bg-white shadow-sm">
+              <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg text-slate-900">Utilisateurs</CardTitle>
+                  <CardTitle className="text-lg text-[var(--foreground)]">Utilisateurs</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {users.map((item) => (
-                    <div key={item.id} className="flex flex-col gap-2 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div key={item.id} className="neo-tile flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                       <div>
-                        <p className="text-sm font-semibold text-slate-900">{item.email}</p>
-                        <p className="text-xs text-slate-500">
+                        <p className="text-sm font-semibold text-[var(--foreground)]">{item.email}</p>
+                        <p className="text-xs text-[var(--muted-foreground)]">
                           {item.role} • {item.status}
                         </p>
                       </div>
@@ -1060,8 +1065,7 @@ export default function AdminPage() {
                           <Button
                             type="button"
                             size="sm"
-                            variant="outline"
-                            className="border-red-200 text-red-600 hover:bg-red-50"
+                            variant="destructive"
                             onClick={() => handleDeactivateUser(item.id)}
                           >
                             Désactiver
@@ -1070,8 +1074,7 @@ export default function AdminPage() {
                           <Button
                             type="button"
                             size="sm"
-                            variant="outline"
-                            className="border-slate-200"
+                            variant="primary"
                             onClick={() => handleActivateUser(item.id)}
                           >
                             Activer
@@ -1080,15 +1083,15 @@ export default function AdminPage() {
                       </div>
                     </div>
                   ))}
-                  {users.length === 0 && <p className="text-sm text-slate-500">Aucun utilisateur pour le moment.</p>}
+                  {users.length === 0 && <p className="text-sm text-[var(--muted-foreground)]">Aucun utilisateur pour le moment.</p>}
                 </CardContent>
               </Card>
             </div>
 
-            <Card className="border border-slate-200 bg-white shadow-sm">
+            <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg text-slate-900">
-                  <Users className="h-5 w-5 text-blue-500" /> Groupes
+                <CardTitle className="flex items-center gap-2 text-lg text-[var(--foreground)]">
+                  <Users className="h-5 w-5 text-[var(--accent-primary)]" /> Groupes
                 </CardTitle>
               </CardHeader>
               <CardContent className="grid gap-6 lg:grid-cols-[1.1fr,1.9fr]">
@@ -1106,29 +1109,29 @@ export default function AdminPage() {
                     value={groupForm.description}
                     onChange={(event) => setGroupForm((prev) => ({ ...prev, description: event.target.value }))}
                   />
-                  <Button type="submit" className="w-full bg-blue-600 text-white hover:bg-blue-700" disabled={isSavingGroup}>
+                  <Button type="submit" variant="primary" className="w-full" disabled={isSavingGroup}>
                     {isSavingGroup ? "Création…" : "Créer le groupe"}
                   </Button>
                 </form>
 
                 <div className="space-y-3">
                   {groups.map((group) => (
-                    <div key={group.id} className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
-                      <p className="text-sm font-semibold text-slate-900">{group.name}</p>
-                      <p className="text-xs text-slate-500">{group.description || "Pas de description"}</p>
+                    <div key={group.id} className="neo-tile px-4 py-3">
+                      <p className="text-sm font-semibold text-[var(--foreground)]">{group.name}</p>
+                      <p className="text-xs text-[var(--muted-foreground)]">{group.description || "Pas de description"}</p>
                     </div>
                   ))}
-                  {groups.length === 0 && <p className="text-sm text-slate-500">Aucun groupe enregistré.</p>}
+                  {groups.length === 0 && <p className="text-sm text-[var(--muted-foreground)]">Aucun groupe enregistré.</p>}
                 </div>
               </CardContent>
             </Card>
           </TabsContent>
 
           <TabsContent value="enrollments" className="mt-6 space-y-6">
-            <Card className="border border-slate-200 bg-white shadow-sm">
+            <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg text-slate-900">
-                  <Layers className="h-5 w-5 text-blue-500" /> Gérer les inscriptions
+                <CardTitle className="flex items-center gap-2 text-lg text-[var(--foreground)]">
+                  <Layers className="h-5 w-5 text-[var(--accent-primary)]" /> Gérer les inscriptions
                 </CardTitle>
               </CardHeader>
               <CardContent className="grid gap-6 lg:grid-cols-[1.1fr,1.9fr]">
@@ -1178,27 +1181,26 @@ export default function AdminPage() {
                     value={enrollmentForm.metadata}
                     onChange={(event) => setEnrollmentForm((prev) => ({ ...prev, metadata: event.target.value }))}
                   />
-                  <Button type="submit" className="w-full bg-blue-600 text-white hover:bg-blue-700" disabled={isSavingEnrollment}>
+                  <Button type="submit" variant="primary" className="w-full" disabled={isSavingEnrollment}>
                     {isSavingEnrollment ? "Création…" : "Créer l'inscription"}
                   </Button>
                 </form>
 
                 <div className="space-y-3">
                   {enrollments.map((enrollment) => (
-                    <div key={enrollment.id} className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
-                      <p className="text-sm font-semibold text-slate-900">
+                    <div key={enrollment.id} className="neo-tile px-4 py-3">
+                      <p className="text-sm font-semibold text-[var(--foreground)]">
                         {courses.find((course) => course.id === enrollment.course_id)?.title || "Cours"}
                       </p>
-                      <p className="text-xs text-slate-500">
+                      <p className="text-xs text-[var(--muted-foreground)]">
                         {users.find((item) => item.id === enrollment.user_id)?.email || "Utilisateur"} • {enrollment.status}
                       </p>
-                      <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-slate-500">
+                      <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-[var(--muted-foreground)]">
                         <span>Progression : {Math.round(enrollment.progress ?? 0)}%</span>
                         <Button
                           type="button"
                           size="sm"
-                          variant="outline"
-                          className="border-red-200 text-red-600 hover:bg-red-50"
+                          variant="destructive"
                           onClick={() => handleCancelEnrollment(enrollment.id)}
                         >
                           Annuler
@@ -1206,7 +1208,7 @@ export default function AdminPage() {
                       </div>
                     </div>
                   ))}
-                  {enrollments.length === 0 && <p className="text-sm text-slate-500">Aucune inscription enregistrée.</p>}
+                  {enrollments.length === 0 && <p className="text-sm text-[var(--muted-foreground)]">Aucune inscription enregistrée.</p>}
                 </div>
               </CardContent>
             </Card>
@@ -1214,10 +1216,10 @@ export default function AdminPage() {
 
           {user.role === "super_admin" && (
             <TabsContent value="organizations" className="mt-6 space-y-6">
-              <Card className="border border-slate-200 bg-white shadow-sm">
+                  <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-lg text-slate-900">
-                    <ShieldCheck className="h-5 w-5 text-blue-500" /> Organisations
+                  <CardTitle className="flex items-center gap-2 text-lg text-[var(--foreground)]">
+                    <ShieldCheck className="h-5 w-5 text-[var(--accent-primary)]" /> Organisations
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="grid gap-6 lg:grid-cols-[1.1fr,1.9fr]">
@@ -1240,23 +1242,22 @@ export default function AdminPage() {
                       value={organizationForm.settings}
                       onChange={(event) => setOrganizationForm((prev) => ({ ...prev, settings: event.target.value }))}
                     />
-                    <Button type="submit" className="w-full bg-blue-600 text-white hover:bg-blue-700" disabled={isSavingOrganization}>
+                    <Button type="submit" variant="primary" className="w-full" disabled={isSavingOrganization}>
                       {isSavingOrganization ? "Création…" : "Créer l'organisation"}
                     </Button>
                   </form>
 
                   <div className="space-y-3">
                     {organizations.map((org) => (
-                      <div key={org.id} className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
-                        <p className="text-sm font-semibold text-slate-900">{org.name}</p>
-                        <p className="text-xs text-slate-500">{org.slug} • {org.status}</p>
+                      <div key={org.id} className="neo-tile px-4 py-3">
+                        <p className="text-sm font-semibold text-[var(--foreground)]">{org.name}</p>
+                        <p className="text-xs text-[var(--muted-foreground)]">{org.slug} • {org.status}</p>
                         <div className="mt-3 flex gap-2 text-xs">
                           {org.status === "active" ? (
                             <Button
                               type="button"
                               size="sm"
-                              variant="outline"
-                              className="border-red-200 text-red-600 hover:bg-red-50"
+                              variant="secondary"
                               onClick={() => handleArchiveOrganization(org.id)}
                             >
                               Archiver
@@ -1265,8 +1266,7 @@ export default function AdminPage() {
                             <Button
                               type="button"
                               size="sm"
-                              variant="outline"
-                              className="border-slate-200"
+                              variant="primary"
                               onClick={() => handleActivateOrganization(org.id)}
                             >
                               Activer
@@ -1275,7 +1275,7 @@ export default function AdminPage() {
                         </div>
                       </div>
                     ))}
-                    {organizations.length === 0 && <p className="text-sm text-slate-500">Aucune organisation disponible.</p>}
+                    {organizations.length === 0 && <p className="text-sm text-[var(--muted-foreground)]">Aucune organisation disponible.</p>}
                   </div>
                 </CardContent>
               </Card>

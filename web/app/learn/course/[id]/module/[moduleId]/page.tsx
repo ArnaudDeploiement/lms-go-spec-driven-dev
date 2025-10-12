@@ -5,7 +5,8 @@ import { motion } from 'framer-motion';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth/context';
 import { apiClient } from '@/lib/api/client';
-import { ArrowLeft, CheckCircle, ChevronRight, FileText, Video, Download } from 'lucide-react';
+import { ArrowLeft, FileText, Video, Download } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface ModuleDetail {
   id: string;
@@ -28,39 +29,53 @@ interface ContentDetail {
 export default function ModuleViewPage() {
   const router = useRouter();
   const params = useParams();
-  const { organization } = useAuth();
+  const { organization, user } = useAuth();
   const [module, setModule] = useState<ModuleDetail | null>(null);
   const [content, setContent] = useState<ContentDetail | null>(null);
   const [contentUrl, setContentUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isCompleting, setIsCompleting] = useState(false);
+  const [modules, setModules] = useState<ModuleDetail[]>([]);
+  const [enrollmentId, setEnrollmentId] = useState<string | null>(null);
 
   const courseId = params.id as string;
   const moduleId = params.moduleId as string;
 
   useEffect(() => {
-    const fetchModule = async () => {
-      if (!organization) return;
+    const fetchData = async () => {
+      if (!organization || !user) return;
 
+      setIsLoading(true);
       try {
-        // Fetch all modules for the course
-        const modules = await apiClient.listModules(organization.id, courseId);
-        const foundModule = modules.find((m: ModuleDetail) => m.id === moduleId);
+        const [moduleList, enrollments] = await Promise.all([
+          apiClient.listModules(organization.id, courseId),
+          apiClient.getEnrollments(organization.id, { course_id: courseId, user_id: user.id }),
+        ]);
 
+        const sortedModules = [...moduleList].sort((a, b) => a.position - b.position);
+        setModules(sortedModules);
+
+        const foundModule = sortedModules.find((m) => m.id === moduleId);
         if (!foundModule) {
-          throw new Error('Module not found');
+          router.push(`/learn/course/${courseId}`);
+          return;
         }
 
         setModule(foundModule);
+        setContent(null);
+        setContentUrl(null);
 
-        // If module has content, fetch content details and download URL
         if (foundModule.content_id) {
           const contentDetail = await apiClient.getContent(organization.id, foundModule.content_id);
           setContent(contentDetail);
-
-          // Get download URL for viewing
           const downloadLink = await apiClient.getDownloadLink(organization.id, foundModule.content_id);
           setContentUrl(downloadLink.download_url);
+        }
+
+        if (enrollments.length > 0) {
+          setEnrollmentId(enrollments[0].id);
+        } else {
+          router.push(`/learn/course/${courseId}`);
         }
       } catch (error) {
         console.error('Error fetching module:', error);
@@ -69,21 +84,35 @@ export default function ModuleViewPage() {
       }
     };
 
-    fetchModule();
-  }, [organization, courseId, moduleId]);
+    fetchData();
+  }, [organization, user, courseId, moduleId, router]);
 
-  const handleComplete = async () => {
-    if (!organization) return;
+  const currentIndex = modules.findIndex((m) => m.id === moduleId);
+  const previousModule = currentIndex > 0 ? modules[currentIndex - 1] : null;
+  const nextModule = currentIndex >= 0 && currentIndex < modules.length - 1 ? modules[currentIndex + 1] : null;
+
+  const handleGoToPrevious = () => {
+    if (previousModule) {
+      router.push(`/learn/course/${courseId}/module/${previousModule.id}`);
+    } else {
+      router.push(`/learn/course/${courseId}`);
+    }
+  };
+
+  const handleGoToNext = async () => {
+    if (!organization || !module || !enrollmentId) return;
 
     setIsCompleting(true);
     try {
-      // Find the enrollment for this course
-      const enrollments = await apiClient.getEnrollments(organization.id, { course_id: courseId });
-      if (enrollments.length > 0) {
-        const enrollment = enrollments[0];
-        await apiClient.completeModule(organization.id, enrollment.id, moduleId);
-
-        // Redirect back to course
+      await apiClient.completeModule(organization.id, enrollmentId, module.id);
+      if (nextModule) {
+        try {
+          await apiClient.startModule(organization.id, enrollmentId, nextModule.id);
+        } catch (startError) {
+          console.warn('Unable to start next module', startError);
+        }
+        router.push(`/learn/course/${courseId}/module/${nextModule.id}`);
+      } else {
         router.push(`/learn/course/${courseId}`);
       }
     } catch (error) {
@@ -106,12 +135,9 @@ export default function ModuleViewPage() {
       <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="text-center">
           <p className="text-gray-600 mb-4">Module non trouvé</p>
-          <button
-            onClick={() => router.push(`/learn/course/${courseId}`)}
-            className="vercel-btn-secondary"
-          >
+          <Button variant="secondary" onClick={() => router.push(`/learn/course/${courseId}`)}>
             Retour au cours
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -195,32 +221,10 @@ export default function ModuleViewPage() {
       <header className="vercel-nav sticky top-0 z-10">
         <div className="vercel-container py-4">
           <div className="flex items-center justify-between">
-            <button
-              onClick={() => router.push(`/learn/course/${courseId}`)}
-              className="vercel-btn-ghost vercel-btn-sm"
-            >
+            <Button variant="secondary" size="sm" onClick={() => router.push(`/learn/course/${courseId}`)}>
               <ArrowLeft className="h-4 w-4" />
               Retour au cours
-            </button>
-
-            <button
-              onClick={handleComplete}
-              disabled={isCompleting}
-              className="vercel-btn-primary vercel-btn-sm"
-            >
-              {isCompleting ? (
-                <div className="flex items-center gap-2">
-                  <div className="vercel-spinner" />
-                  <span>Validation...</span>
-                </div>
-              ) : (
-                <>
-                  <CheckCircle className="h-4 w-4" />
-                  <span>Marquer comme terminé</span>
-                  <ChevronRight className="h-4 w-4" />
-                </>
-              )}
-            </button>
+            </Button>
           </div>
         </div>
       </header>
@@ -271,6 +275,27 @@ export default function ModuleViewPage() {
               </div>
             </motion.div>
           )}
+
+          <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <Button
+              variant="secondary"
+              onClick={handleGoToPrevious}
+              disabled={isCompleting}
+            >
+              {previousModule ? 'Module précédent' : 'Retour au cours'}
+            </Button>
+            <Button
+              variant="primary"
+              onClick={handleGoToNext}
+              disabled={isCompleting || !enrollmentId}
+            >
+              {isCompleting
+                ? 'Validation...'
+                : nextModule
+                ? 'Module suivant'
+                : 'Terminer la formation'}
+            </Button>
+          </div>
         </motion.div>
       </main>
     </div>
