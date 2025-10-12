@@ -30,6 +30,7 @@ func (h *CourseHandler) Mount(r chi.Router) {
 		r.Get("/", h.get)
 		r.Patch("/", h.update)
 		r.Delete("/", h.archive)
+		r.Delete("/hard", h.deletePermanent)
 		r.Post("/publish", h.publish)
 		r.Post("/unpublish", h.unpublish)
 		r.Route("/modules", func(r chi.Router) {
@@ -219,6 +220,28 @@ func (h *CourseHandler) unpublish(w http.ResponseWriter, r *http.Request) {
 
 func (h *CourseHandler) archive(w http.ResponseWriter, r *http.Request) {
 	h.updateStatus(w, r, h.service.Archive)
+}
+
+func (h *CourseHandler) deletePermanent(w http.ResponseWriter, r *http.Request) {
+	orgID, err := tenant.OrganizationID(r.Context())
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "organisation manquante")
+		return
+	}
+	courseID, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "identifiant invalide")
+		return
+	}
+	if err := h.service.Delete(r.Context(), orgID, courseID); err != nil {
+		if errors.Is(err, course.ErrNotFound) {
+			respondError(w, http.StatusNotFound, "cours introuvable")
+		} else {
+			respondError(w, http.StatusInternalServerError, "suppression définitive impossible")
+		}
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 type courseStatusFunc func(ctx context.Context, orgID, courseID uuid.UUID) (*ent.Course, error)

@@ -529,6 +529,13 @@ class ApiClient {
     });
   }
 
+  async deleteCourse(orgId: string, courseId: string): Promise<void> {
+    await this.request(`/courses/${courseId}/hard`, {
+      method: 'DELETE',
+      headers: { 'X-Org-ID': orgId },
+    });
+  }
+
   async listModules(orgId: string, courseId: string): Promise<ModuleResponse[]> {
     return this.request(`/courses/${courseId}/modules`, {
       headers: { 'X-Org-ID': orgId },

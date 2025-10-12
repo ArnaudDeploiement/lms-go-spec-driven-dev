@@ -26,11 +26,13 @@ import {
   Layers,
   LayoutGrid,
   LineChart,
+  Trash2,
   PlusCircle,
   ShieldCheck,
   UserPlus,
   Users,
 } from "lucide-react";
+import { CourseModuleDialog } from "./components/course-module-dialog";
 
 const fieldClass =
   "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60";
@@ -146,6 +148,7 @@ export default function AdminPage() {
 
   const [courses, setCourses] = useState<CourseResponse[]>([]);
   const [modules, setModules] = useState<ModuleResponse[]>([]);
+  const [isModuleDialogOpen, setIsModuleDialogOpen] = useState(false);
   const [users, setUsers] = useState<UserResponse[]>([]);
   const [groups, setGroups] = useState<GroupResponse[]>([]);
   const [enrollments, setEnrollments] = useState<EnrollmentResponse[]>([]);
@@ -373,6 +376,28 @@ export default function AdminPage() {
     }
   };
 
+  const handleDeleteCourse = async (courseId: string) => {
+    if (!organization) return;
+    if (typeof window !== "undefined") {
+      const confirmDelete = window.confirm("Supprimer définitivement ce cours ? Cette action est irréversible.");
+      if (!confirmDelete) {
+        return;
+      }
+    }
+    try {
+      await apiClient.deleteCourse(organization.id, courseId);
+      setCourses((prev) => prev.filter((course) => course.id !== courseId));
+      if (selectedCourseId === courseId) {
+        setSelectedCourseId(null);
+        setModules([]);
+      }
+      showFeedback("Cours supprimé définitivement");
+    } catch (err: any) {
+      console.error(err);
+      setError(err?.error || "Impossible de supprimer définitivement le cours");
+    }
+  };
+
   const handleDeleteModule = async (moduleId: string) => {
     if (!organization) return;
     try {
@@ -383,6 +408,15 @@ export default function AdminPage() {
       console.error(err);
       setError(err?.error || "Impossible de supprimer le module");
     }
+  };
+
+  const handleModuleCreated = (module: ModuleResponse) => {
+    setModules((prev) => {
+      const next = [...prev.filter((item) => item.id !== module.id), module];
+      next.sort((a, b) => a.position - b.position);
+      return next;
+    });
+    showFeedback("Module ajouté");
   };
 
   const handleUserSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -770,6 +804,18 @@ export default function AdminPage() {
                           >
                             Archiver
                           </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="destructive"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              void handleDeleteCourse(course.id);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            Supprimer
+                          </Button>
                         </div>
                       </div>
                     </div>
@@ -889,13 +935,24 @@ export default function AdminPage() {
 
             {selectedCourse && (
               <Card className="border border-slate-200 bg-white shadow-sm">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-lg text-slate-900">
-                    <FileStack className="h-5 w-5 text-blue-500" /> Modules du cours
-                  </CardTitle>
-                  <p className="text-sm text-slate-500">
-                    Les modules sont gérés via l'assistant de création. Supprimez ceux qui ne sont plus nécessaires.
-                  </p>
+                <CardHeader className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2 text-lg text-slate-900">
+                      <FileStack className="h-5 w-5 text-blue-500" /> Modules du cours
+                    </CardTitle>
+                    <p className="text-sm text-slate-500">
+                      Ajoutez, téléversez ou supprimez des modules directement depuis cet espace.
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="bg-blue-600 text-white hover:bg-blue-700"
+                    onClick={() => setIsModuleDialogOpen(true)}
+                  >
+                    <PlusCircle className="h-4 w-4" />
+                    Ajouter un module
+                  </Button>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {isLoadingModules && <p className="text-sm text-slate-500">Chargement des modules…</p>}
@@ -933,6 +990,16 @@ export default function AdminPage() {
                   ))}
                 </CardContent>
               </Card>
+            )}
+
+            {selectedCourseId && (
+              <CourseModuleDialog
+                isOpen={isModuleDialogOpen}
+                onClose={() => setIsModuleDialogOpen(false)}
+                organizationId={organization.id}
+                courseId={selectedCourseId}
+                onModuleCreated={handleModuleCreated}
+              />
             )}
           </TabsContent>
           <TabsContent value="learners" className="mt-6 space-y-6">

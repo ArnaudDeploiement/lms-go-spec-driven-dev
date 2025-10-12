@@ -12,6 +12,8 @@ import (
 	entsql "entgo.io/ent/dialect/sql"
 
 	"lms-go/internal/ent"
+	entenrollment "lms-go/internal/ent/enrollment"
+	entmodule "lms-go/internal/ent/module"
 	entmoduleprogress "lms-go/internal/ent/moduleprogress"
 
 	_ "github.com/glebarez/go-sqlite"
@@ -140,6 +142,75 @@ func TestModuleOperations(t *testing.T) {
 	modules, err = svc.ListModules(ctx, orgID, course.ID)
 	require.NoError(t, err)
 	require.Len(t, modules, 1)
+}
+
+func TestDeleteCourseRemovesDependencies(t *testing.T) {
+	svc, orgID, cleanup := newCourseService(t)
+	t.Cleanup(cleanup)
+	ctx := context.Background()
+
+	course, err := svc.Create(ctx, CreateCourseInput{
+		OrganizationID: orgID,
+		Title:          "Compliance",
+		Slug:           "compliance",
+	})
+	require.NoError(t, err)
+
+	module, err := svc.AddModule(ctx, orgID, course.ID, ModuleInput{
+		Title:      "Module 1",
+		ModuleType: "article",
+	})
+	require.NoError(t, err)
+
+	user, err := svc.client.User.Create().
+		SetOrganizationID(orgID).
+		SetEmail("learner2@example.com").
+		SetPasswordHash("hashed").
+		Save(ctx)
+	require.NoError(t, err)
+
+	group, err := svc.client.Group.Create().
+		SetOrganizationID(orgID).
+		SetCourseID(course.ID).
+		SetName("Groupe A").
+		Save(ctx)
+	require.NoError(t, err)
+	require.NotNil(t, group.CourseID)
+	require.Equal(t, course.ID, *group.CourseID)
+
+	enrollment, err := svc.client.Enrollment.Create().
+		SetOrganizationID(orgID).
+		SetCourseID(course.ID).
+		SetUserID(user.ID).
+		Save(ctx)
+	require.NoError(t, err)
+
+	_, err = svc.client.ModuleProgress.Create().
+		SetEnrollmentID(enrollment.ID).
+		SetModuleID(module.ID).
+		Save(ctx)
+	require.NoError(t, err)
+
+	require.NoError(t, svc.Delete(ctx, orgID, course.ID))
+
+	_, err = svc.Get(ctx, orgID, course.ID)
+	require.ErrorIs(t, err, ErrNotFound)
+
+	moduleCount, err := svc.client.Module.Query().Where(entmodule.CourseIDEQ(course.ID)).Count(ctx)
+	require.NoError(t, err)
+	require.Zero(t, moduleCount)
+
+	progressCount, err := svc.client.ModuleProgress.Query().Where(entmoduleprogress.EnrollmentIDEQ(enrollment.ID)).Count(ctx)
+	require.NoError(t, err)
+	require.Zero(t, progressCount)
+
+	enrollmentCount, err := svc.client.Enrollment.Query().Where(entenrollment.CourseIDEQ(course.ID)).Count(ctx)
+	require.NoError(t, err)
+	require.Zero(t, enrollmentCount)
+
+	updatedGroup, err := svc.client.Group.Get(ctx, group.ID)
+	require.NoError(t, err)
+	require.Nil(t, updatedGroup.CourseID)
 }
 
 func ptr(s string) *string { return &s }

@@ -10,6 +10,8 @@ import (
 
 	"lms-go/internal/ent"
 	entcourse "lms-go/internal/ent/course"
+	entenrollment "lms-go/internal/ent/enrollment"
+	entgroup "lms-go/internal/ent/group"
 	entmodule "lms-go/internal/ent/module"
 	entmoduleprogress "lms-go/internal/ent/moduleprogress"
 	entorg "lms-go/internal/ent/organization"
@@ -164,17 +166,82 @@ func (s *Service) Archive(ctx context.Context, orgID, courseID uuid.UUID) (*ent.
 	return s.setStatus(ctx, orgID, courseID, StatusArchived)
 }
 
-func (s *Service) Delete(ctx context.Context, orgID, courseID uuid.UUID) error {
-	course, err := s.client.Course.Query().
+func (s *Service) Delete(ctx context.Context, orgID, courseID uuid.UUID) (err error) {
+	tx, err := s.client.Tx(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		}
+	}()
+
+	courseEntity, err := tx.Course.Query().
 		Where(entcourse.IDEQ(courseID), entcourse.OrganizationIDEQ(orgID)).
 		Only(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
-			return ErrNotFound
+			err = ErrNotFound
 		}
 		return err
 	}
-	return s.client.Course.DeleteOne(course).Exec(ctx)
+
+	modules, err := tx.Module.Query().
+		Where(entmodule.CourseIDEQ(courseID)).
+		All(ctx)
+	if err != nil {
+		return err
+	}
+	if len(modules) > 0 {
+		moduleIDs := make([]uuid.UUID, 0, len(modules))
+		for _, m := range modules {
+			moduleIDs = append(moduleIDs, m.ID)
+		}
+		if _, err = tx.ModuleProgress.Delete().
+			Where(entmoduleprogress.ModuleIDIn(moduleIDs...)).
+			Exec(ctx); err != nil {
+			return err
+		}
+		if _, err = tx.Module.Delete().
+			Where(entmodule.IDIn(moduleIDs...)).
+			Exec(ctx); err != nil {
+			return err
+		}
+	}
+
+	enrollmentIDs, err := tx.Enrollment.Query().
+		Where(entenrollment.CourseIDEQ(courseID)).
+		IDs(ctx)
+	if err != nil {
+		return err
+	}
+	if len(enrollmentIDs) > 0 {
+		if _, err = tx.ModuleProgress.Delete().
+			Where(entmoduleprogress.EnrollmentIDIn(enrollmentIDs...)).
+			Exec(ctx); err != nil {
+			return err
+		}
+		if _, err = tx.Enrollment.Delete().
+			Where(entenrollment.IDIn(enrollmentIDs...)).
+			Exec(ctx); err != nil {
+			return err
+		}
+	}
+
+	if _, err = tx.Group.Update().
+		Where(entgroup.CourseIDEQ(courseID)).
+		ClearCourseID().
+		Save(ctx); err != nil {
+		return err
+	}
+
+	if err = tx.Course.DeleteOne(courseEntity).Exec(ctx); err != nil {
+		return err
+	}
+
+	err = tx.Commit()
+	return err
 }
 
 func (s *Service) setStatus(ctx context.Context, orgID, courseID uuid.UUID, status string) (*ent.Course, error) {

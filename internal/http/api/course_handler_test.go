@@ -122,3 +122,26 @@ func TestCourseHandler_Modules(t *testing.T) {
 	router.ServeHTTP(reorderRec, reorderReq)
 	require.Equal(t, http.StatusNoContent, reorderRec.Code)
 }
+
+func TestCourseHandler_DeletePermanent(t *testing.T) {
+	router, orgID := setupCourseRouter(t)
+
+	createBody, _ := json.Marshal(map[string]any{"title": "Legacy", "slug": "legacy"})
+	createReq := reqOrg(http.MethodPost, "/", orgID, createBody)
+	createRec := httptest.NewRecorder()
+	router.ServeHTTP(createRec, createReq)
+	require.Equal(t, http.StatusCreated, createRec.Code)
+
+	var created courseResponse
+	require.NoError(t, json.Unmarshal(createRec.Body.Bytes(), &created))
+
+	deleteReq := reqOrg(http.MethodDelete, "/"+created.ID.String()+"/hard", orgID, nil)
+	deleteRec := httptest.NewRecorder()
+	router.ServeHTTP(deleteRec, deleteReq)
+	require.Equal(t, http.StatusNoContent, deleteRec.Code)
+
+	getReq := reqOrg(http.MethodGet, "/"+created.ID.String(), orgID, nil)
+	getRec := httptest.NewRecorder()
+	router.ServeHTTP(getRec, getReq)
+	require.Equal(t, http.StatusNotFound, getRec.Code)
+}
