@@ -12,17 +12,17 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "bg-[var(--card)] text-[var(--foreground)] shadow-[var(--soft-shadow-sm)] hover:shadow-[var(--soft-shadow)] active:shadow-[var(--soft-shadow-inset)]",
+          "bg-white text-[var(--accent-secondary)] border border-[var(--border)] shadow-[var(--soft-shadow-sm)] hover:-translate-y-[1px] hover:border-[var(--border-strong)] hover:shadow-[var(--soft-shadow)] active:translate-y-0 active:shadow-[var(--soft-shadow-inset)]",
         primary:
-          "bg-gradient-to-br from-[#92a1ff] via-[#7f8cff] to-[#4cc3ff] text-white shadow-[var(--soft-shadow)] hover:shadow-[var(--soft-shadow-lg)] active:shadow-[var(--soft-shadow-inset)]",
+          "bg-[var(--accent-secondary)] text-white border border-transparent shadow-[var(--soft-shadow)] hover:bg-[#151d26] hover:shadow-[var(--soft-shadow-lg)] active:bg-[#1b242d] active:shadow-[var(--soft-shadow-inset)]",
         secondary:
-          "bg-[rgba(255,255,255,0.72)] text-[var(--muted-foreground)] shadow-[var(--soft-shadow-sm)] border border-[rgba(255,255,255,0.5)] hover:text-[var(--foreground)] hover:shadow-[var(--soft-shadow)] active:shadow-[var(--soft-shadow-inset)]",
+          "bg-[var(--background-muted)] text-[var(--accent-secondary)] border border-[var(--border)] shadow-sm hover:-translate-y-[1px] hover:border-[var(--border-strong)] hover:bg-white",
         outline:
-          "bg-transparent border border-[rgba(186,176,224,0.3)] text-[var(--foreground)] shadow-[var(--soft-shadow-sm)] hover:shadow-[var(--soft-shadow)] active:shadow-[var(--soft-shadow-inset)]",
+          "bg-transparent border border-[var(--accent-secondary)] text-[var(--accent-secondary)] hover:bg-[rgba(31,41,51,0.05)]",
         destructive:
-          "bg-gradient-to-br from-[#ff9aa5] to-[#ff6b92] text-white shadow-[var(--soft-shadow)] hover:shadow-[var(--soft-shadow-lg)] active:shadow-[var(--soft-shadow-inset)]",
+          "bg-[var(--accent-error)] text-white border border-transparent shadow-[var(--soft-shadow-sm)] hover:bg-[#b73536] hover:shadow-[var(--soft-shadow)]",
         ghost:
-          "bg-transparent text-[var(--foreground)] hover:bg-[rgba(255,255,255,0.45)] hover:shadow-[var(--soft-shadow-sm)]",
+          "bg-transparent text-[var(--accent-secondary)] hover:bg-[rgba(31,41,51,0.05)]",
         link: "bg-transparent text-[var(--accent-primary)] underline-offset-4 hover:underline px-0 shadow-none"
       },
       size: {

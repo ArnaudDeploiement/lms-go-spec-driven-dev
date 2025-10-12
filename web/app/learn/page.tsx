@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { useAuth } from "@/lib/auth/context";
-import { apiClient, CourseResponse, EnrollmentResponse } from "@/lib/api/client";
+import { apiClient, CourseMetadata, CourseResponse, EnrollmentResponse } from "@/lib/api/client";
 import { Navigation } from "@/components/layout/navigation";
 import { StatCard } from "@/components/ui/stat-card";
 import { ProgressBar, CircularProgress } from "@/components/ui/progress";
@@ -28,6 +28,7 @@ export default function LearnPage() {
   const [courses, setCourses] = useState<CourseResponse[]>([]);
   const [enrollments, setEnrollments] = useState<EnrollmentResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [courseCoverUrls, setCourseCoverUrls] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!isAuthLoading && !isAuthenticated) {
@@ -56,9 +57,80 @@ export default function LearnPage() {
     fetchData();
   }, [isAuthenticated, isAuthLoading, organization, user, router]);
 
+  const getCoverContentId = (course: CourseResponse): string | null => {
+    const metadata = course.metadata as CourseMetadata | null;
+    return metadata?.cover_image?.content_id ?? null;
+  };
+
   const getEnrollmentForCourse = (courseId: string) => {
     return enrollments.find((e) => e.course_id === courseId);
   };
+
+  const coverInfos = useMemo(
+    () => courses.map((course) => ({ courseId: course.id, contentId: getCoverContentId(course) })),
+    [courses]
+  );
+
+  useEffect(() => {
+    setCourseCoverUrls((prev) => {
+      const next: Record<string, string> = {};
+      for (const { courseId, contentId } of coverInfos) {
+        if (contentId && prev[courseId]) {
+          next[courseId] = prev[courseId];
+        }
+      }
+      if (Object.keys(next).length === Object.keys(prev).length) {
+        return prev;
+      }
+      return next;
+    });
+  }, [coverInfos]);
+
+  useEffect(() => {
+    if (!organization) return;
+
+    const pending = coverInfos
+      .filter(({ contentId, courseId }) => contentId && !courseCoverUrls[courseId])
+      .map(({ courseId, contentId }) => ({ courseId, contentId: contentId as string }));
+
+    if (pending.length === 0) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const fetchCovers = async () => {
+      const results = await Promise.all(
+        pending.map(async ({ courseId, contentId }) => {
+          try {
+            const link = await apiClient.getDownloadLink(organization.id, contentId);
+            return [courseId, link.download_url] as const;
+          } catch (error) {
+            console.error("Error fetching course cover:", error);
+            return null;
+          }
+        })
+      );
+
+      if (!cancelled) {
+        setCourseCoverUrls((prev) => {
+          const next = { ...prev };
+          for (const entry of results) {
+            if (entry) {
+              next[entry[0]] = entry[1];
+            }
+          }
+          return next;
+        });
+      }
+    };
+
+    fetchCovers();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [coverInfos, courseCoverUrls, organization]);
 
   const getProgressPercentage = (enrollment: EnrollmentResponse) => {
     if (typeof enrollment.progress === "number") {
@@ -253,6 +325,7 @@ export default function LearnPage() {
                 {enrolledCourses.map((course, index) => {
                   const enrollment = getEnrollmentForCourse(course.id);
                   const progress = enrollment ? getProgressPercentage(enrollment) : 0;
+                  const coverUrl = courseCoverUrls[course.id];
 
                   return (
                     <motion.div
@@ -262,6 +335,17 @@ export default function LearnPage() {
                       transition={{ duration: 0.4, delay: 0.7 + index * 0.1 }}
                     >
                       <div className="glass-card-hover group flex h-full cursor-pointer flex-col p-6">
+                        {coverUrl && (
+                          <div className="mb-4 overflow-hidden rounded-2xl border border-slate-200 bg-slate-100">
+                            <div className="aspect-video w-full">
+                              <img
+                                src={coverUrl}
+                                alt={`Illustration du cours ${course.title}`}
+                                className="h-full w-full object-cover"
+                              />
+                            </div>
+                          </div>
+                        )}
                         {/* Course Header */}
                         <div className="flex items-start justify-between mb-4">
                           <div className="flex-1">

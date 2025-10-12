@@ -22,28 +22,19 @@ const config: Config = {
         background: "var(--background)",
         foreground: "var(--foreground)",
         muted: "var(--muted)",
-        // Revolut-inspired color palette
-        revolut: {
-          black: "#000000",
-          darkGray: "#1A1A1A",
-          gray: "#2D2D2D",
-          lightGray: "#F5F5F5",
-          purple: "#8B5CF6",
-          violet: "#A855F7",
-          blue: "#3B82F6",
-          success: "#10B981",
-          warning: "#F59E0B",
-          error: "#EF4444"
-        },
         primary: {
-          DEFAULT: "#8B5CF6",  // Revolut purple
+          DEFAULT: "var(--accent-primary)",
           foreground: "#FFFFFF"
         },
         secondary: {
-          DEFAULT: "#1A1A1A",  // Revolut dark
+          DEFAULT: "var(--accent-secondary)",
           foreground: "#FFFFFF"
         },
-        border: "rgba(0, 0, 0, 0.08)",
+        success: "var(--accent-success)",
+        warning: "var(--accent-warning)",
+        error: "var(--accent-error)",
+        info: "var(--accent-info)",
+        border: "var(--border)",
         card: "var(--card)",
         "card-foreground": "var(--card-foreground)"
       },
@@ -53,10 +44,9 @@ const config: Config = {
         "3xl": "2.5rem"
       },
       boxShadow: {
-        brand: "0 10px 40px -20px rgba(139, 92, 246, 0.45)",
-        revolut: "0 4px 24px -2px rgba(0, 0, 0, 0.08), 0 2px 8px -1px rgba(0, 0, 0, 0.04)",
-        "revolut-hover": "0 8px 32px -4px rgba(0, 0, 0, 0.12), 0 4px 16px -2px rgba(0, 0, 0, 0.08)",
-        "revolut-card": "0 1px 3px 0 rgba(0, 0, 0, 0.08)"
+        brand: "var(--soft-shadow)",
+        "brand-sm": "var(--soft-shadow-sm)",
+        "brand-lg": "var(--soft-shadow-lg)"
       },
       keyframes: {
         shimmer: {

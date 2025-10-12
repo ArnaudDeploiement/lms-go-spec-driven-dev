@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth/context';
 import { apiClient } from '@/lib/api/client';
-import type { EnrollmentResponse, ProgressResponse } from '@/lib/api/client';
+import type { CourseMetadata, EnrollmentResponse, ProgressResponse } from '@/lib/api/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -42,6 +42,7 @@ interface Course {
   description: string;
   status: string;
   modules?: Module[];
+  metadata?: CourseMetadata | null;
 }
 
 type Enrollment = EnrollmentResponse & {
@@ -117,6 +118,8 @@ export default function CourseDetailPage() {
   const [enrollment, setEnrollment] = useState<Enrollment | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isEnrolling, setIsEnrolling] = useState(false);
+  const [coverContentId, setCoverContentId] = useState<string | null>(null);
+  const [courseCoverUrl, setCourseCoverUrl] = useState<string | null>(null);
 
   const courseId = params.id as string;
 
@@ -145,7 +148,14 @@ export default function CourseDetailPage() {
       try {
         // Fetch course details
         const courseData = await apiClient.getCourse(organization.id, courseId);
-        setCourse(courseData);
+        const courseEntity = courseData as Course;
+        setCourse(courseEntity);
+
+        const nextCoverContentId = courseEntity.metadata?.cover_image?.content_id ?? null;
+        setCoverContentId(nextCoverContentId);
+        if (!nextCoverContentId) {
+          setCourseCoverUrl(null);
+        }
 
         // Check if user is enrolled
         try {
@@ -156,32 +166,26 @@ export default function CourseDetailPage() {
           const userEnrollment = enrollments.find((e: EnrollmentResponse) => e.course_id === courseId);
 
           if (userEnrollment) {
-            // Fetch detailed progress
- // Fetch detailed progress
-const progress = await apiClient.getProgress(organization.id, userEnrollment.id);
+            const progress = await apiClient.getProgress(organization.id, userEnrollment.id);
+            const moduleCount = hasModules(courseData)
+              ? courseData.modules.length
+              : hasDataModules(courseData)
+              ? courseData.data.modules.length
+              : progress.length;
 
-// 🔽 calcule un moduleCount robuste selon la forme réelle de getCourse
-const moduleCount = hasModules(courseData)
-  ? courseData.modules.length
-  : hasDataModules(courseData)
-  ? courseData.data.modules.length
-  : progress.length;
-
-// Utilise moduleCount au lieu de courseData.modules?.length ?? progress.length
-setEnrollment(
-  normalizeEnrollment(
-    userEnrollment,
-    progress,
-    moduleCount,
-  ),
-);
-
+            setEnrollment(normalizeEnrollment(userEnrollment, progress, moduleCount));
+          } else {
+            setEnrollment(null);
           }
         } catch (error) {
           console.error('Error fetching enrollment:', error);
         }
       } catch (error) {
         console.error('Error fetching course:', error);
+        setCourse(null);
+        setCoverContentId(null);
+        setCourseCoverUrl(null);
+        setEnrollment(null);
       } finally {
         setIsLoading(false);
       }
@@ -189,6 +193,35 @@ setEnrollment(
 
     fetchCourse();
   }, [isAuthenticated, organization, user, courseId, router]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!organization || !coverContentId) {
+      setCourseCoverUrl(null);
+      return;
+    }
+
+    const fetchCover = async () => {
+      try {
+        const downloadLink = await apiClient.getDownloadLink(organization.id, coverContentId);
+        if (!cancelled) {
+          setCourseCoverUrl(downloadLink.download_url);
+        }
+      } catch (error) {
+        console.error('Error fetching course cover:', error);
+        if (!cancelled) {
+          setCourseCoverUrl(null);
+        }
+      }
+    };
+
+    fetchCover();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [coverContentId, organization]);
 
   const handleEnroll = async () => {
     if (!organization || !user) return;
@@ -304,14 +337,29 @@ setEnrollment(
         >
           <Card className="mb-8">
             <CardHeader>
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <CardTitle className="text-3xl mb-2">{course.title}</CardTitle>
-                  <CardDescription className="text-base">
-                    {course.description}
-                  </CardDescription>
+              <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                <div className="flex flex-1 flex-col gap-4 md:flex-row md:items-start md:gap-6">
+                  {courseCoverUrl ? (
+                    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 shadow-sm md:w-64">
+                      <img
+                        src={courseCoverUrl}
+                        alt={`Illustration du cours ${course.title}`}
+                        className="h-40 w-full object-cover md:h-44"
+                      />
+                    </div>
+                  ) : coverContentId ? (
+                    <div className="flex h-40 w-full items-center justify-center rounded-2xl border border-slate-200 bg-slate-100 shadow-sm md:h-44 md:w-64">
+                      <div className="h-6 w-6 animate-pulse rounded-full bg-slate-300" />
+                    </div>
+                  ) : null}
+                  <div className="flex-1">
+                    <CardTitle className="text-3xl mb-2">{course.title}</CardTitle>
+                    <CardDescription className="text-base">
+                      {course.description}
+                    </CardDescription>
+                  </div>
                 </div>
-                <div className="ml-4">
+                <div className="md:ml-4">
                   {enrollment ? (
                     <div className="text-right">
                       <div className="text-sm text-gray-600 mb-2">

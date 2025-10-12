@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense, useRef } from "react";
 import type { ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth/context";
-import { apiClient, type ContentResponse } from "@/lib/api/client";
+import { apiClient, type ContentResponse, type CourseMetadata } from "@/lib/api/client";
 import { Navigation } from "@/components/layout/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -86,8 +86,14 @@ function CourseWizardContent() {
   const [isSavingModule, setIsSavingModule] = useState(false);
   const [autoPublish, setAutoPublish] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const coverFileInputRef = useRef<HTMLInputElement | null>(null);
   const richTextRef = useRef<HTMLDivElement | null>(null);
   const richTextIsEmpty = !richTextHtml || richTextHtml.replace(/<[^>]+>/g, "").trim() === "";
+  const [coverImage, setCoverImage] = useState<ContentResponse | null>(null);
+  const [coverImagePreviewUrl, setCoverImagePreviewUrl] = useState<string | null>(null);
+  const [coverImageDownloadUrl, setCoverImageDownloadUrl] = useState<string | null>(null);
+  const [isUploadingCover, setIsUploadingCover] = useState(false);
+  const [coverUploadProgress, setCoverUploadProgress] = useState(0);
 
   useEffect(() => {
     if (organization && !authLoading) {
@@ -118,6 +124,14 @@ function CourseWizardContent() {
       setModuleType("document");
     }
   }, [moduleFile]);
+
+  useEffect(() => {
+    return () => {
+      if (coverImagePreviewUrl && coverImagePreviewUrl.startsWith("blob:")) {
+        URL.revokeObjectURL(coverImagePreviewUrl);
+      }
+    };
+  }, [coverImagePreviewUrl]);
 
   const handleContentModeChange = (mode: ModuleContentMode) => {
     setModuleContentMode(mode);
@@ -164,6 +178,81 @@ function CourseWizardContent() {
       setModuleContentName((current) => current || file.name);
     }
     event.target.value = "";
+  };
+
+  const handleSelectCoverImage = () => {
+    coverFileInputRef.current?.click();
+  };
+
+  const handleCoverImageChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null;
+    event.target.value = "";
+
+    if (!file) {
+      return;
+    }
+    if (!file.type.toLowerCase().startsWith("image/")) {
+      setError("Veuillez sélectionner un fichier image (PNG, JPG, WebP...)");
+      return;
+    }
+    if (!organization) {
+      setError("Organisation introuvable pour téléverser l'image de couverture");
+      return;
+    }
+
+    if (coverImagePreviewUrl && coverImagePreviewUrl.startsWith("blob:")) {
+      URL.revokeObjectURL(coverImagePreviewUrl);
+    }
+
+    setIsUploadingCover(true);
+    setCoverUploadProgress(0);
+    setError(null);
+
+    try {
+      const fileName = file.name.trim() || "course-cover";
+      const mimeType = file.type || "application/octet-stream";
+      const upload = await apiClient.createContent(organization.id, {
+        name: fileName,
+        mime_type: mimeType,
+        size_bytes: file.size,
+        metadata: { purpose: "course_cover" },
+      });
+
+      await uploadFileToSignedUrl(upload.upload_url, file, setCoverUploadProgress);
+
+      const finalized = await apiClient.finalizeContent(organization.id, upload.content.id, {
+        name: fileName,
+        mime_type: mimeType,
+        size_bytes: file.size,
+        metadata: { purpose: "course_cover" },
+      });
+
+      const downloadLink = await apiClient.getDownloadLink(organization.id, upload.content.id);
+      const previewUrl = URL.createObjectURL(file);
+
+      setCoverImage(finalized);
+      setCoverImageDownloadUrl(downloadLink.download_url);
+      setCoverImagePreviewUrl(previewUrl);
+    } catch (err: any) {
+      console.error("Cover upload failed:", err);
+      setError(err?.message || "Impossible de téléverser l'image de couverture");
+      setCoverImage(null);
+      setCoverImageDownloadUrl(null);
+      setCoverImagePreviewUrl(null);
+    } finally {
+      setIsUploadingCover(false);
+      setCoverUploadProgress(0);
+    }
+  };
+
+  const handleRemoveCoverImage = () => {
+    if (coverImagePreviewUrl && coverImagePreviewUrl.startsWith("blob:")) {
+      URL.revokeObjectURL(coverImagePreviewUrl);
+    }
+    setCoverImage(null);
+    setCoverImagePreviewUrl(null);
+    setCoverImageDownloadUrl(null);
+    setCoverUploadProgress(0);
   };
 
   const handleRichTextCommand = (command: string, value?: string) => {
@@ -214,6 +303,10 @@ function CourseWizardContent() {
   const handleNext = () => {
     if (step === 1 && !title.trim()) {
       setError("Veuillez saisir un titre pour le cours");
+      return;
+    }
+    if (step === 1 && isUploadingCover) {
+      setError("Veuillez patienter, l'image est en cours de téléversement");
       return;
     }
     if (step === 2 && modules.length === 0) {
@@ -357,10 +450,20 @@ function CourseWizardContent() {
 
     try {
       const slug = title.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9\s-]/g, "").trim().replace(/[\s_]+/g, "-");
+      const metadata: CourseMetadata = {};
+      if (coverImage) {
+        metadata.cover_image = {
+          content_id: coverImage.id,
+          name: coverImage.name,
+          mime_type: coverImage.mime_type,
+          size_bytes: coverImage.size_bytes,
+        };
+      }
       const course = await apiClient.createCourse(organization.id, {
         title: title.trim(),
         slug,
         description: description.trim(),
+        ...(Object.keys(metadata).length > 0 ? { metadata } : {}),
       });
 
       for (let i = 0; i < modules.length; i++) {
@@ -455,7 +558,7 @@ function CourseWizardContent() {
             <div className="space-y-6">
               <div>
                 <h2 className="text-xl font-semibold text-slate-900 mb-1">Informations du cours</h2>
-                <p className="text-sm text-slate-600">Donnez un titre et une description à votre cours</p>
+                <p className="text-sm text-slate-600">Donnez un titre, une description et une image d'illustration à votre cours</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">Titre du cours <span className="text-red-500">*</span></label>
@@ -465,8 +568,51 @@ function CourseWizardContent() {
                 <label className="block text-sm font-medium text-slate-700 mb-2">Description</label>
                 <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} className="w-full rounded-lg border border-slate-300 px-4 py-3 text-base focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20" placeholder="Décrivez les objectifs et le contenu de ce cours..." />
               </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Image du cours</label>
+                <p className="text-xs text-slate-500">Cette image sera utilisée dans la fiche du cours et dans le suivi de progression des apprenants.</p>
+                <input ref={coverFileInputRef} type="file" accept="image/*" className="hidden" onChange={handleCoverImageChange} />
+                {(coverImageDownloadUrl || coverImagePreviewUrl) ? (
+                  <div className="mt-4 space-y-3">
+                    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+                      <img
+                        src={coverImageDownloadUrl ?? coverImagePreviewUrl ?? ""}
+                        alt={title ? `Illustration du cours ${title}` : "Illustration du cours"}
+                        className="h-48 w-full object-cover"
+                      />
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <Button type="button" variant="outline" size="sm" onClick={handleSelectCoverImage}>Changer l'image</Button>
+                      <Button type="button" variant="ghost" size="sm" onClick={handleRemoveCoverImage} className="text-red-600 hover:text-red-700">Supprimer</Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mt-4">
+                    <div className="flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-slate-300 bg-white px-6 py-12 text-center">
+                      <div className="rounded-full bg-blue-50 p-3 text-blue-600">
+                        <UploadCloud className="h-6 w-6" />
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium text-slate-700">Ajoutez une image d'illustration</p>
+                        <p className="text-xs text-slate-500">Formats recommandés : PNG, JPG ou WebP • Ratio 16:9</p>
+                      </div>
+                      <Button type="button" onClick={handleSelectCoverImage}>Choisir une image</Button>
+                    </div>
+                  </div>
+                )}
+                {isUploadingCover && (
+                  <div className="mt-4">
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200">
+                      <div className="h-full rounded-full bg-blue-500 transition-all" style={{ width: `${coverUploadProgress}%` }} />
+                    </div>
+                    <p className="mt-2 text-xs font-medium text-blue-600">Téléversement en cours : {coverUploadProgress}%</p>
+                  </div>
+                )}
+              </div>
               <div className="flex justify-end pt-6 border-t">
-                <Button onClick={handleNext} className="flex items-center gap-2">Suivant : Ajouter des modules <ArrowRight className="h-4 w-4" /></Button>
+                <Button onClick={handleNext} className="flex items-center gap-2" disabled={isUploadingCover}>
+                  Suivant : Ajouter des modules <ArrowRight className="h-4 w-4" />
+                </Button>
               </div>
             </div>
           )}
@@ -823,6 +969,15 @@ function CourseWizardContent() {
               </div>
               <Card className="p-6 bg-slate-50">
                 <h3 className="font-semibold text-slate-900 mb-4">Résumé du cours</h3>
+                {(coverImageDownloadUrl || coverImagePreviewUrl) && (
+                  <div className="mb-4 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+                    <img
+                      src={coverImageDownloadUrl ?? coverImagePreviewUrl ?? ""}
+                      alt={title ? `Illustration du cours ${title}` : "Illustration du cours"}
+                      className="h-48 w-full object-cover"
+                    />
+                  </div>
+                )}
                 <dl className="space-y-3">
                   <div><dt className="text-sm text-slate-600">Titre</dt><dd className="font-medium text-slate-900 mt-1">{title}</dd></div>
                   {description && <div><dt className="text-sm text-slate-600">Description</dt><dd className="text-slate-900 mt-1">{description}</dd></div>}

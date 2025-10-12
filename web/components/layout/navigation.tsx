@@ -77,8 +77,8 @@ export function Navigation() {
       <div className="container-custom pt-4">
         <div className="neo-nav-shell flex items-center justify-between gap-4">
           {/* Logo */}
-          <Link href="/learn" className="flex items-center gap-3 text-[var(--foreground)]">
-            <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-[#8ea4ff] to-[#6dd5fa] text-white shadow-[var(--soft-shadow-sm)]">
+          <Link href="/learn" className="flex items-center gap-3 text-[var(--accent-secondary)]">
+            <span className="flex h-11 w-11 items-center justify-center rounded-[14px] bg-[var(--accent-secondary)] text-white shadow-[var(--soft-shadow-sm)]">
               <GraduationCap className="h-5 w-5" strokeWidth={2.4} />
             </span>
             <div className="hidden sm:block">
@@ -97,12 +97,9 @@ export function Navigation() {
                   <Link
                     key={item.href}
                     href={item.href}
-                    className={cn(
-                      "neo-pill-item",
-                      isActive && "neo-pill-item-active bg-gradient-to-r from-[#b99bff] via-[#a8bcff] to-[#8ad9ff] text-white shadow-[var(--soft-shadow-sm)]"
-                    )}
+                    className={cn("neo-pill-item", isActive && "neo-pill-item-active")}
                   >
-                    <Icon className={`h-4 w-4 ${isActive ? "text-white" : "text-[rgba(46,41,72,0.55)]"}`} />
+                    <Icon className={`h-4 w-4 ${isActive ? "text-white" : "text-[var(--muted-foreground)]"}`} />
                     <span>{item.label}</span>
                   </Link>
                 );
@@ -114,12 +111,12 @@ export function Navigation() {
           <div className="hidden items-center gap-3 md:flex">
             <Dialog open={isProfileOpen} onOpenChange={setIsProfileOpen}>
               <DialogTrigger asChild>
-                <button className="inline-flex h-11 items-center gap-3 rounded-full bg-[rgba(255,255,255,0.75)] px-4 py-2 text-sm font-medium text-[var(--foreground)] shadow-[var(--soft-shadow-sm)] transition-all hover:shadow-[var(--soft-shadow)]">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-[#c1ceff] to-[#f6f9ff] text-sm font-semibold text-[var(--accent-primary)] shadow-[var(--soft-shadow-sm)]">
+                <button className="inline-flex h-11 items-center gap-3 rounded-full border border-[var(--border)] bg-white px-4 py-2 text-sm font-medium text-[var(--accent-secondary)] shadow-sm transition-colors hover:border-[var(--border-strong)] hover:text-[var(--accent-primary)]">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--accent-secondary)]/10 text-sm font-semibold text-[var(--accent-secondary)]">
                     {initials}
                   </div>
                   <div className="text-left">
-                    <p className="font-medium text-[var(--foreground)]">{user?.email?.split("@")[0]}</p>
+                    <p className="font-medium text-[var(--accent-secondary)]">{user?.email?.split("@")[0]}</p>
                     <p className="text-xs capitalize text-[var(--muted-foreground)]">{user?.role || "User"}</p>
                   </div>
                   <Settings className="h-4 w-4 text-[var(--muted-foreground)]" />
@@ -186,7 +183,7 @@ export function Navigation() {
           {/* Mobile Menu Button */}
           <button
             onClick={() => setIsMobileMenuOpen((prev) => !prev)}
-            className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-[#c9afff] to-[#8ddaff] text-white shadow-[var(--soft-shadow-sm)] transition-all duration-200 hover:shadow-[var(--soft-shadow)] md:hidden"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-[var(--accent-secondary)] text-white shadow-[var(--soft-shadow-sm)] transition-transform duration-200 hover:-translate-y-[1px] md:hidden"
             aria-label="Menu"
           >
             {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -213,7 +210,7 @@ export function Navigation() {
                         isActive && "text-[var(--accent-primary)]"
                       )}
                     >
-                    <Icon className={`h-5 w-5 ${isActive ? "text-white" : "text-[rgba(46,41,72,0.55)]"}`} />
+                    <Icon className={`h-5 w-5 ${isActive ? "text-[var(--accent-secondary)]" : "text-[var(--muted-foreground)]"}`} />
                     <span>{item.label}</span>
                   </Link>
                 );
@@ -222,7 +219,7 @@ export function Navigation() {
 
             <div className="neo-surface-inset rounded-3xl p-4">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-[#c1ceff] to-[#f6f9ff] text-sm font-semibold text-[var(--accent-primary)] shadow-[var(--soft-shadow-sm)]">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--accent-secondary)]/10 text-sm font-semibold text-[var(--accent-secondary)]">
                     {user?.email?.substring(0, 2).toUpperCase() || "U"}
                   </div>
                   <div>
@@ -232,7 +229,7 @@ export function Navigation() {
                 </div>
               <button
                 onClick={handleLogout}
-                className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#bfa0ff] to-[#87d6ff] px-4 py-2 text-sm font-semibold text-white shadow-[var(--soft-shadow-sm)] transition-all duration-200 hover:shadow-[var(--soft-shadow)]"
+                className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[var(--accent-secondary)] px-4 py-2 text-sm font-semibold text-white shadow-[var(--soft-shadow-sm)] transition-all duration-200 hover:bg-[#151d26]"
               >
                 <LogOut className="h-4 w-4" />
                   <span>Déconnexion</span>

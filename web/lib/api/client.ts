@@ -112,6 +112,17 @@ export interface UserFilter {
   status?: string;
 }
 
+export interface CourseCoverImageMetadata {
+  content_id: string;
+  name?: string;
+  mime_type?: string;
+  size_bytes?: number;
+}
+
+export interface CourseMetadata extends Record<string, any> {
+  cover_image?: CourseCoverImageMetadata;
+}
+
 export interface CourseResponse {
   id: string;
   title: string;
@@ -119,23 +130,24 @@ export interface CourseResponse {
   description: string;
   status: string;
   version: number;
-  metadata: Record<string, any> | null;
+  metadata: CourseMetadata | null;
   published_at: string | null;
   created_at: string;
   updated_at: string;
+  modules?: ModuleResponse[];
 }
 
 export interface CreateCourseRequest {
   title: string;
   slug: string;
   description: string;
-  metadata?: Record<string, any>;
+  metadata?: CourseMetadata;
 }
 
 export interface UpdateCourseRequest {
   title?: string;
   description?: string;
-  metadata?: Record<string, any>;
+  metadata?: CourseMetadata;
 }
 
 export interface CourseFilter {
