@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { apiClient, type ContentResponse, type ModuleRequest, type ModuleResponse } from "@/lib/api/client";
@@ -19,7 +19,7 @@ const MODULE_OPTIONS: { value: ModuleType; label: string }[] = [
   { value: "scorm", label: "📦 SCORM" },
 ];
 
-type ModuleContentMode = "select" | "upload";
+type ModuleContentMode = "select" | "upload" | "youtube" | "text";
 
 interface ModuleDialogProps {
   isOpen: boolean;
@@ -36,6 +36,7 @@ interface ModuleFormState {
   mode: ModuleContentMode;
   selectedContentId: string;
   contentName: string;
+  youtubeUrl: string;
 }
 
 const initialFormState: ModuleFormState = {
@@ -45,6 +46,7 @@ const initialFormState: ModuleFormState = {
   mode: "select",
   selectedContentId: "",
   contentName: "",
+  youtubeUrl: "",
 };
 
 export function CourseModuleDialog({ isOpen, onClose, organizationId, courseId, onModuleCreated }: ModuleDialogProps) {
@@ -55,6 +57,8 @@ export function CourseModuleDialog({ isOpen, onClose, organizationId, courseId, 
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [richTextHtml, setRichTextHtml] = useState("<p></p>");
+  const richTextRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!isOpen) {
@@ -79,6 +83,7 @@ export function CourseModuleDialog({ isOpen, onClose, organizationId, courseId, 
       setModuleFile(null);
       setUploadProgress(0);
       setError(null);
+      setRichTextHtml("<p></p>");
     }
   }, [isOpen]);
 
@@ -117,6 +122,60 @@ export function CourseModuleDialog({ isOpen, onClose, organizationId, courseId, 
     }
   };
 
+  const switchMode = (nextMode: ModuleContentMode) => {
+    setForm((prev) => ({
+      ...prev,
+      mode: nextMode,
+      selectedContentId: nextMode === "select" ? prev.selectedContentId : "",
+      contentName: nextMode === "upload" ? prev.contentName : "",
+      youtubeUrl: nextMode === "youtube" ? prev.youtubeUrl : "",
+      moduleType:
+        nextMode === "youtube"
+          ? "video"
+          : nextMode === "text"
+          ? "article"
+          : prev.moduleType,
+    }));
+    if (nextMode !== "upload") {
+      setModuleFile(null);
+      setUploadProgress(0);
+    }
+    if (nextMode !== "text") {
+      setRichTextHtml("<p></p>");
+    }
+  };
+
+  const handleRichTextCommand = (command: string, value?: string) => {
+    if (!richTextRef.current) return;
+    document.execCommand(command, false, value ?? "");
+    setRichTextHtml(richTextRef.current.innerHTML);
+  };
+
+  const handleRichTextInput = () => {
+    if (!richTextRef.current) return;
+    setRichTextHtml(richTextRef.current.innerHTML);
+  };
+
+  const normalizeYoutubeEmbedUrl = (raw: string) => {
+    try {
+      const url = new URL(raw.trim());
+      let videoId = "";
+      if (url.hostname.includes("youtu.be")) {
+        videoId = url.pathname.replace("/", "");
+      } else if (url.hostname.includes("youtube.com")) {
+        if (url.pathname.startsWith("/embed/")) {
+          videoId = url.pathname.split("/").pop() ?? "";
+        } else {
+          videoId = url.searchParams.get("v") ?? "";
+        }
+      }
+      if (!videoId) return null;
+      return `https://www.youtube.com/embed/${videoId}`;
+    } catch (error) {
+      return null;
+    }
+  };
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (isSubmitting) return;
@@ -132,6 +191,14 @@ export function CourseModuleDialog({ isOpen, onClose, organizationId, courseId, 
       setError("Choisissez un fichier à téléverser");
       return;
     }
+    if (form.mode === "youtube" && !form.youtubeUrl.trim()) {
+      setError("Ajoutez l'URL de la vidéo YouTube");
+      return;
+    }
+    if (form.mode === "text" && (!richTextHtml || richTextHtml.replace(/<[^>]+>/g, "").trim() === "")) {
+      setError("Renseignez le contenu texte du module");
+      return;
+    }
 
     setIsSubmitting(true);
     setError(null);
@@ -141,7 +208,7 @@ export function CourseModuleDialog({ isOpen, onClose, organizationId, courseId, 
 
       if (form.mode === "select") {
         contentId = form.selectedContentId;
-      } else if (moduleFile) {
+      } else if (form.mode === "upload" && moduleFile) {
         const finalName = (form.contentName || moduleFile.name).trim() || moduleFile.name;
         const upload = await apiClient.createContent(organizationId, {
           name: finalName,
@@ -174,6 +241,29 @@ export function CourseModuleDialog({ isOpen, onClose, organizationId, courseId, 
         if (!Number.isNaN(minutes) && minutes > 0) {
           payload.duration_seconds = minutes * 60;
         }
+      }
+
+      if (form.mode === "youtube") {
+        const embedUrl = normalizeYoutubeEmbedUrl(form.youtubeUrl);
+        if (!embedUrl) {
+          setError("URL YouTube invalide");
+          setIsSubmitting(false);
+          return;
+        }
+        payload.module_type = "video";
+        payload.data = {
+          kind: "youtube",
+          url: form.youtubeUrl.trim(),
+          embed_url: embedUrl,
+        };
+      }
+
+      if (form.mode === "text") {
+        payload.module_type = "article";
+        payload.data = {
+          kind: "richtext",
+          html: richTextHtml,
+        };
       }
 
       const created = await apiClient.createModule(organizationId, courseId, payload);
@@ -231,20 +321,34 @@ export function CourseModuleDialog({ isOpen, onClose, organizationId, courseId, 
           </div>
 
           <div className="space-y-3 neo-surface-inset p-4">
-            <div className="flex gap-3">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               <button
                 type="button"
-                className={cn("neo-pill-item flex-1 justify-center", form.mode === "select" && "neo-pill-item-active")}
-                onClick={() => setForm((prev) => ({ ...prev, mode: "select" }))}
+                className={cn("neo-pill-item justify-center", form.mode === "select" && "neo-pill-item-active")}
+                onClick={() => switchMode("select")}
               >
-                Utiliser un contenu existant
+                Contenu existant
               </button>
               <button
                 type="button"
-                className={cn("neo-pill-item flex-1 justify-center", form.mode === "upload" && "neo-pill-item-active")}
-                onClick={() => setForm((prev) => ({ ...prev, mode: "upload" }))}
+                className={cn("neo-pill-item justify-center", form.mode === "upload" && "neo-pill-item-active")}
+                onClick={() => switchMode("upload")}
               >
                 Téléverser un fichier
+              </button>
+              <button
+                type="button"
+                className={cn("neo-pill-item justify-center", form.mode === "youtube" && "neo-pill-item-active")}
+                onClick={() => switchMode("youtube")}
+              >
+                Vidéo YouTube
+              </button>
+              <button
+                type="button"
+                className={cn("neo-pill-item justify-center", form.mode === "text" && "neo-pill-item-active")}
+                onClick={() => switchMode("text")}
+              >
+                Contenu texte
               </button>
             </div>
 
@@ -270,44 +374,97 @@ export function CourseModuleDialog({ isOpen, onClose, organizationId, courseId, 
               </div>
             ) : (
               <div className="space-y-3">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-[var(--muted-foreground)]">Fichier</label>
-                  <Input type="file" accept="video/*,audio/*,application/pdf,text/*,application/zip" onChange={handleFileChange} />
-                </div>
-
-                {moduleFile && (
-                  <div className="neo-surface flex items-center justify-between px-3 py-2 text-sm text-[var(--foreground)]">
-                    <div>
-                      <p className="font-medium text-[var(--foreground)]">{moduleFile.name}</p>
-                      <p className="text-xs text-[var(--muted-foreground)]">
-                        {(moduleFile.size / 1024 / 1024).toFixed(2)} MB • {moduleFile.type || "Type inconnu"}
-                      </p>
+                {form.mode === "upload" && (
+                  <>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-[var(--muted-foreground)]">Fichier</label>
+                      <Input type="file" accept="video/*,audio/*,application/pdf,text/*,application/zip" onChange={handleFileChange} />
                     </div>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => {
-                        setModuleFile(null);
-                        setForm((prev) => ({ ...prev, contentName: "" }));
-                      }}
-                    >
-                      Retirer
-                    </Button>
+
+                    {moduleFile && (
+                      <div className="neo-surface flex items-center justify-between px-3 py-2 text-sm text-[var(--foreground)]">
+                        <div>
+                          <p className="font-medium text-[var(--foreground)]">{moduleFile.name}</p>
+                          <p className="text-xs text-[var(--muted-foreground)]">
+                            {(moduleFile.size / 1024 / 1024).toFixed(2)} MB • {moduleFile.type || "Type inconnu"}
+                          </p>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => {
+                            setModuleFile(null);
+                            setForm((prev) => ({ ...prev, contentName: "" }));
+                          }}
+                        >
+                          Retirer
+                        </Button>
+                      </div>
+                    )}
+
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-[var(--muted-foreground)]">Nom du contenu</label>
+                      <Input placeholder={moduleFile?.name ?? "Nom du contenu"} value={form.contentName} onChange={handleChange("contentName")} />
+                    </div>
+
+                    {uploadProgress > 0 && (
+                      <div className="space-y-2">
+                        <div className="neo-surface-inset h-3 w-full rounded-full">
+                          <div className="h-full rounded-full bg-gradient-to-r from-[#92a1ff] to-[#6dd5fa] transition-all" style={{ width: `${uploadProgress}%` }} />
+                        </div>
+                        <p className="text-xs font-medium text-[var(--accent-primary)]">Téléversement en cours : {uploadProgress}%</p>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {form.mode === "youtube" && (
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-[var(--muted-foreground)]">URL de la vidéo YouTube</label>
+                    <Input
+                      placeholder="https://www.youtube.com/watch?v=..."
+                      value={form.youtubeUrl}
+                      onChange={handleChange("youtubeUrl")}
+                    />
+                    <p className="text-xs text-[var(--muted-foreground)]">L'URL sera convertie automatiquement en lecteur intégré.</p>
                   </div>
                 )}
 
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-[var(--muted-foreground)]">Nom du contenu</label>
-                  <Input placeholder={moduleFile?.name ?? "Nom du contenu"} value={form.contentName} onChange={handleChange("contentName")} />
-                </div>
-
-                {uploadProgress > 0 && (
-                  <div className="space-y-2">
-                    <div className="neo-surface-inset h-3 w-full rounded-full">
-                      <div className="h-full rounded-full bg-gradient-to-r from-[#92a1ff] to-[#6dd5fa] transition-all" style={{ width: `${uploadProgress}%` }} />
+                {form.mode === "text" && (
+                  <div className="space-y-3">
+                    <label className="text-sm font-medium text-[var(--muted-foreground)]">Contenu</label>
+                    <div className="neo-surface-inset rounded-3xl">
+                      <div className="flex flex-wrap gap-2 border-b border-[rgba(255,255,255,0.4)] px-3 py-2 text-sm text-[var(--muted-foreground)]">
+                        <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => handleRichTextCommand("bold")}>
+                          Gras
+                        </button>
+                        <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => handleRichTextCommand("italic")}>
+                          Italique
+                        </button>
+                        <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => handleRichTextCommand("underline")}>
+                          Souligner
+                        </button>
+                        <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => handleRichTextCommand("insertUnorderedList")}>
+                          Liste
+                        </button>
+                        <button
+                          type="button"
+                          onMouseDown={(event) => event.preventDefault()}
+                          onClick={() => handleRichTextCommand("formatBlock", "h2")}
+                        >
+                          Titre
+                        </button>
+                      </div>
+                      <div
+                        ref={richTextRef}
+                        className="min-h-[160px] px-4 py-3 text-sm text-[var(--foreground)]"
+                        contentEditable
+                        suppressContentEditableWarning
+                        onInput={handleRichTextInput}
+                        dangerouslySetInnerHTML={{ __html: richTextHtml }}
+                      />
                     </div>
-                    <p className="text-xs font-medium text-[var(--accent-primary)]">Téléversement en cours : {uploadProgress}%</p>
                   </div>
                 )}
               </div>
@@ -318,7 +475,15 @@ export function CourseModuleDialog({ isOpen, onClose, organizationId, courseId, 
             <Button type="button" variant="secondary" onClick={onClose}>
               Annuler
             </Button>
-            <Button type="submit" variant="primary" disabled={isSubmitting || (form.mode === "upload" && !moduleFile)}>
+            <Button
+              type="submit"
+              variant="primary"
+              disabled={
+                isSubmitting ||
+                (form.mode === "upload" && !moduleFile) ||
+                (form.mode === "youtube" && !form.youtubeUrl.trim())
+              }
+            >
               {isSubmitting ? "Ajout en cours…" : "Ajouter le module"}
             </Button>
           </div>

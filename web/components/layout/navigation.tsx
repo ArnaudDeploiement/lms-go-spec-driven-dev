@@ -2,11 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { GraduationCap, LayoutDashboard, LogOut, Menu, X } from "lucide-react";
-import { useState, type ElementType } from "react";
+import { GraduationCap, LayoutDashboard, LogOut, Menu, Settings, User2, X } from "lucide-react";
+import { useMemo, useState, type ElementType } from "react";
 import { useAuth } from "@/lib/auth/context";
 import { apiClient } from "@/lib/api/client";
 import { cn } from "@/lib/utils";
+import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 interface NavItem {
   href: string;
@@ -33,6 +36,12 @@ export function Navigation() {
   const pathname = usePathname();
   const { user, organization } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [profileEmail, setProfileEmail] = useState(user?.email ?? "");
+  const [profilePassword, setProfilePassword] = useState("");
+  const [profilePhoto, setProfilePhoto] = useState("");
+  const [orgName, setOrgName] = useState(organization?.name ?? "");
+  const [orgPhoto, setOrgPhoto] = useState("");
 
   const filteredNavItems = navItems.filter((item) => {
     if (item.adminOnly) {
@@ -45,6 +54,23 @@ export function Navigation() {
     await apiClient.logout();
     window.location.href = "/auth";
   };
+
+  const handleSaveProfile = async (event: React.FormEvent) => {
+    event.preventDefault();
+    try {
+      // TODO: Connect to actual API endpoints.
+      console.log("Saving profile", { profileEmail, profilePassword, profilePhoto });
+      if (user?.role === "admin" || user?.role === "super_admin") {
+        console.log("Saving organization", { orgName, orgPhoto });
+      }
+      setIsProfileOpen(false);
+    } catch (error) {
+      console.error("Failed to save profile", error);
+    }
+  };
+
+  const initials = useMemo(() => profileEmail.substring(0, 2).toUpperCase() || "U", [profileEmail]);
+
 
   return (
     <nav className="fixed inset-x-0 top-0 z-50 bg-transparent">
@@ -86,22 +112,75 @@ export function Navigation() {
 
   {/* User Menu */}
           <div className="hidden items-center gap-3 md:flex">
-            <div className="neo-surface text-sm leading-tight px-4 py-2 flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-[#c1ceff] to-[#f6f9ff] text-sm font-semibold text-[var(--accent-primary)] shadow-[var(--soft-shadow-sm)]">
-                {user?.email?.substring(0, 2).toUpperCase() || "U"}
-              </div>
-              <div>
-                <p className="font-medium text-[var(--foreground)]">{user?.email?.split("@")[0]}</p>
-                <p className="text-xs capitalize text-[var(--muted-foreground)]">{user?.role || "User"}</p>
-              </div>
-            </div>
-            <button
+            <Dialog open={isProfileOpen} onOpenChange={setIsProfileOpen}>
+              <DialogTrigger asChild>
+                <button className="inline-flex h-11 items-center gap-3 rounded-full bg-[rgba(255,255,255,0.75)] px-4 py-2 text-sm font-medium text-[var(--foreground)] shadow-[var(--soft-shadow-sm)] transition-all hover:shadow-[var(--soft-shadow)]">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-[#c1ceff] to-[#f6f9ff] text-sm font-semibold text-[var(--accent-primary)] shadow-[var(--soft-shadow-sm)]">
+                    {initials}
+                  </div>
+                  <div className="text-left">
+                    <p className="font-medium text-[var(--foreground)]">{user?.email?.split("@")[0]}</p>
+                    <p className="text-xs capitalize text-[var(--muted-foreground)]">{user?.role || "User"}</p>
+                  </div>
+                  <Settings className="h-4 w-4 text-[var(--muted-foreground)]" />
+                </button>
+              </DialogTrigger>
+              <DialogContent className="max-w-xl">
+                <DialogTitle className="text-2xl font-semibold text-[var(--foreground)]">Mon profil</DialogTitle>
+                <DialogDescription className="text-[var(--muted-foreground)]">
+                  Mettez à jour vos informations personnelles et d'organisation.
+                </DialogDescription>
+                <form className="mt-6 space-y-6" onSubmit={handleSaveProfile}>
+                  <section className="space-y-4">
+                    <h3 className="text-sm font-semibold uppercase tracking-wide text-[var(--muted-foreground)]">Informations personnelles</h3>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-[var(--muted-foreground)]">Photo de profil (URL)</label>
+                      <Input value={profilePhoto} onChange={(event) => setProfilePhoto(event.target.value)} placeholder="https://" />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-[var(--muted-foreground)]">Adresse email</label>
+                      <Input type="email" required value={profileEmail} onChange={(event) => setProfileEmail(event.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-[var(--muted-foreground)]">Mot de passe (laisser vide pour ne pas changer)</label>
+                      <Input type="password" value={profilePassword} onChange={(event) => setProfilePassword(event.target.value)} placeholder="********" />
+                    </div>
+                  </section>
+
+                  {(user?.role === "admin" || user?.role === "super_admin") && (
+                    <section className="space-y-4">
+                      <h3 className="text-sm font-semibold uppercase tracking-wide text-[var(--muted-foreground)]">Organisation</h3>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-[var(--muted-foreground)]">Nom</label>
+                        <Input value={orgName} onChange={(event) => setOrgName(event.target.value)} />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-[var(--muted-foreground)]">Logo / Photo (URL)</label>
+                        <Input value={orgPhoto} onChange={(event) => setOrgPhoto(event.target.value)} placeholder="https://" />
+                      </div>
+                    </section>
+                  )}
+
+                  <div className="flex items-center justify-between gap-3">
+                    <Button type="button" variant="secondary" onClick={() => setIsProfileOpen(false)}>
+                      Annuler
+                    </Button>
+                    <Button type="submit" variant="primary">
+                      Enregistrer les modifications
+                    </Button>
+                  </div>
+                </form>
+              </DialogContent>
+            </Dialog>
+            <Button
+              variant="primary"
+              size="sm"
               onClick={handleLogout}
-              className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-[#bfa0ff] to-[#87d6ff] px-4 py-2 text-sm font-semibold text-white shadow-[var(--soft-shadow-sm)] transition-all duration-200 hover:shadow-[var(--soft-shadow)] active:shadow-[var(--soft-shadow-inset)]"
+              className="inline-flex h-11 items-center gap-2 rounded-full px-5"
             >
               <LogOut className="h-4 w-4" />
               <span>Déconnexion</span>
-            </button>
+            </Button>
           </div>
 
           {/* Mobile Menu Button */}

@@ -15,7 +15,7 @@ interface ModuleDetail {
   content_id?: string | null;
   position: number;
   duration_seconds: number;
-  data: Record<string, any> | null;
+  data: { kind?: string; html?: string; url?: string; embed_url?: string } | null;
 }
 
 interface ContentDetail {
@@ -144,6 +144,30 @@ export default function ModuleViewPage() {
   }
 
   const renderContent = () => {
+    if (module.data?.kind === 'youtube' && module.data.embed_url) {
+      return (
+        <div className="neo-surface p-0 overflow-hidden">
+          <div className="aspect-video w-full">
+            <iframe
+              className="h-full w-full"
+              src={module.data.embed_url}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              title={module.title}
+            />
+          </div>
+        </div>
+      );
+    }
+
+    if (module.data?.kind === 'richtext' && module.data.html) {
+      return (
+        <div className="neo-surface p-6">
+          <div className="prose prose-sm max-w-none text-[var(--foreground)]" dangerouslySetInnerHTML={{ __html: module.data.html }} />
+        </div>
+      );
+    }
+
     if (!content || !contentUrl) {
       return (
         <div className="vercel-card text-center py-12">
@@ -157,11 +181,7 @@ export default function ModuleViewPage() {
     if (content.mime_type.startsWith('video/')) {
       return (
         <div className="vercel-card p-0 overflow-hidden">
-          <video
-            controls
-            className="w-full"
-            src={contentUrl}
-          >
+          <video controls className="w-full" src={contentUrl}>
             Votre navigateur ne supporte pas la lecture vidéo.
           </video>
         </div>

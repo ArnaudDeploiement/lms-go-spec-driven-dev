@@ -19,18 +19,23 @@ import {
   Trash2,
   Link as LinkIcon,
   UploadCloud,
+  PlayCircle,
+  FileText,
 } from "lucide-react";
 import { uploadFileToSignedUrl } from "@/lib/uploads";
 
 type ModuleType = "pdf" | "video" | "article" | "audio" | "document";
 
+type ModuleContentMode = "select" | "upload" | "youtube" | "text";
+
 interface ModuleData {
   id: string;
   title: string;
   module_type: ModuleType;
-  content_id: string;
-  content_name: string;
+  content_id?: string;
+  content_name?: string;
   duration_minutes?: number;
+  data?: Record<string, any>;
 }
 
 const MODULE_TYPE_OPTIONS = [
@@ -72,13 +77,17 @@ function CourseWizardContent() {
   const [moduleType, setModuleType] = useState<ModuleType>("pdf");
   const [selectedContentId, setSelectedContentId] = useState("");
   const [moduleDuration, setModuleDuration] = useState("");
-  const [moduleContentMode, setModuleContentMode] = useState<"select" | "upload">("select");
+  const [moduleContentMode, setModuleContentMode] = useState<ModuleContentMode>("select");
   const [moduleFile, setModuleFile] = useState<File | null>(null);
   const [moduleContentName, setModuleContentName] = useState("");
+  const [youtubeUrl, setYoutubeUrl] = useState("");
+  const [richTextHtml, setRichTextHtml] = useState("<p></p>");
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isSavingModule, setIsSavingModule] = useState(false);
   const [autoPublish, setAutoPublish] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const richTextRef = useRef<HTMLDivElement | null>(null);
+  const richTextIsEmpty = !richTextHtml || richTextHtml.replace(/<[^>]+>/g, "").trim() === "";
 
   useEffect(() => {
     if (organization && !authLoading) {
@@ -110,6 +119,30 @@ function CourseWizardContent() {
     }
   }, [moduleFile]);
 
+  const handleContentModeChange = (mode: ModuleContentMode) => {
+    setModuleContentMode(mode);
+    setError(null);
+
+    if (mode !== "select") {
+      setSelectedContentId("");
+    }
+    if (mode !== "upload") {
+      setModuleFile(null);
+      setModuleContentName("");
+      setUploadProgress(0);
+    }
+    if (mode !== "youtube") {
+      setYoutubeUrl("");
+    } else {
+      setModuleType("video");
+    }
+    if (mode !== "text") {
+      setRichTextHtml("<p></p>");
+    } else {
+      setModuleType("article");
+    }
+  };
+
   const loadContents = async () => {
     if (!organization) return;
     setLoadingContents(true);
@@ -131,6 +164,37 @@ function CourseWizardContent() {
       setModuleContentName((current) => current || file.name);
     }
     event.target.value = "";
+  };
+
+  const handleRichTextCommand = (command: string, value?: string) => {
+    if (!richTextRef.current) return;
+    document.execCommand(command, false, value ?? "");
+    setRichTextHtml(richTextRef.current.innerHTML);
+  };
+
+  const handleRichTextInput = () => {
+    if (!richTextRef.current) return;
+    setRichTextHtml(richTextRef.current.innerHTML);
+  };
+
+  const normalizeYoutubeEmbedUrl = (raw: string) => {
+    try {
+      const url = new URL(raw.trim());
+      let videoId = "";
+      if (url.hostname.includes("youtu.be")) {
+        videoId = url.pathname.replace("/", "");
+      } else if (url.hostname.includes("youtube.com")) {
+        if (url.pathname.startsWith("/embed/")) {
+          videoId = url.pathname.split("/").pop() ?? "";
+        } else {
+          videoId = url.searchParams.get("v") ?? "";
+        }
+      }
+      if (!videoId) return null;
+      return `https://www.youtube.com/embed/${videoId}`;
+    } catch (error) {
+      return null;
+    }
   };
 
   const getFilteredContents = () => {
@@ -180,13 +244,23 @@ function CourseWizardContent() {
       setError("Veuillez choisir un fichier à téléverser");
       return;
     }
+    if (moduleContentMode === "youtube" && !youtubeUrl.trim()) {
+      setError("Veuillez ajouter l'URL de la vidéo YouTube");
+      return;
+    }
+    if (moduleContentMode === "text" && richTextIsEmpty) {
+      setError("Veuillez saisir un contenu texte pour ce module");
+      return;
+    }
 
     setIsSavingModule(true);
     setError(null);
 
     try {
-      let contentId = selectedContentId;
+      let contentId: string | undefined = moduleContentMode === "select" ? selectedContentId : undefined;
       let contentName = "";
+      let data: Record<string, any> | undefined;
+      let finalModuleType: ModuleType = moduleType;
 
       if (moduleContentMode === "select") {
         const selectedContent = contents.find((c) => c.id === selectedContentId);
@@ -194,7 +268,7 @@ function CourseWizardContent() {
           throw new Error("Contenu introuvable");
         }
         contentName = selectedContent.name;
-      } else if (moduleFile && organization) {
+      } else if (moduleContentMode === "upload" && moduleFile && organization) {
         const finalName = moduleContentName.trim() || moduleFile.name;
         const upload = await apiClient.createContent(organization.id, {
           name: finalName,
@@ -213,31 +287,50 @@ function CourseWizardContent() {
         await loadContents();
         contentId = upload.content.id;
         contentName = finalName;
+      } else if (moduleContentMode === "youtube") {
+        const embedUrl = normalizeYoutubeEmbedUrl(youtubeUrl);
+        if (!embedUrl) {
+          setError("URL YouTube invalide");
+          return;
+        }
+        finalModuleType = "video";
+        data = {
+          kind: "youtube",
+          url: youtubeUrl.trim(),
+          embed_url: embedUrl,
+        };
+        contentName = "Vidéo YouTube";
+        contentId = undefined;
+      } else if (moduleContentMode === "text") {
+        finalModuleType = "article";
+        data = {
+          kind: "richtext",
+          html: richTextHtml,
+        };
+        contentName = "Contenu texte personnalisé";
+        contentId = undefined;
       }
 
-      if (!contentId) {
+      if ((moduleContentMode === "select" || moduleContentMode === "upload") && !contentId) {
         throw new Error("Contenu introuvable");
       }
 
       const newModule: ModuleData = {
         id: `temp-${Date.now()}`,
         title: moduleTitle.trim(),
-        module_type: moduleType,
+        module_type: finalModuleType,
         content_id: contentId,
-        content_name: contentName,
-        duration_minutes: moduleDuration ? parseInt(moduleDuration) : undefined,
+        content_name: contentName || undefined,
+        duration_minutes: moduleDuration ? parseInt(moduleDuration, 10) : undefined,
+        data,
       };
 
       setModules([...modules, newModule]);
       setModuleTitle("");
       setSelectedContentId("");
       setModuleDuration("");
-      setModuleFile(null);
-      setModuleContentName("");
-      setUploadProgress(0);
-      setModuleContentMode("select");
+      handleContentModeChange("select");
       setShowModuleForm(false);
-      setError(null);
       setSuccessMessage("Module ajouté avec succès");
       setTimeout(() => setSuccessMessage(null), 3000);
     } catch (err: any) {
@@ -275,8 +368,9 @@ function CourseWizardContent() {
         await apiClient.createModule(organization.id, course.id, {
           title: module.title,
           module_type: module.module_type,
-          content_id: module.content_id,
+          content_id: module.content_id ?? undefined,
           duration_seconds: module.duration_minutes ? module.duration_minutes * 60 : undefined,
+          data: module.data,
         });
       }
 
@@ -388,11 +482,10 @@ function CourseWizardContent() {
                   <Button
                     onClick={() => {
                       setShowModuleForm(true);
-                      setModuleContentMode("select");
-                      setModuleFile(null);
-                      setModuleContentName("");
+                      handleContentModeChange("select");
                       setSelectedContentId("");
-                      setUploadProgress(0);
+                      setModuleTitle("");
+                      setModuleDuration("");
                     }}
                     className="flex items-center gap-2"
                   >
@@ -411,11 +504,10 @@ function CourseWizardContent() {
                       onClick={() => {
                         setShowModuleForm(false);
                         setError(null);
-                        setModuleFile(null);
-                        setModuleContentName("");
-                        setUploadProgress(0);
                         setSelectedContentId("");
-                        setModuleContentMode("select");
+                        setModuleTitle("");
+                        setModuleDuration("");
+                        handleContentModeChange("select");
                       }}
                     >
                       Annuler
@@ -429,11 +521,28 @@ function CourseWizardContent() {
                     <div>
                       <label className="block text-sm font-medium text-slate-700 mb-2">Type de module <span className="text-red-500">*</span></label>
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                        {MODULE_TYPE_OPTIONS.map((option) => (
-                          <button key={option.value} type="button" onClick={() => { setModuleType(option.value); setSelectedContentId(""); }} className={`p-3 rounded-lg border-2 text-left transition-colors ${moduleType === option.value ? "border-blue-500 bg-blue-50" : "border-slate-200 hover:border-blue-300"}`}>
-                            <div className="font-medium text-sm">{option.label}</div>
-                          </button>
-                        ))}
+                        {MODULE_TYPE_OPTIONS.map((option) => {
+                          const isDisabled =
+                            (moduleContentMode === "youtube" && option.value !== "video") ||
+                            (moduleContentMode === "text" && option.value !== "article");
+                          return (
+                            <button
+                              key={option.value}
+                              type="button"
+                              disabled={isDisabled}
+                              onClick={() => {
+                                if (isDisabled) return;
+                                setModuleType(option.value);
+                                setSelectedContentId("");
+                              }}
+                              className={`p-3 rounded-lg border-2 text-left transition-colors ${
+                                moduleType === option.value ? "border-blue-500 bg-blue-50" : "border-slate-200 hover:border-blue-300"
+                              } ${isDisabled ? "cursor-not-allowed opacity-60" : ""}`}
+                            >
+                              <div className="font-medium text-sm">{option.label}</div>
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
                     <div className="space-y-4">
@@ -442,27 +551,31 @@ function CourseWizardContent() {
                         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                           <button
                             type="button"
-                            onClick={() => {
-                              setModuleContentMode("select");
-                              setError(null);
-                              setModuleFile(null);
-                              setModuleContentName("");
-                              setUploadProgress(0);
-                            }}
+                            onClick={() => handleContentModeChange("select")}
                             className={`flex items-center justify-center gap-2 rounded-lg border-2 px-3 py-2 text-sm font-medium transition-colors ${moduleContentMode === "select" ? "border-blue-500 bg-blue-50 text-blue-700" : "border-slate-200 text-slate-600 hover:border-blue-300"}`}
                           >
                             <LinkIcon className="h-4 w-4" />Contenu existant
                           </button>
                           <button
                             type="button"
-                            onClick={() => {
-                              setModuleContentMode("upload");
-                              setError(null);
-                              setSelectedContentId("");
-                            }}
+                            onClick={() => handleContentModeChange("upload")}
                             className={`flex items-center justify-center gap-2 rounded-lg border-2 px-3 py-2 text-sm font-medium transition-colors ${moduleContentMode === "upload" ? "border-blue-500 bg-blue-50 text-blue-700" : "border-slate-200 text-slate-600 hover:border-blue-300"}`}
                           >
                             <UploadCloud className="h-4 w-4" />Téléverser un fichier
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleContentModeChange("youtube")}
+                            className={`flex items-center justify-center gap-2 rounded-lg border-2 px-3 py-2 text-sm font-medium transition-colors ${moduleContentMode === "youtube" ? "border-blue-500 bg-blue-50 text-blue-700" : "border-slate-200 text-slate-600 hover:border-blue-300"}`}
+                          >
+                            <PlayCircle className="h-4 w-4" />Vidéo YouTube
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleContentModeChange("text")}
+                            className={`flex items-center justify-center gap-2 rounded-lg border-2 px-3 py-2 text-sm font-medium transition-colors ${moduleContentMode === "text" ? "border-blue-500 bg-blue-50 text-blue-700" : "border-slate-200 text-slate-600 hover:border-blue-300"}`}
+                          >
+                            <FileText className="h-4 w-4" />Contenu texte
                           </button>
                         </div>
                       </div>
@@ -503,7 +616,7 @@ function CourseWizardContent() {
                             </div>
                           </div>
                         )
-                      ) : (
+                      ) : moduleContentMode === "upload" ? (
                         <div className="space-y-4">
                           <div className="rounded-lg border-2 border-dashed border-blue-300 bg-white p-6 text-center">
                             <label className="flex flex-col items-center gap-2 text-sm text-slate-600" htmlFor="module-file-input">
@@ -573,6 +686,42 @@ function CourseWizardContent() {
                             </div>
                           )}
                         </div>
+                      ) : moduleContentMode === "youtube" ? (
+                        <div className="space-y-4">
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-2">URL de la vidéo YouTube <span className="text-red-500">*</span></label>
+                            <Input
+                              value={youtubeUrl}
+                              onChange={(event) => setYoutubeUrl(event.target.value)}
+                              placeholder="https://www.youtube.com/watch?v=..."
+                            />
+                            <p className="text-xs text-slate-500 mt-1">L'URL sera transformée automatiquement en lecteur intégré.</p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-2">Contenu texte <span className="text-red-500">*</span></label>
+                            <div className="rounded-lg border border-slate-200 bg-white">
+                              <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 px-3 py-2 text-sm text-slate-600">
+                                <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => handleRichTextCommand("bold")}>Gras</button>
+                                <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => handleRichTextCommand("italic")}>Italique</button>
+                                <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => handleRichTextCommand("underline")}>Souligner</button>
+                                <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => handleRichTextCommand("insertUnorderedList")}>Liste</button>
+                                <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => handleRichTextCommand("formatBlock", "h2")}>Titre</button>
+                              </div>
+                              <div
+                                ref={richTextRef}
+                                className="min-h-[160px] px-4 py-3 text-sm text-slate-700 focus:outline-none"
+                                contentEditable
+                                suppressContentEditableWarning
+                                onInput={handleRichTextInput}
+                                dangerouslySetInnerHTML={{ __html: richTextHtml }}
+                              />
+                            </div>
+                            <p className="text-xs text-slate-500 mt-1">Utilisez les options de mise en forme pour structurer votre contenu.</p>
+                          </div>
+                        </div>
                       )}
                     </div>
                     <div>
@@ -584,18 +733,23 @@ function CourseWizardContent() {
                         variant="outline"
                         onClick={() => {
                           setShowModuleForm(false);
-                          setModuleFile(null);
-                          setModuleContentName("");
-                          setUploadProgress(0);
                           setSelectedContentId("");
-                          setModuleContentMode("select");
+                          setModuleTitle("");
+                          setModuleDuration("");
+                          setError(null);
+                          handleContentModeChange("select");
                         }}
                       >
                         Annuler
                       </Button>
                       <Button
                         onClick={() => void addModule()}
-                        disabled={isSavingModule || (moduleContentMode === "upload" && !moduleFile)}
+                        disabled={
+                          isSavingModule ||
+                          (moduleContentMode === "upload" && !moduleFile) ||
+                          (moduleContentMode === "youtube" && !youtubeUrl.trim()) ||
+                          (moduleContentMode === "text" && richTextIsEmpty)
+                        }
                         className="min-w-[160px]"
                       >
                         {isSavingModule ? "Ajout en cours..." : "Ajouter le module"}
@@ -627,7 +781,23 @@ function CourseWizardContent() {
                             <div className="flex-1">
                               <h4 className="font-semibold text-slate-900">{module.title}</h4>
                               <p className="text-sm text-slate-600 mt-1">Type: {module.module_type}{module.duration_minutes && ` • ${module.duration_minutes} min`}</p>
-                              <p className="text-sm text-slate-500 mt-1 flex items-center gap-1"><LinkIcon className="h-3 w-3" />Contenu: {module.content_name}</p>
+                              <p className="text-sm text-slate-500 mt-1 flex flex-wrap items-center gap-1">
+                                <LinkIcon className="h-3 w-3" />
+                                <span>Contenu :</span>
+                                <span>
+                                  {module.content_name ??
+                                    (module.data?.kind === "youtube"
+                                      ? "Vidéo YouTube intégrée"
+                                      : module.data?.kind === "richtext"
+                                      ? "Contenu texte personnalisé"
+                                      : "Aucun contenu associé")}
+                                </span>
+                                {module.data?.kind === "youtube" && typeof module.data.url === "string" && (
+                                  <span className="truncate text-xs text-slate-400 max-w-[220px]">
+                                    ({module.data.url})
+                                  </span>
+                                )}
+                              </p>
                             </div>
                           </div>
                         </div>
@@ -668,7 +838,18 @@ function CourseWizardContent() {
                       <span className="text-xl">{getModuleIcon(module.module_type)}</span>
                       <div className="flex-1">
                         <div className="font-medium text-slate-900">{module.title}</div>
-                        <div className="text-sm text-slate-600">{module.module_type} • {module.content_name}</div>
+                        <div className="text-sm text-slate-600">
+                          {module.module_type} •{" "}
+                          {module.content_name ??
+                            (module.data?.kind === "youtube"
+                              ? "Vidéo YouTube intégrée"
+                              : module.data?.kind === "richtext"
+                              ? "Contenu texte personnalisé"
+                              : "Aucun contenu associé")}
+                        </div>
+                        {module.data?.kind === "youtube" && typeof module.data.url === "string" && (
+                          <div className="text-xs text-slate-500">URL : {module.data.url}</div>
+                        )}
                       </div>
                     </Card>
                   ))}
