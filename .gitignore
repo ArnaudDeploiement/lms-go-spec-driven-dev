@@ -1,23 +1,95 @@
-# Go artifacts
-bin/
-coverage.out
+# Environment files
+.env
+.env.*
+!.env.example
+!.env.*.example
+!.env.sample
+!.env.*.sample
+
+# Codex configuration
+.codex
+
+# Operating system files
+.DS_Store
+Thumbs.db
+
+# Editor directories and files
+.vscode/
+.idea/
+*.swp
+*.swo
+*.orig
+*.iml
+
+# Logs
 *.log
+log/
+logs/
 
-# Build cache
+# Tooling caches
 .cache/
+.gopath-cache/
 
-# Node/Frontend artifacts
+# Dependency directories
 node_modules/
 web/node_modules/
+
+# Next.js and frontend build output
+.next/
+web/.next/
+out/
+web/out/
+web/.turbo/
+web/.vercel/
+web/.eslintcache
+web/.cache/
+*.tsbuildinfo
+
+# General build artifacts
+dist/
 web/dist/
+public/build/
 
-# IDE
-.idea/
-.vscode/
+# Go build artifacts
+bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
 
-# Env files
-.env
-.env.local
+# Coverage and profiling outputs
+coverage/
+coverage-*/
+web/coverage/
+*.cover
+*.coverprofile
+*.cov
+*.lcov
+*.prof
+*.pprof
+*.trace
 
-# Codex / temporary
-.codex/log/
+# Temporary files
+.tmp/
+tmp/
+*.tmp
+*.temp
+
+# Package manager state
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Certificates and keys
+*.pem
+*.key
+*.pfx
+*.p12
+
+# Docker overrides
+docker-compose.override.yml
+docker-compose.override.yaml
