@@ -1,3 +1,6 @@
+# Git files
+.gitignore
+
 # Environment files
 .env
 .env.*
@@ -8,6 +11,13 @@
 
 # Codex configuration
 .codex
+
+# Local AI assistants and tooling
+.claude/
+.codex/
+.specify/
+CLAUDE.md
+upload_fix_agent.md
 
 # Operating system files
 .DS_Store
@@ -29,6 +39,9 @@ logs/
 # Tooling caches
 .cache/
 .gopath-cache/
+
+# Download metadata
+*.Zone.Identifier
 
 # Dependency directories
 node_modules/
@@ -52,6 +65,7 @@ public/build/
 
 # Go build artifacts
 bin/
+api
 *.exe
 *.exe~
 *.dll
